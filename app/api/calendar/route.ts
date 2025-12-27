@@ -15,7 +15,7 @@ function generateRecurringOccurrences(
   const baseDay = baseDate.getDate() // Jour du mois (1-31)
   const baseHour = baseDate.getHours()
   const baseMinute = baseDate.getMinutes()
-  
+
   let currentDate = new Date(baseDate)
 
   // Avancer jusqu'à la date de début si nécessaire
@@ -86,48 +86,49 @@ export async function GET(req: Request) {
   try {
     const userId = await getCurrentUserId()
     const { searchParams } = new URL(req.url)
-    
+
     // Récupérer le mois/année demandé depuis les paramètres (par défaut mois actuel)
     const requestedMonth = searchParams.get('month') ? parseInt(searchParams.get('month')!) : null
     const requestedYear = searchParams.get('year') ? parseInt(searchParams.get('year')!) : null
-    
+
     const now = new Date()
     const targetMonth = requestedMonth !== null ? requestedMonth : now.getMonth()
     const targetYear = requestedYear !== null ? requestedYear : now.getFullYear()
-    
+
     // Récupérer tous les événements du calendrier
     const events = await prisma.calendarEvent.findMany({
       where: { userId },
       orderBy: { dueDate: 'asc' },
-      include: { 
-        category: true,
-        subCategory: true
+      include: {
+        category: {
+          include: { parent: true }
+        }
       }
     })
 
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
     // Prélèvements à confirmer (non confirmés et date passée ou proche)
-    const pendingConfirmations = events.filter(e => 
-      !e.confirmed && 
-      e.type === 'debit' && 
+    const pendingConfirmations = events.filter(e =>
+      !e.confirmed &&
+      e.type === 'debit' &&
       new Date(e.dueDate) <= sevenDaysFromNow
     )
 
     // Prochains prélèvements (7 jours) - inclure les occurrences récurrentes
     const upcomingNext7Days: any[] = []
-    
+
     // Ajouter les événements non récurrents
     events.forEach(e => {
       if (!e.recurring &&
-          e.type === 'debit' &&
-          new Date(e.dueDate) > now &&
-          new Date(e.dueDate) <= sevenDaysFromNow &&
-          e.confirmed) {
+        e.type === 'debit' &&
+        new Date(e.dueDate) > now &&
+        new Date(e.dueDate) <= sevenDaysFromNow &&
+        e.confirmed) {
         upcomingNext7Days.push(e)
       }
     })
-    
+
     // Ajouter les occurrences récurrentes pour les 7 prochains jours
     events.forEach(e => {
       if (e.recurring) {
@@ -139,7 +140,7 @@ export async function GET(req: Request) {
         })
       }
     })
-    
+
     // Trier par date
     upcomingNext7Days.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
 
@@ -152,13 +153,13 @@ export async function GET(req: Request) {
 
     // Événements pour le calendrier mensuel
     const monthEvents: any[] = []
-    
+
     // Ajouter les événements non récurrents du mois
     events.forEach(e => {
       if (!e.recurring) {
         const eventDate = new Date(e.dueDate)
-        if (eventDate.getMonth() === targetMonth && 
-            eventDate.getFullYear() === targetYear) {
+        if (eventDate.getMonth() === targetMonth &&
+          eventDate.getFullYear() === targetYear) {
           monthEvents.push(e)
         }
       }
@@ -169,7 +170,7 @@ export async function GET(req: Request) {
     if (recurringEvents.length > 0) {
       const recurringTitles = [...new Set(recurringEvents.map(e => e.title))]
       const recurringAccountIds = [...new Set(recurringEvents.map(e => e.accountId).filter((id): id is string => !!id))]
-      
+
       // Récupérer les transactions pour les événements récurrents
       // Filtrer par userId via la relation account
       const transactionsWhere: any = {
@@ -185,30 +186,30 @@ export async function GET(req: Request) {
           in: recurringAccountIds
         }
       }
-      
+
       const transactions = await prisma.transaction.findMany({
         where: transactionsWhere,
         select: { date: true, description: true, accountId: true }
       })
-      
+
       // Créer un map pour vérifier rapidement si une transaction existe
       const transactionMap = new Map<string, boolean>()
       transactions.forEach(t => {
         const key = `${t.description || ''}-${t.accountId || ''}-${t.date.toISOString().slice(0, 10)}`
         transactionMap.set(key, true)
       })
-      
+
       for (const e of recurringEvents) {
         // Générer les occurrences pour une période plus large (3 mois avant et après)
         const extendedStart = new Date(targetYear, targetMonth - 3, 1)
         const extendedEnd = new Date(targetYear, targetMonth + 4, 0, 23, 59, 59, 999)
         const occurrences = generateRecurringOccurrences(e, extendedStart, extendedEnd)
-        
+
         // Filtrer pour garder seulement celles du mois cible et vérifier si elles sont confirmées
         occurrences.forEach(occ => {
           const occDate = new Date(occ.dueDate)
-          if (occDate.getMonth() === targetMonth && 
-              occDate.getFullYear() === targetYear) {
+          if (occDate.getMonth() === targetMonth &&
+            occDate.getFullYear() === targetYear) {
             // Vérifier si une transaction existe pour cette occurrence
             const occDateStr = occ.dueDate.toISOString().slice(0, 10)
             const transactionKey = `${e.title}-${e.accountId || ''}-${occDateStr}`
@@ -242,7 +243,7 @@ export async function POST(req: Request) {
     const userId = await getCurrentUserId()
     const body = await req.json()
     const { title, type, amount, dueDate, recurring, confirmed, notifyByEmail, emailReminderDaysBefore } = body
-    
+
     if (!title || !type || amount === undefined || amount === null || !dueDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
@@ -257,6 +258,20 @@ export async function POST(req: Request) {
       }
     }
 
+    let finalCategoryId = null
+    if (body.subCategoryId) {
+      // Assuming it's a valid category ID (child)
+      finalCategoryId = body.subCategoryId
+    } else if (body.categoryId) {
+      finalCategoryId = body.categoryId
+    }
+
+    // Verify category exists
+    if (finalCategoryId) {
+      const cat = await prisma.category.findUnique({ where: { id: finalCategoryId } })
+      if (!cat) return NextResponse.json({ error: 'Category not found' }, { status: 400 })
+    }
+
     const event = await prisma.calendarEvent.create({
       data: {
         userId,
@@ -268,8 +283,8 @@ export async function POST(req: Request) {
         confirmed: confirmed || false,
         notifyByEmail: !!notifyByEmail,
         emailReminderDaysBefore: typeof emailReminderDaysBefore === 'number' ? emailReminderDaysBefore : null,
-        categoryId: body.categoryId || null,
-        subCategoryId: body.subCategoryId || null,
+        categoryId: finalCategoryId,
+        // subCategoryId removed
         accountId: body.accountId || null
       }
     })
@@ -288,7 +303,7 @@ export async function PATCH(req: Request) {
     const userId = await getCurrentUserId()
     const body = await req.json()
     const { id, ...updateData } = body
-    
+
     if (!id) {
       return NextResponse.json({ error: 'Missing event id' }, { status: 400 })
     }
@@ -297,6 +312,15 @@ export async function PATCH(req: Request) {
     if (!existing || existing.userId !== userId) {
       return NextResponse.json({ error: 'Événement introuvable' }, { status: 404 })
     }
+
+    let finalCategoryId = undefined
+    if (updateData.subCategoryId !== undefined) {
+      finalCategoryId = updateData.subCategoryId || null
+    } else if (updateData.categoryId !== undefined) {
+      finalCategoryId = updateData.categoryId || null
+    }
+    // Note: if user sends "categoryId" (parent) and it overwrites existing "subCategoryId" (child), it works fine as they are all categories.
+    // If user sends subCategoryId: null, loop handles it.
 
     const event = await prisma.calendarEvent.update({
       where: { id },
@@ -310,8 +334,7 @@ export async function PATCH(req: Request) {
             : Number(updateData.emailReminderDaysBefore)
         }),
         ...(updateData.recurring && { recurring: updateData.recurring }),
-        ...(updateData.categoryId !== undefined && { categoryId: updateData.categoryId || null }),
-        ...(updateData.subCategoryId !== undefined && { subCategoryId: updateData.subCategoryId || null }),
+        ...(finalCategoryId !== undefined && { categoryId: finalCategoryId }),
         ...(updateData.accountId !== undefined && { accountId: updateData.accountId || null })
       }
     })
@@ -326,32 +349,44 @@ export async function PATCH(req: Request) {
 
 function serializeCalendarEvent(e: any) {
   try {
+    let category = null
+    let subCategory = null
+
+    if (e.category) {
+      if (e.category.parent) {
+        category = {
+          id: e.category.parent.id,
+          name: e.category.parent.name,
+          emoji: e.category.parent.emoji
+        }
+        subCategory = {
+          id: e.category.id,
+          name: e.category.name
+        }
+      } else {
+        category = {
+          id: e.category.id,
+          name: e.category.name,
+          emoji: e.category.emoji
+        }
+      }
+    }
+
     const result = {
       id: e.id,
       title: e.title,
       amount: Number(e.amount),
-      dueDate: e.dueDate.toISOString(),
+      dueDate: typeof e.dueDate === 'string' ? e.dueDate : e.dueDate.toISOString(),
       type: e.type,
       recurring: e.recurring,
       confirmed: e.confirmed,
       notifyByEmail: e.notifyByEmail,
       emailReminderDaysBefore: e.emailReminderDaysBefore,
-      categoryId: e.categoryId,
-      subCategoryId: e.subCategoryId,
+      categoryId: category ? category.id : null,
+      subCategoryId: subCategory ? subCategory.id : null,
       accountId: e.accountId,
-      category: e.category
-        ? {
-            id: e.category.id,
-            name: e.category.name,
-            emoji: e.category.emoji,
-          }
-        : null,
-      subCategory: e.subCategory && typeof e.subCategory === 'object' && 'id' in e.subCategory
-        ? {
-            id: e.subCategory.id,
-            name: e.subCategory.name,
-          }
-        : null,
+      category,
+      subCategory
     }
     return result
   } catch (error: any) {

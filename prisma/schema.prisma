@@ -22,6 +22,7 @@ model User {
   investments               InvestmentAsset[]
   calendarSyncs             CalendarSync[]
   realEstateInvestments     RealEstateInvestment[]
+  categories                Category[]
 }
 
 model Account {
@@ -60,23 +61,34 @@ model AccountShare {
 
 model Category {
   id             String          @id @default(cuid())
-  name           String          @unique
+  name           String
   emoji          String?
   transactions   Transaction[]
   calendarEvents CalendarEvent[]
-  subCategories  SubCategory[]
+  
+  // Hierarchical relation
+  parentId       String?
+  parent         Category?       @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: Cascade)
+  children       Category[]      @relation("CategoryToCategory")
+  
+  // User ownership
+  userId         String?
+  user           User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isSystem       Boolean         @default(false)
+
+  @@unique([userId, name])
+  keywords       CategoryKeyword[]
 }
 
-model SubCategory {
-  id             String          @id @default(cuid())
-  name           String
-  categoryId     String
-  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  transactions   Transaction[]
-  calendarEvents CalendarEvent[]
-  createdAt      DateTime        @default(now())
+model CategoryKeyword {
+  id         String   @id @default(cuid())
+  keyword    String
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
-  @@unique([categoryId, name])
+  @@index([keyword])
+  @@unique([categoryId, keyword])
 }
 
 model Transaction {
@@ -91,8 +103,7 @@ model Transaction {
   description     String?
   categoryId      String?
   category        Category?    @relation(fields: [categoryId], references: [id])
-  subCategoryId   String?
-  subCategory     SubCategory? @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  // subCategoryId removed - now just points to a Category that might represent a subcategory
   attachment      String?
   pending         Boolean      @default(false)
   transferGroupId String?
@@ -113,8 +124,7 @@ model CalendarEvent {
   emailReminderDaysBefore Int?
   categoryId              String?
   category                Category?    @relation(fields: [categoryId], references: [id])
-  subCategoryId           String?
-  subCategory             SubCategory? @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  // subCategoryId removed
   accountId               String?
   account                 Account?     @relation(fields: [accountId], references: [id])
   createdAt               DateTime     @default(now())

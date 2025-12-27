@@ -17,20 +17,67 @@ export async function GET(req: Request) {
         where,
         orderBy: { date: 'desc' },
         take,
-        include: { account: true, toAccount: true, category: true, subCategory: true },
+        include: {
+          account: true,
+          toAccount: true,
+          category: {
+            include: { parent: true }
+          }
+        },
       })
     } catch (includeError: any) {
-      // Fallback: try without toAccount if Prisma client not regenerated yet
+      // Fallback
       txs = await prisma.transaction.findMany({
         where,
         orderBy: { date: 'desc' },
         take,
-        include: { account: true, category: true, subCategory: true },
+        include: {
+          account: true,
+          category: {
+            include: { parent: true }
+          }
+        },
       })
       // Manually add toAccount as null for now
       txs = txs.map((tx: any) => ({ ...tx, toAccount: null }))
     }
-    return NextResponse.json(txs)
+
+    const formattedTxs = txs.map((tx: any) => {
+      // Logic to map single category back to category/subCategory pair
+      let category = null
+      let subCategory = null
+
+      if (tx.category) {
+        if (tx.category.parent) {
+          // It's a subcategory
+          category = {
+            id: tx.category.parent.id,
+            name: tx.category.parent.name,
+            emoji: tx.category.parent.emoji
+          }
+          subCategory = {
+            id: tx.category.id,
+            name: tx.category.name
+          }
+        } else {
+          // It's a top category
+          category = {
+            id: tx.category.id,
+            name: tx.category.name,
+            emoji: tx.category.emoji
+          }
+        }
+      }
+
+      return {
+        ...tx,
+        category,
+        subCategory,
+        // Ensure no raw objects leak if not needed, but spread handles most
+      }
+    })
+
+    return NextResponse.json(formattedTxs)
   } catch (error: any) {
     console.error('Transactions GET error', error)
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
@@ -94,22 +141,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Date invalide' }, { status: 400 })
     }
 
-    if (categoryId) {
-      const category = await prisma.category.findUnique({ where: { id: categoryId } })
-      if (!category) {
-        return NextResponse.json({ error: 'Catégorie inconnue' }, { status: 400 })
-      }
-    }
+    let finalCategoryId = null
 
+    // Determine correct category ID logic
     if (subCategoryId) {
-      const subCategory = await prisma.subCategory.findUnique({ where: { id: subCategoryId } })
-      if (!subCategory) {
-        return NextResponse.json({ error: 'Sous-catégorie inconnue' }, { status: 400 })
-      }
-      // Vérifier que la sous-catégorie appartient à la catégorie sélectionnée
-      if (categoryId && subCategory.categoryId !== categoryId) {
+      const sub = await prisma.category.findUnique({ where: { id: subCategoryId } }) // check existence
+      if (!sub) return NextResponse.json({ error: 'Sous-catégorie inconnue' }, { status: 400 })
+
+      if (categoryId && sub.parentId !== categoryId) {
         return NextResponse.json({ error: 'La sous-catégorie ne correspond pas à la catégorie sélectionnée' }, { status: 400 })
       }
+      finalCategoryId = subCategoryId
+    } else if (categoryId) {
+      const cat = await prisma.category.findUnique({ where: { id: categoryId } })
+      if (!cat) return NextResponse.json({ error: 'Catégorie inconnue' }, { status: 400 })
+      finalCategoryId = categoryId
     }
 
     const result = await prisma.$transaction(async (txClient) => {
@@ -122,12 +168,18 @@ export async function POST(req: Request) {
           date: parsedDate,
           description: description || null,
           pending: !!pending,
-          categoryId: categoryId || null,
-          subCategoryId: subCategoryId || null,
+          categoryId: finalCategoryId, // Unified field
+          // subCategoryId removed
           attachment: attachment ? String(attachment) : null,
           transferGroupId: transferGroupId || null,
         },
-        include: { category: true, subCategory: true, account: true, toAccount: true },
+        include: {
+          category: {
+            include: { parent: true }
+          },
+          account: true,
+          toAccount: true
+        },
       })
 
       // Mettre à jour le solde du compte source
@@ -202,6 +254,29 @@ export async function POST(req: Request) {
 
     const { created, updatedFromAccount, updatedToAccount } = result
 
+    // Reconstruction of response format
+    let resCategory = null
+    let resSubCategory = null
+    if (created.category) {
+      if (created.category.parent) {
+        resCategory = {
+          id: created.category.parent.id,
+          name: created.category.parent.name,
+          emoji: created.category.parent.emoji
+        }
+        resSubCategory = {
+          id: created.category.id,
+          name: created.category.name
+        }
+      } else {
+        resCategory = {
+          id: created.category.id,
+          name: created.category.name,
+          emoji: created.category.emoji
+        }
+      }
+    }
+
     return NextResponse.json({
       id: created.id,
       amount: Number(created.amount),
@@ -210,12 +285,8 @@ export async function POST(req: Request) {
       description: created.description,
       pending: created.pending,
       attachment: created.attachment,
-      category: created.category
-        ? { id: created.category.id, name: created.category.name, emoji: created.category.emoji }
-        : null,
-      subCategory: created.subCategory
-        ? { id: created.subCategory.id, name: created.subCategory.name }
-        : null,
+      category: resCategory,
+      subCategory: resSubCategory,
       account: { id: updatedFromAccount.id, name: updatedFromAccount.name, balance: Number(updatedFromAccount.balance) },
       toAccount: updatedToAccount ? { id: updatedToAccount.id, name: updatedToAccount.name, balance: Number(updatedToAccount.balance) } : null,
     }, { status: 201 })

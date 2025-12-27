@@ -40,27 +40,38 @@ export default function SettingsPage() {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
-  
+
   // Modals
   const [deleteCategoryModal, setDeleteCategoryModal] = useState<{ category: Category; transactionsCount: number; eventsCount: number } | null>(null)
   const [reassignCategoryId, setReassignCategoryId] = useState<string>('')
   const [deleteCategoryLoading, setDeleteCategoryLoading] = useState(false)
-  
+
   const [moveSubCategoryModal, setMoveSubCategoryModal] = useState<{ subCategory: SubCategory; transactionsCount: number; eventsCount: number } | null>(null)
   const [newCategoryId, setNewCategoryId] = useState<string>('')
   const [moveSubCategoryLoading, setMoveSubCategoryLoading] = useState(false)
-  
+
   const [deleteSubCategoryModal, setDeleteSubCategoryModal] = useState<{ subCategory: SubCategory; transactionsCount: number; eventsCount: number } | null>(null)
   const [deleteSubCategoryLoading, setDeleteSubCategoryLoading] = useState(false)
-  
+
   const [editCategoryModal, setEditCategoryModal] = useState<Category | null>(null)
   const [editCategoryName, setEditCategoryName] = useState<string>('')
   const [editCategoryEmoji, setEditCategoryEmoji] = useState<string>('')
   const [editCategoryLoading, setEditCategoryLoading] = useState(false)
-  
+
   const [editSubCategoryModal, setEditSubCategoryModal] = useState<SubCategory | null>(null)
   const [editSubCategoryName, setEditSubCategoryName] = useState<string>('')
   const [editSubCategoryLoading, setEditSubCategoryLoading] = useState(false)
+
+  // Add Category Modal
+  const [addCategoryModal, setAddCategoryModal] = useState(false)
+  const [addCategoryName, setAddCategoryName] = useState('')
+  const [addCategoryEmoji, setAddCategoryEmoji] = useState('')
+  const [addCategoryLoading, setAddCategoryLoading] = useState(false)
+
+  // Add SubCategory Modal
+  const [addSubCategoryModal, setAddSubCategoryModal] = useState<Category | null>(null)
+  const [addSubCategoryName, setAddSubCategoryName] = useState('')
+  const [addSubCategoryLoading, setAddSubCategoryLoading] = useState(false)
 
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -149,7 +160,7 @@ export default function SettingsPage() {
     const subCats = subCategories.filter(s => s.categoryId === category.id)
     let totalTransactions = stats.transactionsCount
     let totalEvents = stats.eventsCount
-    
+
     for (const subCat of subCats) {
       totalTransactions += transactions.filter(t => t.subCategoryId === subCat.id).length
       totalEvents += Array.isArray(calendarEvents) ? calendarEvents.filter(e => e.subCategoryId === subCat.id).length : 0
@@ -162,7 +173,7 @@ export default function SettingsPage() {
 
   const handleDeleteCategory = async () => {
     if (!deleteCategoryModal) return
-    
+
     // Si la catégorie a des transactions ou événements, une réassignation est requise
     if ((deleteCategoryModal.transactionsCount > 0 || deleteCategoryModal.eventsCount > 0) && !reassignCategoryId) {
       setError('Veuillez sélectionner une catégorie de réassignation')
@@ -173,7 +184,7 @@ export default function SettingsPage() {
     setError(null)
     try {
       // Si aucune réassignation n'est nécessaire, on peut supprimer directement
-      const url = reassignCategoryId 
+      const url = reassignCategoryId
         ? `/api/categories/${deleteCategoryModal.category.id}?reassignToCategoryId=${reassignCategoryId}`
         : `/api/categories/${deleteCategoryModal.category.id}`
       const response = await authFetch(url, {
@@ -210,7 +221,7 @@ export default function SettingsPage() {
 
   const handleMoveSubCategory = async () => {
     if (!moveSubCategoryModal) return
-    
+
     if (!newCategoryId) {
       setError('Veuillez sélectionner une nouvelle catégorie')
       return
@@ -356,6 +367,91 @@ export default function SettingsPage() {
     }
   }
 
+  const openAddCategoryModal = () => {
+    setAddCategoryName('')
+    setAddCategoryEmoji('')
+    setAddCategoryModal(true)
+    setError(null)
+  }
+
+  const handleAddCategory = async () => {
+    if (!addCategoryName.trim()) {
+      setError('Le nom de la catégorie est requis')
+      return
+    }
+
+    setAddCategoryLoading(true)
+    setError(null)
+
+    try {
+      const response = await authFetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: addCategoryName.trim(),
+          emoji: addCategoryEmoji.trim() || null,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de la création')
+      }
+
+      setSuccess('Catégorie créée avec succès')
+      setAddCategoryModal(false)
+      fetchData()
+    } catch (err: any) {
+      console.error('Error adding category:', err)
+      setError(err.message || 'Erreur lors de la création')
+    } finally {
+      setAddCategoryLoading(false)
+    }
+  }
+
+  const openAddSubCategoryModal = (category: Category) => {
+    setAddSubCategoryName('')
+    setAddSubCategoryModal(category)
+    setError(null)
+  }
+
+  const handleAddSubCategory = async () => {
+    if (!addSubCategoryModal || !addSubCategoryName.trim()) {
+      setError('Le nom de la sous-catégorie est requis')
+      return
+    }
+
+    setAddSubCategoryLoading(true)
+    setError(null)
+
+    try {
+      // Assuming POST /api/subcategories with body { categoryId, name } works
+      // Need to verify API endpoint. Based on typical patterns and fetch above, likely exists.
+      const response = await authFetch('/api/subcategories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryId: addSubCategoryModal.id,
+          name: addSubCategoryName.trim(),
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de la création')
+      }
+
+      setSuccess('Sous-catégorie créée avec succès')
+      setAddSubCategoryModal(null)
+      fetchData()
+    } catch (err: any) {
+      console.error('Error adding subcategory:', err)
+      setError(err.message || 'Erreur lors de la création')
+    } finally {
+      setAddSubCategoryLoading(false)
+    }
+  }
+
   return (
     <div className="p-8 space-y-8">
       <div>
@@ -416,8 +512,8 @@ export default function SettingsPage() {
           <div className="flex-1 min-w-0">
             <h3 className="text-xl font-semibold mb-2">Thème</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {isDark 
-                ? 'Mode sombre actif - Confortable dans les environnements faiblement éclairés' 
+              {isDark
+                ? 'Mode sombre actif - Confortable dans les environnements faiblement éclairés'
                 : 'Mode clair actif - Idéal en environnement lumineux'}
             </p>
           </div>
@@ -453,10 +549,20 @@ export default function SettingsPage() {
       {/* Section Gestion des catégories */}
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
         <div className="mb-6">
-          <h3 className="text-xl font-semibold mb-2">Gestion des catégories</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Gérez vos catégories et sous-catégories. Vous pouvez supprimer des catégories ou déplacer des sous-catégories entre catégories.
-          </p>
+          <div className="flex justify-between items-end mb-2">
+            <div>
+              <h3 className="text-xl font-semibold mb-2">Gestion des catégories</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Gérez vos catégories et sous-catégories.
+              </p>
+            </div>
+            <button
+              onClick={openAddCategoryModal}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm font-medium"
+            >
+              <span className="text-xl leading-none">+</span> Nouvelle catégorie
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -486,9 +592,8 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <ChevronDown
-                          className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`}
+                          className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''
+                            }`}
                         />
                         {category.emoji && <span className="text-xl">{category.emoji}</span>}
                         <span className="font-medium text-gray-900 dark:text-gray-100">{category.name}</span>
@@ -569,6 +674,14 @@ export default function SettingsPage() {
                       </div>
                     )}
                   </div>
+                  <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/20">
+                    <button
+                      onClick={() => openAddSubCategoryModal(category)}
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center gap-1"
+                    >
+                      + Ajouter une sous-catégorie
+                    </button>
+                  </div>
                 </details>
               )
             })}
@@ -611,7 +724,7 @@ export default function SettingsPage() {
                       ⚠️ Attention
                     </p>
                     <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                      Cette catégorie contient {deleteCategoryModal.transactionsCount} transaction{deleteCategoryModal.transactionsCount !== 1 ? 's' : ''} et {deleteCategoryModal.eventsCount} événement{deleteCategoryModal.eventsCount !== 1 ? 's' : ''}. 
+                      Cette catégorie contient {deleteCategoryModal.transactionsCount} transaction{deleteCategoryModal.transactionsCount !== 1 ? 's' : ''} et {deleteCategoryModal.eventsCount} événement{deleteCategoryModal.eventsCount !== 1 ? 's' : ''}.
                       Vous devez sélectionner une catégorie de réassignation, sinon ces transactions et événements perdront leur catégorie et seront classés comme "Sans catégorie".
                     </p>
                   </div>
@@ -966,6 +1079,152 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
-    </div>
+
+
+      {/* Modal Ajout Catégorie */}
+      {
+        addCategoryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setAddCategoryModal(false)}
+            />
+            <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700">
+              <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  Nouvelle catégorie
+                </h2>
+              </div>
+              <div className="px-6 py-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Nom de la catégorie *
+                  </label>
+                  <input
+                    type="text"
+                    value={addCategoryName}
+                    onChange={(e) => setAddCategoryName(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="Ex: Alimentation"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Emoji (optionnel)
+                  </label>
+                  <input
+                    type="text"
+                    value={addCategoryEmoji}
+                    onChange={(e) => setAddCategoryEmoji(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="Ex: 🍽️"
+                    maxLength={2}
+                  />
+                </div>
+
+                {error && (
+                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setAddCategoryModal(false)}
+                    className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                    disabled={addCategoryLoading}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleAddCategory}
+                    disabled={addCategoryLoading || !addCategoryName.trim()}
+                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-all font-medium flex items-center justify-center gap-2"
+                  >
+                    {addCategoryLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Création...
+                      </>
+                    ) : (
+                      'Créer'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Modal Ajout Sous-catégorie */}
+      {
+        addSubCategoryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setAddSubCategoryModal(null)}
+            />
+            <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700">
+              <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  Nouvelle sous-catégorie
+                </h2>
+              </div>
+              <div className="px-6 py-4 space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                    Dans la catégorie : {addSubCategoryModal.emoji} {addSubCategoryModal.name}
+                  </p>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Nom de la sous-catégorie *
+                  </label>
+                  <input
+                    type="text"
+                    value={addSubCategoryName}
+                    onChange={(e) => setAddSubCategoryName(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="Ex: Courses"
+                    autoFocus
+                  />
+                </div>
+
+                {error && (
+                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setAddSubCategoryModal(null)}
+                    className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                    disabled={addSubCategoryLoading}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleAddSubCategory}
+                    disabled={addSubCategoryLoading || !addSubCategoryName.trim()}
+                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-all font-medium flex items-center justify-center gap-2"
+                  >
+                    {addSubCategoryLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Création...
+                      </>
+                    ) : (
+                      'Créer'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div >
   )
 }

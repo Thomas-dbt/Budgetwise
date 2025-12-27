@@ -69,11 +69,11 @@ export default function CalendarPage() {
 
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:60',message:'CalendarPage: Component mounted',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:60', message: 'CalendarPage: Component mounted', data: { timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
     // #endregion
     return () => {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:63',message:'CalendarPage: Component unmounting',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:63', message: 'CalendarPage: Component unmounting', data: { timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
       // #endregion
     }
   }, [])
@@ -202,11 +202,11 @@ export default function CalendarPage() {
       const month = currentDate.getMonth()
       const year = currentDate.getFullYear()
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:200',message:'fetchCalendarData: Starting',data:{month,year,timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:200', message: 'fetchCalendarData: Starting', data: { month, year, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       const response = await authFetch(`/api/calendar?month=${month}&year=${year}`)
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:204',message:'fetchCalendarData: Response received',data:{ok:response.ok,status:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:204', message: 'fetchCalendarData: Response received', data: { ok: response.ok, status: response.status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       if (!response.ok) {
         const errorText = await response.text()
@@ -214,13 +214,13 @@ export default function CalendarPage() {
       }
       const calendarData = await response.json()
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:210',message:'fetchCalendarData: Data parsed',data:{hasData:!!calendarData,monthEventsCount:calendarData?.monthEvents?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:210', message: 'fetchCalendarData: Data parsed', data: { hasData: !!calendarData, monthEventsCount: calendarData?.monthEvents?.length || 0 }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       setData(calendarData)
       setLoading(false)
     } catch (error: any) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:214',message:'fetchCalendarData: Error caught',data:{errorMessage:error?.message,errorName:error?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:214', message: 'fetchCalendarData: Error caught', data: { errorMessage: error?.message, errorName: error?.name }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
       // #endregion
       console.error('Error fetching calendar:', error)
       setLoading(false)
@@ -230,23 +230,23 @@ export default function CalendarPage() {
   const fetchAccounts = async () => {
     try {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:218',message:'fetchAccounts: Starting',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:218', message: 'fetchAccounts: Starting', data: { timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       const response = await authFetch('/api/accounts')
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:220',message:'fetchAccounts: Response received',data:{ok:response.ok,status:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:220', message: 'fetchAccounts: Response received', data: { ok: response.ok, status: response.status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}`)
       }
       const accountsData = await response.json()
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:225',message:'fetchAccounts: Data parsed',data:{accountsCount:accountsData?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:225', message: 'fetchAccounts: Data parsed', data: { accountsCount: accountsData?.length || 0 }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       setAccounts(accountsData.map((acc: any) => ({ id: acc.id, name: acc.name })))
     } catch (error) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:227',message:'fetchAccounts: Error caught',data:{errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:227', message: 'fetchAccounts: Error caught', data: { errorMessage: error instanceof Error ? error.message : String(error) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
       // #endregion
       console.error('Error fetching accounts:', error)
     }
@@ -255,23 +255,23 @@ export default function CalendarPage() {
   const fetchCategories = async () => {
     try {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:231',message:'fetchCategories: Starting',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:231', message: 'fetchCategories: Starting', data: { timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       const response = await authFetch('/api/categories')
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:233',message:'fetchCategories: Response received',data:{ok:response.ok,status:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:233', message: 'fetchCategories: Response received', data: { ok: response.ok, status: response.status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}`)
       }
       const categoriesData = await response.json()
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:238',message:'fetchCategories: Data parsed',data:{categoriesCount:categoriesData?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:238', message: 'fetchCategories: Data parsed', data: { categoriesCount: categoriesData?.length || 0 }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       setCategories(categoriesData)
     } catch (error) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/calendar/page.tsx:240',message:'fetchCategories: Error caught',data:{errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/calendar/page.tsx:240', message: 'fetchCategories: Error caught', data: { errorMessage: error instanceof Error ? error.message : String(error) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
       // #endregion
       console.error('Error fetching categories:', error)
     }
@@ -342,8 +342,8 @@ export default function CalendarPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', { 
-      style: 'currency', 
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
       currency: 'EUR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -389,7 +389,7 @@ export default function CalendarPage() {
     const accountId = event.accountId || accounts[0]?.id || ''
     const categoryId = event.categoryId || ''
     const subCategoryId = event.subCategoryId || ''
-    
+
     setConfirmModal({
       event,
       accountId,
@@ -398,7 +398,7 @@ export default function CalendarPage() {
       categoryId,
       subCategoryId,
     })
-    
+
     // Charger les sous-catégories si une catégorie est sélectionnée
     if (categoryId) {
       fetchConfirmModalSubCategories(categoryId)
@@ -436,8 +436,8 @@ export default function CalendarPage() {
           amount,
           type: transactionType,
           date: confirmModal.date,
-        description: confirmModal.description,
-        categoryId: confirmModal.categoryId || undefined,
+          description: confirmModal.description,
+          categoryId: confirmModal.categoryId || undefined,
           subCategoryId: confirmModal.subCategoryId || undefined,
         }),
       })
@@ -458,8 +458,8 @@ export default function CalendarPage() {
 
       // Marquer l'échéance comme confirmée
       // Pour les occurrences récurrentes, on doit trouver l'ID de base
-      const eventIdToConfirm = confirmModal.event.id.includes('-') 
-        ? confirmModal.event.id.split('-')[0] 
+      const eventIdToConfirm = confirmModal.event.id.includes('-')
+        ? confirmModal.event.id.split('-')[0]
         : confirmModal.event.id
 
       await authFetch('/api/calendar', {
@@ -477,7 +477,7 @@ export default function CalendarPage() {
       setConfirmModalLoading(false)
     }
   }
-  
+
   // Fonction pour confirmation rapide si toutes les infos sont disponibles
   const handleQuickConfirm = async (event: CalendarEvent) => {
     if (!event.accountId) {
@@ -485,7 +485,7 @@ export default function CalendarPage() {
       openConfirmModal(event)
       return
     }
-    
+
     // Pré-remplir le modal avec les infos disponibles
     setConfirmModalError(null)
     setConfirmModal({
@@ -495,13 +495,13 @@ export default function CalendarPage() {
       date: event.dueDate.slice(0, 10),
       categoryId: event.categoryId || '',
     })
-    
+
     // Confirmer automatiquement
     setConfirmModalLoading(true)
     try {
       const transactionType = event.type === 'credit' ? 'income' : 'expense'
       const amount = Math.abs(Number(event.amount))
-      
+
       const transactionResponse = await authFetch('/api/transactions', {
         method: 'POST',
         body: JSON.stringify({
@@ -519,8 +519,8 @@ export default function CalendarPage() {
         throw new Error("Impossible d'ajouter la transaction.")
       }
 
-      const eventIdToConfirm = event.id.includes('-') 
-        ? event.id.split('-')[0] 
+      const eventIdToConfirm = event.id.includes('-')
+        ? event.id.split('-')[0]
         : event.id
 
       await authFetch('/api/calendar', {
@@ -570,7 +570,7 @@ export default function CalendarPage() {
   const openEditModal = (event: CalendarEvent) => {
     setEditEventError(null)
     setEditingEvent(event)
-    
+
     setEditEventForm({
       title: event.title,
       amount: event.amount.toString(),
@@ -584,14 +584,14 @@ export default function CalendarPage() {
       subCategoryId: event.subCategoryId || '',
       accountId: event.accountId || ''
     })
-    
+
     // Charger les sous-catégories si une catégorie est sélectionnée
     if (event.categoryId) {
       fetchSubCategories(event.categoryId)
     } else {
       setSubCategories([])
     }
-    
+
     setShowNewSubCategoryInput(false)
     setNewSubCategoryName('')
     setEditModalOpen(true)
@@ -607,7 +607,7 @@ export default function CalendarPage() {
   const handleEditEventSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!editingEvent) return
-    
+
     if (!editEventForm.title || !editEventForm.amount || !editEventForm.dueDate) {
       setEditEventError('Merci de remplir les champs obligatoires.')
       return
@@ -631,8 +631,8 @@ export default function CalendarPage() {
     setEditEventError(null)
     try {
       // Extraire l'ID de base si c'est une occurrence récurrente
-      const eventIdToUpdate = editingEvent.id.includes('-') 
-        ? editingEvent.id.split('-')[0] 
+      const eventIdToUpdate = editingEvent.id.includes('-')
+        ? editingEvent.id.split('-')[0]
         : editingEvent.id
 
       const response = await authFetch('/api/calendar', {
@@ -805,8 +805,8 @@ export default function CalendarPage() {
     return monthEvents.filter(e => {
       const eventDate = new Date(e.dueDate)
       return eventDate.getDate() === day &&
-             eventDate.getMonth() === currentDate.getMonth() &&
-             eventDate.getFullYear() === currentDate.getFullYear()
+        eventDate.getMonth() === currentDate.getMonth() &&
+        eventDate.getFullYear() === currentDate.getFullYear()
     })
   }
 
@@ -890,13 +890,12 @@ export default function CalendarPage() {
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <h3 className="font-semibold text-sm flex-1">{event.title}</h3>
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        daysUntil < 0 
-                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                          : daysUntil === 0
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${daysUntil < 0
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                        : daysUntil === 0
                           ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
                           : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                      }`}>
+                        }`}>
                         {daysUntil < 0 ? 'En retard' : daysUntil === 0 ? 'Aujourd\'hui' : `Dans ${daysUntil}j`}
                       </span>
                     </div>
@@ -1011,21 +1010,21 @@ export default function CalendarPage() {
                     type="button"
                     onClick={async () => {
                       if (!selectedEvent) return
-                      
+
                       // Si l'échéance a un compte, créer automatiquement la transaction
                       if (selectedEvent.accountId) {
                         await handleQuickConfirm(selectedEvent)
                         setSelectedEvent(null)
                       } else {
                         // Sinon, ouvrir le modal pour sélectionner un compte
-                    openConfirmModal(selectedEvent)
-                    setSelectedEvent(null)
+                        openConfirmModal(selectedEvent)
+                        setSelectedEvent(null)
                       }
-                  }}
+                    }}
                     className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg font-medium"
-                >
+                  >
                     Marquer comme payé
-                </button>
+                  </button>
                 )}
               </div>
             </div>
@@ -1284,7 +1283,7 @@ export default function CalendarPage() {
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 pb-2 border-b border-gray-200 dark:border-gray-700">
                   Informations principales
                 </h3>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Libellé de l'échéance *
@@ -1580,7 +1579,7 @@ export default function CalendarPage() {
                   onClick={() => changeMonth(-1)}
                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg font-medium flex items-center gap-2"
                 >
-                  <span>â†</span>
+                  <span>←</span>
                   <span className="hidden sm:inline">Précédent</span>
                 </button>
                 <button
@@ -1594,7 +1593,7 @@ export default function CalendarPage() {
                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg font-medium flex items-center gap-2"
                 >
                   <span className="hidden sm:inline">Suivant</span>
-                  <span>←</span>
+                  <span>→</span>
                 </button>
                 <select
                   value={`${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`}
@@ -1615,26 +1614,24 @@ export default function CalendarPage() {
                 </select>
               </div>
             </div>
-            
+
             {/* Onglets Calendrier / Liste */}
             <div className="flex items-center gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setViewMode('calendar')}
-                className={`px-4 py-2 font-medium transition-all ${
-                  viewMode === 'calendar'
-                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
+                className={`px-4 py-2 font-medium transition-all ${viewMode === 'calendar'
+                  ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
               >
                 Calendrier
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`px-4 py-2 font-medium transition-all ${
-                  viewMode === 'list'
-                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
+                className={`px-4 py-2 font-medium transition-all ${viewMode === 'list'
+                  ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
               >
                 Liste
               </button>
@@ -1642,146 +1639,142 @@ export default function CalendarPage() {
 
             {viewMode === 'calendar' && (
               <>
-            <div className="mb-4 flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span>Confirmé</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                <span>En attente</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-7 gap-2 mb-2">
-              {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
-                <div key={day} className="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">
-                  {day}
+                <div className="mb-4 flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span>Confirmé</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                    <span>En attente</span>
+                  </div>
                 </div>
-              ))}
-            </div>
 
-            <div className="grid grid-cols-7 gap-2">
-              {days.map((day, index) => {
-                if (day === null) {
-                  return <div key={index} className="aspect-square"></div>
-                }
-                const events = getEventsForDay(day, safeData.monthEvents)
-                const isToday = day === today.getDate() && 
-                               currentDate.getMonth() === today.getMonth() &&
-                               currentDate.getFullYear() === today.getFullYear()
-                const hasEvents = events.length > 0
-                const isHovered = hoveredDay === day
-                
-                return (
-                  <div
-                    key={day}
-                    className={`min-h-[100px] border rounded-xl p-2 flex flex-col relative transition-all ${
-                      isToday ? 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 border-blue-300 dark:border-blue-700 shadow-md' : 
-                      'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                    } ${hasEvents ? 'cursor-pointer hover:shadow-lg' : ''}`}
-                    onMouseEnter={() => hasEvents && setHoveredDay(day)}
-                    onMouseLeave={() => setHoveredDay(null)}
-                    onClick={() => {
-                      if (hasEvents) {
-                        if (events.length === 1) {
-                          setSelectedEvent(events[0])
-                        } else {
-                          setHoveredDay(day)
-                        }
-                      }
-                    }}
-                  >
-                    <span className={`text-sm font-semibold mb-1 ${
-                      isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
-                    }`}>
+                <div className="grid grid-cols-7 gap-2 mb-2">
+                  {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
+                    <div key={day} className="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">
                       {day}
-                    </span>
-                    {hasEvents && (
-                      <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
-                        {events.slice(0, 2).map((event) => {
-                          const { className } = getCategoryMeta(event)
-                          return (
-                            <div
-                              key={event.id}
-                              className={`text-xs px-2 py-1 rounded-md truncate cursor-pointer transition-all hover:scale-105 ${
-                                event.confirmed 
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' 
-                                  : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400 opacity-70'
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedEvent(event)
-                              }}
-                              title={`${event.title} - ${formatCurrency(event.amount)}`}
-                            >
-                              <div className="font-semibold truncate">{event.title}</div>
-                              <div className="text-[10px] opacity-90">{formatCurrency(event.amount)}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-7 gap-2">
+                  {days.map((day, index) => {
+                    if (day === null) {
+                      return <div key={index} className="aspect-square"></div>
+                    }
+                    const events = getEventsForDay(day, safeData.monthEvents)
+                    const isToday = day === today.getDate() &&
+                      currentDate.getMonth() === today.getMonth() &&
+                      currentDate.getFullYear() === today.getFullYear()
+                    const hasEvents = events.length > 0
+                    const isHovered = hoveredDay === day
+
+                    return (
+                      <div
+                        key={day}
+                        className={`min-h-[100px] border rounded-xl p-2 flex flex-col relative transition-all ${isToday ? 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 border-blue-300 dark:border-blue-700 shadow-md' :
+                          'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                          } ${hasEvents ? 'cursor-pointer hover:shadow-lg' : ''}`}
+                        onMouseEnter={() => hasEvents && setHoveredDay(day)}
+                        onMouseLeave={() => setHoveredDay(null)}
+                        onClick={() => {
+                          if (hasEvents) {
+                            if (events.length === 1) {
+                              setSelectedEvent(events[0])
+                            } else {
+                              setHoveredDay(day)
+                            }
+                          }
+                        }}
+                      >
+                        <span className={`text-sm font-semibold mb-1 ${isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
+                          }`}>
+                          {day}
+                        </span>
+                        {hasEvents && (
+                          <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
+                            {events.slice(0, 2).map((event) => {
+                              const { className } = getCategoryMeta(event)
+                              return (
+                                <div
+                                  key={event.id}
+                                  className={`text-xs px-2 py-1 rounded-md truncate cursor-pointer transition-all hover:scale-105 ${event.confirmed
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                                    : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400 opacity-70'
+                                    }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setSelectedEvent(event)
+                                  }}
+                                  title={`${event.title} - ${formatCurrency(event.amount)}`}
+                                >
+                                  <div className="font-semibold truncate">{event.title}</div>
+                                  <div className="text-[10px] opacity-90">{formatCurrency(event.amount)}</div>
+                                </div>
+                              )
+                            })}
+                            {events.length > 2 && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium px-2">
+                                +{events.length - 2} autre{events.length - 2 > 1 ? 's' : ''}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Tooltip avec tous les événements */}
+                        {isHovered && events.length > 1 && (
+                          <div
+                            className="absolute z-20 top-full left-1/2 transform -translate-x-1/2 mt-2 w-72 bg-white dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-800 rounded-xl shadow-2xl p-4"
+                            onMouseEnter={() => setHoveredDay(day)}
+                            onMouseLeave={() => setHoveredDay(null)}
+                          >
+                            <div className="text-sm font-bold mb-3 text-gray-800 dark:text-gray-200 pb-2 border-b border-gray-200 dark:border-gray-700">
+                              {events.length} échéance{events.length > 1 ? 's' : ''} le {day} {currentMonthName}
                             </div>
-                          )
-                        })}
-                        {events.length > 2 && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400 font-medium px-2">
-                            +{events.length - 2} autre{events.length - 2 > 1 ? 's' : ''}
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                              {events.map((event) => {
+                                const { className, label } = getCategoryMeta(event)
+                                return (
+                                  <div
+                                    key={event.id}
+                                    className="flex items-start justify-between p-3 bg-gradient-to-r from-gray-50 to-white dark:from-gray-700/50 dark:to-gray-800 rounded-lg cursor-pointer hover:shadow-md transition-all border border-gray-200 dark:border-gray-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setSelectedEvent(event)
+                                      setHoveredDay(null)
+                                    }}
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                                        {event.title}
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <div className={`w-2 h-2 rounded-full ${event.confirmed ? 'bg-green-500' : 'bg-gray-400'
+                                          }`}></div>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                                          {event.type === 'credit' ? 'Crédit' : 'Débit'}
+                                        </span>
+                                        {event.category && (
+                                          <span className={`text-xs px-1.5 py-0.5 rounded ${className}`}>
+                                            {label}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="text-sm font-bold text-orange-600 dark:text-orange-400 ml-3 whitespace-nowrap">
+                                      {formatCurrency(event.amount)}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
-                    )}
-                    
-                    {/* Tooltip avec tous les événements */}
-                    {isHovered && events.length > 1 && (
-                      <div 
-                        className="absolute z-20 top-full left-1/2 transform -translate-x-1/2 mt-2 w-72 bg-white dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-800 rounded-xl shadow-2xl p-4"
-                        onMouseEnter={() => setHoveredDay(day)}
-                        onMouseLeave={() => setHoveredDay(null)}
-                      >
-                        <div className="text-sm font-bold mb-3 text-gray-800 dark:text-gray-200 pb-2 border-b border-gray-200 dark:border-gray-700">
-                          {events.length} échéance{events.length > 1 ? 's' : ''} le {day} {currentMonthName}
-                        </div>
-                        <div className="space-y-2 max-h-64 overflow-y-auto">
-                          {events.map((event) => {
-                            const { className, label } = getCategoryMeta(event)
-                            return (
-                            <div
-                              key={event.id}
-                                className="flex items-start justify-between p-3 bg-gradient-to-r from-gray-50 to-white dark:from-gray-700/50 dark:to-gray-800 rounded-lg cursor-pointer hover:shadow-md transition-all border border-gray-200 dark:border-gray-600"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedEvent(event)
-                                setHoveredDay(null)
-                              }}
-                            >
-                              <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                                  {event.title}
-                                </div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                  <div className={`w-2 h-2 rounded-full ${
-                                    event.confirmed ? 'bg-green-500' : 'bg-gray-400'
-                                  }`}></div>
-                                    <span className="text-xs text-gray-600 dark:text-gray-400">
-                                      {event.type === 'credit' ? 'Crédit' : 'Débit'}
-                                  </span>
-                                    {event.category && (
-                                      <span className={`text-xs px-1.5 py-0.5 rounded ${className}`}>
-                                        {label}
-                                      </span>
-                                    )}
-                                </div>
-                              </div>
-                                <div className="text-sm font-bold text-orange-600 dark:text-orange-400 ml-3 whitespace-nowrap">
-                                  {formatCurrency(event.amount)}
-                              </div>
-                            </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+                    )
+                  })}
+                </div>
               </>
             )}
 
@@ -1799,7 +1792,7 @@ export default function CalendarPage() {
                       const daysUntil = getDaysUntil(event.dueDate)
                       const isPast = daysUntil < 0
                       const isToday = daysUntil === 0
-                      
+
                       return (
                         <div
                           key={event.id}
@@ -1842,20 +1835,19 @@ export default function CalendarPage() {
                                 )}
                                 {event.recurring && (
                                   <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                                    {event.recurring === 'monthly' ? 'Mensuel' : 
-                                     event.recurring === 'weekly' ? 'Hebdomadaire' :
-                                     event.recurring === 'quarterly' ? 'Trimestriel' :
-                                     event.recurring === 'yearly' ? 'Annuel' : event.recurring}
+                                    {event.recurring === 'monthly' ? 'Mensuel' :
+                                      event.recurring === 'weekly' ? 'Hebdomadaire' :
+                                        event.recurring === 'quarterly' ? 'Trimestriel' :
+                                          event.recurring === 'yearly' ? 'Annuel' : event.recurring}
                                   </span>
                                 )}
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className={`text-xl font-bold ${
-                                event.type === 'credit' 
-                                  ? 'text-green-600 dark:text-green-400' 
-                                  : 'text-orange-600 dark:text-orange-400'
-                              }`}>
+                              <p className={`text-xl font-bold ${event.type === 'credit'
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-orange-600 dark:text-orange-400'
+                                }`}>
                                 {formatCurrency(event.amount)}
                               </p>
                               {!event.confirmed && (
@@ -1901,10 +1893,10 @@ export default function CalendarPage() {
                   const { className, label } = getCategoryMeta(event)
                   const daysUntil = getDaysUntil(event.dueDate)
                   const isToday = daysUntil === 0
-                  
+
                   return (
-                    <div 
-                      key={event.id} 
+                    <div
+                      key={event.id}
                       className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-800"
                       onClick={() => setSelectedEvent(event)}
                     >
@@ -1916,11 +1908,10 @@ export default function CalendarPage() {
                           </span>
                         )}
                       </div>
-                      <p className={`text-lg font-bold mb-2 ${
-                        event.type === 'credit' 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : 'text-orange-600 dark:text-orange-400'
-                      }`}>
+                      <p className={`text-lg font-bold mb-2 ${event.type === 'credit'
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-orange-600 dark:text-orange-400'
+                        }`}>
                         {formatCurrency(event.amount)}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -1964,43 +1955,43 @@ export default function CalendarPage() {
                 })
               )}
             </div>
-            
+
             {/* Section échéances récurrentes */}
             {safeData.recurringEvents.length > 0 && (
               <>
                 <h3 className="text-lg font-semibold mt-6 mb-3">Récurrentes</h3>
                 <div className="space-y-3">
                   {safeData.recurringEvents.map((event) => {
-                  const { className, label } = getCategoryMeta(event)
-                  const eventDate = new Date(event.dueDate)
-                  const dayOfMonth = eventDate.getDate()
-                  
-                  return (
+                    const { className, label } = getCategoryMeta(event)
+                    const eventDate = new Date(event.dueDate)
+                    const dayOfMonth = eventDate.getDate()
+
+                    return (
                       <div key={event.id} className="border border-purple-200 dark:border-purple-800 rounded-lg p-3 bg-purple-50/50 dark:bg-purple-900/10">
                         <h4 className="font-semibold text-sm mb-1">{event.title}</h4>
                         <div className="flex flex-wrap gap-1.5 mb-2">
                           <span className={`text-xs px-2 py-0.5 rounded-full ${className}`}>
-                          {label}
-                        </span>
+                            {label}
+                          </span>
                           <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                            {event.recurring === 'monthly' ? 'Mensuel' : 
-                             event.recurring === 'weekly' ? 'Hebdo' :
-                             event.recurring === 'quarterly' ? 'Trim' :
-                             event.recurring === 'yearly' ? 'Annuel' : event.recurring}
-                        </span>
-                      </div>
+                            {event.recurring === 'monthly' ? 'Mensuel' :
+                              event.recurring === 'weekly' ? 'Hebdo' :
+                                event.recurring === 'quarterly' ? 'Trim' :
+                                  event.recurring === 'yearly' ? 'Annuel' : event.recurring}
+                          </span>
+                        </div>
                         <p className="text-base font-bold text-purple-600 dark:text-purple-400 mb-1">
                           {formatCurrency(event.amount)}
                         </p>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
                           Le {dayOfMonth} de chaque mois
                         </p>
-                    </div>
-                  )
+                      </div>
+                    )
                   })}
                 </div>
               </>
-              )}
+            )}
           </div>
         </div>
       </div>
@@ -2037,54 +2028,54 @@ export default function CalendarPage() {
                   Informations principales
                 </h3>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Libellé de l'échéance *
-                </label>
-                <input
-                  type="text"
-                  value={newEventForm.title}
-                  onChange={(e) => setNewEventForm(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    placeholder="Ex: Loyer, Abonnement Netflix, Salaire..."
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Type d'échéance *
-                  </label>
-                  <select
-                    value={newEventForm.type}
-                    onChange={(e) => setNewEventForm(prev => ({ ...prev, type: e.target.value as 'debit' | 'credit' }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  >
-                      <option value="debit">Débit (prélèvement)</option>
-                      <option value="credit">Crédit (revenu)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                    Montant *
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={newEventForm.amount}
-                    onChange={(e) => setNewEventForm(prev => ({ ...prev, amount: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      placeholder="1200.00"
+                    type="text"
+                    value={newEventForm.title}
+                    onChange={(e) => setNewEventForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="Ex: Loyer, Abonnement Netflix, Salaire..."
                     required
                   />
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                      Type d'échéance *
+                    </label>
+                    <select
+                      value={newEventForm.type}
+                      onChange={(e) => setNewEventForm(prev => ({ ...prev, type: e.target.value as 'debit' | 'credit' }))}
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    >
+                      <option value="debit">Débit (prélèvement)</option>
+                      <option value="credit">Crédit (revenu)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                      Montant *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={newEventForm.amount}
+                      onChange={(e) => setNewEventForm(prev => ({ ...prev, amount: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      placeholder="1200.00"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       Date d'échéance *
                     </label>
                     <input
@@ -2117,9 +2108,9 @@ export default function CalendarPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       Catégorie
-                  </label>
-                  <select
-                    value={newEventForm.categoryId}
+                    </label>
+                    <select
+                      value={newEventForm.categoryId}
                       onChange={(e) => {
                         setNewEventForm(prev => ({ ...prev, categoryId: e.target.value, subCategoryId: '' }))
                         setShowNewSubCategoryInput(false)
@@ -2128,20 +2119,20 @@ export default function CalendarPage() {
                       className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     >
                       <option value="">Sans catégorie</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       Sous-catégorie
-                  </label>
+                    </label>
                     {newEventForm.categoryId ? (
                       <div className="space-y-2">
-                  <select
+                        <select
                           value={newEventForm.subCategoryId}
                           onChange={(e) => {
                             if (e.target.value === '__new__') {
@@ -2158,10 +2149,10 @@ export default function CalendarPage() {
                           {subCategories.map(subCat => (
                             <option key={subCat.id} value={subCat.id}>
                               {subCat.name}
-                      </option>
-                    ))}
+                            </option>
+                          ))}
                           <option value="__new__">+ Créer une nouvelle sous-catégorie</option>
-                  </select>
+                        </select>
                         {showNewSubCategoryInput && (
                           <div className="flex gap-2">
                             <input
@@ -2222,15 +2213,15 @@ export default function CalendarPage() {
                         <option value="">Sélectionnez d'abord une catégorie</option>
                       </select>
                     )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       Compte
-                  </label>
-                  <select
+                    </label>
+                    <select
                       value={newEventForm.accountId}
                       onChange={(e) => setNewEventForm(prev => ({ ...prev, accountId: e.target.value }))}
                       className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
@@ -2241,7 +2232,7 @@ export default function CalendarPage() {
                           {account.name}
                         </option>
                       ))}
-                  </select>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -2252,49 +2243,49 @@ export default function CalendarPage() {
                   Options avancées
                 </summary>
                 <div className="px-4 py-4 space-y-4">
-              <div className="space-y-3 border border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-900/10 rounded-lg px-4 py-3">
-                <label className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={newEventForm.notifyByEmail}
-                    onChange={(e) => setNewEventForm(prev => ({ ...prev, notifyByEmail: e.target.checked }))}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-200">
+                  <div className="space-y-3 border border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-900/10 rounded-lg px-4 py-3">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={newEventForm.notifyByEmail}
+                        onChange={(e) => setNewEventForm(prev => ({ ...prev, notifyByEmail: e.target.checked }))}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-200">
                         Recevoir une notification email avant l'échéance
-                  </span>
-                </label>
+                      </span>
+                    </label>
                     {newEventForm.notifyByEmail && (
                       <div className="ml-7">
                         <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">
                           Délai d'alerte
                         </label>
-                  <select
-                    value={newEventForm.emailReminderDaysBefore}
-                    onChange={(e) => setNewEventForm(prev => ({ ...prev, emailReminderDaysBefore: e.target.value }))}
+                        <select
+                          value={newEventForm.emailReminderDaysBefore}
+                          onChange={(e) => setNewEventForm(prev => ({ ...prev, emailReminderDaysBefore: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  >
-                    {emailReminderOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                        >
+                          {emailReminderOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     )}
-              </div>
+                  </div>
 
-              <label className="flex items-center gap-3 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 bg-gray-50 dark:bg-gray-800/40">
-                <input
-                  type="checkbox"
-                  checked={newEventForm.confirmed}
-                  onChange={(e) => setNewEventForm(prev => ({ ...prev, confirmed: e.target.checked }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-200">
+                  <label className="flex items-center gap-3 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 bg-gray-50 dark:bg-gray-800/40">
+                    <input
+                      type="checkbox"
+                      checked={newEventForm.confirmed}
+                      onChange={(e) => setNewEventForm(prev => ({ ...prev, confirmed: e.target.checked }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-200">
                       Marquer l'échéance comme déjà confirmée
-                </span>
-              </label>
+                    </span>
+                  </label>
                 </div>
               </details>
 
@@ -2350,7 +2341,7 @@ export default function CalendarPage() {
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 pb-2 border-b border-gray-200 dark:border-gray-700">
                   Informations principales
                 </h3>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Libellé de l'échéance *

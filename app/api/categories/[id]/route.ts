@@ -7,22 +7,32 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await getCurrentUserId()
+    const userId = await getCurrentUserId()
 
     const body = await req.json()
     const { name, emoji } = body
 
     const categoryId = params.id
 
-    // Vérifier que la catégorie existe
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId },
+    // Vérifier que la catégorie existe et appartient à l'utilisateur
+    const category = await prisma.category.findFirst({
+      where: {
+        id: categoryId,
+        userId
+      },
     })
 
     if (!category) {
       return NextResponse.json(
         { error: 'Catégorie non trouvée' },
         { status: 404 }
+      )
+    }
+
+    if (category.isSystem) {
+      return NextResponse.json(
+        { error: 'Impossible de modifier une catégorie système' },
+        { status: 403 }
       )
     }
 
@@ -39,9 +49,12 @@ export async function PATCH(
 
       const trimmedName = name.trim()
 
-      // Vérifier si un autre catégorie avec ce nom existe déjà
-      const existing = await prisma.category.findUnique({
-        where: { name: trimmedName },
+      // Vérifier si une autre catégorie avec ce nom existe déjà pour cet utilisateur
+      const existing = await prisma.category.findFirst({
+        where: {
+          userId,
+          name: trimmedName
+        },
       })
 
       if (existing && existing.id !== categoryId) {
@@ -69,6 +82,7 @@ export async function PATCH(
       id: updatedCategory.id,
       name: updatedCategory.name,
       emoji: updatedCategory.emoji,
+      isSystem: updatedCategory.isSystem
     })
   } catch (error: any) {
     console.error('Category PATCH error:', error)
@@ -93,19 +107,20 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await getCurrentUserId()
+    const userId = await getCurrentUserId()
 
     const { searchParams } = new URL(req.url)
     const reassignToCategoryId = searchParams.get('reassignToCategoryId')
 
     const categoryId = params.id
 
-    // Vérifier que la catégorie existe
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId },
+    // Vérifier que la catégorie existe et appartient à l'utilisateur
+    const category = await prisma.category.findFirst({
+      where: {
+        id: categoryId,
+        userId
+      },
       include: {
-        transactions: true,
-        calendarEvents: true,
         subCategories: true,
       },
     })
@@ -117,14 +132,24 @@ export async function DELETE(
       )
     }
 
+    if (category.isSystem) {
+      return NextResponse.json(
+        { error: 'Impossible de supprimer une catégorie système' },
+        { status: 403 }
+      )
+    }
+
     let transactionsUpdated = 0
     let eventsUpdated = 0
 
     // Si une catégorie de réassignation est fournie
     if (reassignToCategoryId) {
-      // Vérifier que la catégorie de réassignation existe
-      const reassignCategory = await prisma.category.findUnique({
-        where: { id: reassignToCategoryId },
+      // Vérifier que la catégorie de réassignation existe et appartient à l'utilisateur
+      const reassignCategory = await prisma.category.findFirst({
+        where: {
+          id: reassignToCategoryId,
+          userId
+        },
       })
 
       if (!reassignCategory) {

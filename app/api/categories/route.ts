@@ -2,48 +2,21 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUserId } from '@/lib/server-auth'
 
-const DEFAULT_CATEGORIES = [
-  { name: 'Abonnements', emoji: '🔁' },
-  { name: 'Alimentation', emoji: '🍽️' },
-  { name: 'Assurances', emoji: '🛡️' },
-  { name: 'Autres', emoji: '📦' },
-  { name: 'Énergie', emoji: '⚡' },
-  { name: 'Épargne & investissement', emoji: '💼' },
-  { name: 'Logement', emoji: '🏠' },
-  { name: 'Loisirs', emoji: '🎮' },
-  { name: 'Santé', emoji: '🩺' },
-  { name: 'Shopping', emoji: '🛍️' },
-  { name: 'Transport', emoji: '🚌' },
-  { name: 'Voyages', emoji: '✈️' },
-]
-
 export async function GET() {
   try {
-    // Vérifier l'authentification (mais les catégories sont globales, donc on continue même si ça échoue)
-    let userId: string | null = null
-    try {
-      userId = await getCurrentUserId()
-    } catch (error) {
-      // Si l'authentification échoue, on continue quand même car les catégories sont globales
-      console.warn('Categories API: Authentication failed, but categories are global')
-    }
-
-    // Créer les catégories par défaut si elles n'existent pas
-    for (const category of DEFAULT_CATEGORIES) {
-      try {
-        await prisma.category.upsert({
-          where: { name: category.name },
-          update: {},
-          create: category,
-        })
-      } catch (error) {
-        console.error(`Error upserting category ${category.name}:`, error)
-        // Continue avec les autres catégories
-      }
-    }
+    const userId = await getCurrentUserId()
 
     const categories = await prisma.category.findMany({
+      where: {
+        userId,
+        parentId: null // Only fetch top-level categories
+      },
       orderBy: { name: 'asc' },
+      include: {
+        children: {
+          orderBy: { name: 'asc' }
+        }
+      }
     })
 
     return NextResponse.json(
@@ -51,9 +24,18 @@ export async function GET() {
         id: cat.id,
         name: cat.name,
         emoji: cat.emoji,
+        isSystem: cat.isSystem,
+        subCategories: cat.children.map(sub => ({
+          id: sub.id,
+          name: sub.name,
+          categoryId: sub.parentId // Map parentId to categoryId for frontend compatibility
+        }))
       }))
     )
   } catch (error: any) {
+    if (error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
     console.error('Categories API error:', error)
     return NextResponse.json(
       { error: 'Erreur lors du chargement des catégories' },
@@ -64,8 +46,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await getCurrentUserId()
-    
+    const userId = await getCurrentUserId()
+
     const body = await req.json()
     const { name, emoji } = body
 
@@ -78,9 +60,12 @@ export async function POST(req: Request) {
 
     const trimmedName = name.trim()
 
-    // Vérifier si la catégorie existe déjà
-    const existing = await prisma.category.findUnique({
-      where: { name: trimmedName },
+    // Vérifier si la catégorie existe déjà pour cet utilisateur
+    const existing = await prisma.category.findFirst({
+      where: {
+        userId,
+        name: trimmedName
+      },
     })
 
     if (existing) {
@@ -93,8 +78,10 @@ export async function POST(req: Request) {
 
     const category = await prisma.category.create({
       data: {
+        userId,
         name: trimmedName,
         emoji: emoji || null,
+        isSystem: false
       },
     })
 

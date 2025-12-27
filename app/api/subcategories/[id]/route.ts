@@ -7,7 +7,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await getCurrentUserId()
+    const userId = await getCurrentUserId()
 
     const body = await req.json()
     const { categoryId: newCategoryId, name: newName } = body
@@ -15,10 +15,16 @@ export async function PATCH(
     const subCategoryId = params.id
 
     // Vérifier que la sous-catégorie existe
-    const subCategory = await prisma.subCategory.findUnique({
-      where: { id: subCategoryId },
+    const subCategory = await prisma.category.findFirst({
+      where: { id: subCategoryId, userId },
       include: {
-        category: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            emoji: true,
+          },
+        },
         transactions: true,
         calendarEvents: true,
       },
@@ -31,8 +37,8 @@ export async function PATCH(
       )
     }
 
-    const updateData: { categoryId?: string; name?: string } = {}
-    let targetCategoryId = subCategory.categoryId
+    const updateData: { parentId?: string; name?: string } = {}
+    let targetCategoryId = subCategory.parentId
 
     // Si un nouveau nom est fourni
     if (newName !== undefined) {
@@ -55,8 +61,8 @@ export async function PATCH(
       }
 
       // Vérifier que la nouvelle catégorie existe
-      const newCategory = await prisma.category.findUnique({
-        where: { id: newCategoryId },
+      const newCategory = await prisma.category.findFirst({
+        where: { id: newCategoryId, userId },
       })
 
       if (!newCategory) {
@@ -66,34 +72,45 @@ export async function PATCH(
         )
       }
 
+      if (newCategoryId === subCategoryId) {
+        return NextResponse.json(
+          { error: 'Une catégorie ne peut pas être son propre parent' },
+          { status: 400 }
+        )
+      }
+
       targetCategoryId = newCategoryId
-      updateData.categoryId = newCategoryId
+      updateData.parentId = newCategoryId
     }
 
-    // Vérifier l'unicité du nom dans la catégorie cible
-    const nameToCheck = updateData.name || subCategory.name
-    const existingSubCategory = await prisma.subCategory.findUnique({
-      where: {
-        categoryId_name: {
-          categoryId: targetCategoryId,
-          name: nameToCheck,
-        },
-      },
-    })
+    // Vérifier l'unicité du nom
+    if (updateData.name || updateData.parentId) {
+      const nameToCheck = updateData.name || subCategory.name
 
-    if (existingSubCategory && existingSubCategory.id !== subCategoryId) {
-      return NextResponse.json(
-        { error: `Une sous-catégorie "${nameToCheck}" existe déjà dans cette catégorie` },
-        { status: 409 }
-      )
+      const existing = await prisma.category.findFirst({
+        where: {
+          userId,
+          name: nameToCheck,
+          NOT: {
+            id: subCategoryId
+          }
+        },
+      })
+
+      if (existing) {
+        return NextResponse.json(
+          { error: `Une catégorie "${nameToCheck}" existe déjà` },
+          { status: 409 }
+        )
+      }
     }
 
     // Mettre à jour la sous-catégorie
-    const updatedSubCategory = await prisma.subCategory.update({
+    const updatedSubCategory = await prisma.category.update({
       where: { id: subCategoryId },
       data: updateData,
       include: {
-        category: {
+        parent: {
           select: {
             id: true,
             name: true,
@@ -103,37 +120,22 @@ export async function PATCH(
       },
     })
 
-    let transactionsUpdated = 0
-    let eventsUpdated = 0
-
-    // Si la catégorie a changé, mettre à jour les transactions et événements
-    if (newCategoryId && newCategoryId !== subCategory.categoryId) {
-      const transactionsResult = await prisma.transaction.updateMany({
-        where: { subCategoryId },
-        data: { categoryId: newCategoryId },
-      })
-      transactionsUpdated = transactionsResult.count
-
-      const eventsResult = await prisma.calendarEvent.updateMany({
-        where: { subCategoryId },
-        data: { categoryId: newCategoryId },
-      })
-      eventsUpdated = eventsResult.count
-    }
+    // Transactions and events are linked to the ID, which doesn't change.
+    // So no updates needed for them.
 
     return NextResponse.json({
       id: updatedSubCategory.id,
       name: updatedSubCategory.name,
-      categoryId: updatedSubCategory.categoryId,
-      category: updatedSubCategory.category,
-      transactionsUpdated,
-      eventsUpdated,
+      categoryId: updatedSubCategory.parentId,
+      category: updatedSubCategory.parent,
+      transactionsUpdated: 0,
+      eventsUpdated: 0,
     })
   } catch (error: any) {
     console.error('SubCategory PATCH error:', error)
     if (error.code === 'P2002') {
       return NextResponse.json(
-        { error: 'Une sous-catégorie avec ce nom existe déjà dans cette catégorie' },
+        { error: 'Une catégorie avec ce nom existe déjà' },
         { status: 409 }
       )
     }
@@ -152,13 +154,12 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await getCurrentUserId()
-
+    const userId = await getCurrentUserId()
     const subCategoryId = params.id
 
     // Vérifier que la sous-catégorie existe
-    const subCategory = await prisma.subCategory.findUnique({
-      where: { id: subCategoryId },
+    const subCategory = await prisma.category.findFirst({
+      where: { id: subCategoryId, userId },
       include: {
         transactions: true,
         calendarEvents: true,
@@ -175,9 +176,8 @@ export async function DELETE(
     const transactionsCount = subCategory.transactions.length
     const eventsCount = subCategory.calendarEvents.length
 
-    // Supprimer la sous-catégorie
-    // Les transactions et événements auront subCategoryId mis à null automatiquement (SetNull via Prisma)
-    await prisma.subCategory.delete({
+    // Supprimer la sous-catégorie (Category)
+    await prisma.category.delete({
       where: { id: subCategoryId },
     })
 

@@ -49,9 +49,44 @@ export async function getCurrentUserId() {
     },
   })
 
+  console.log('User upserted:', user.id)
+
+  // Initialisation des catégories par défaut si l'utilisateur n'en a pas
+  const categoriesCount = await prisma.category.count({
+    where: { userId: user.id }
+  })
+
+  console.log('Categories count for user:', categoriesCount)
+
+  if (categoriesCount === 0) {
+    console.log('Seeding default categories...')
+    try {
+      const { defaultCategories } = await import('@/lib/default-categories')
+      console.log('Default categories loaded:', defaultCategories.length)
+
+      for (const cat of defaultCategories) {
+        await prisma.category.create({
+          data: {
+            userId: user.id,
+            name: cat.name,
+            emoji: cat.emoji,
+            children: {
+              create: cat.subCategories.map(name => ({
+                name,
+                userId: user.id
+              }))
+            }
+          }
+        })
+      }
+      console.log('Default categories seeded successfully')
+    } catch (seedError) {
+      console.error('Error seeding categories:', seedError)
+    }
+  }
+
   return user.id
 }
-
 
 
 

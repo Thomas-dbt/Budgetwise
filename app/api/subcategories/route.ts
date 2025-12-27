@@ -4,19 +4,22 @@ import { getCurrentUserId } from '@/lib/server-auth'
 
 export async function GET(req: Request) {
   try {
-    // VÃ©rifier l'authentification
-    await getCurrentUserId()
-    
+    // Vérifier l'authentification
+    const userId = await getCurrentUserId()
+
     const { searchParams } = new URL(req.url)
     const categoryId = searchParams.get('categoryId')
 
     if (categoryId) {
-      // RÃ©cupÃ©rer les sous-catÃ©gories d'une catÃ©gorie spÃ©cifique
-      const subCategories = await prisma.subCategory.findMany({
-        where: { categoryId },
+      // Récupérer les sous-catégories (enfants) d'une catégorie spécifique
+      const subCategories = await prisma.category.findMany({
+        where: {
+          userId,
+          parentId: categoryId
+        },
         orderBy: { name: 'asc' },
         include: {
-          category: {
+          parent: { // Include parent as "category"
             select: {
               id: true,
               name: true,
@@ -30,17 +33,21 @@ export async function GET(req: Request) {
         subCategories.map((sub) => ({
           id: sub.id,
           name: sub.name,
-          categoryId: sub.categoryId,
-          category: sub.category,
+          categoryId: sub.parentId,
+          category: sub.parent,
         }))
       )
     }
 
-    // RÃ©cupÃ©rer toutes les sous-catÃ©gories
-    const subCategories = await prisma.subCategory.findMany({
-      orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
+    // Récupérer toutes les sous-catégories (toutes celles qui ont un parent)
+    const subCategories = await prisma.category.findMany({
+      where: {
+        userId,
+        NOT: { parentId: null }
+      },
+      orderBy: [{ parent: { name: 'asc' } }, { name: 'asc' }],
       include: {
-        category: {
+        parent: {
           select: {
             id: true,
             name: true,
@@ -54,17 +61,17 @@ export async function GET(req: Request) {
       subCategories.map((sub) => ({
         id: sub.id,
         name: sub.name,
-        categoryId: sub.categoryId,
-        category: sub.category,
+        categoryId: sub.parentId,
+        category: sub.parent,
       }))
     )
   } catch (error: any) {
     console.error('SubCategories API error:', error)
     if (error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Non autorisÃ©' }, { status: 401 })
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
     return NextResponse.json(
-      { error: 'Erreur lors du chargement des sous-catÃ©gories' },
+      { error: 'Erreur lors du chargement des sous-catégories' },
       { status: 500 }
     )
   }
@@ -72,37 +79,43 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await getCurrentUserId()
-    
+    const userId = await getCurrentUserId()
+
     const body = await req.json()
     const { name, categoryId } = body
 
     if (!name || !categoryId) {
       return NextResponse.json(
-        { error: 'Le nom et la catÃ©gorie sont requis' },
+        { error: 'Le nom et la catégorie sont requis' },
         { status: 400 }
       )
     }
 
-    // VÃ©rifier que la catÃ©gorie existe
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId },
+    // Vérifier que la catégorie parent existe
+    const parentCategory = await prisma.category.findFirst({
+      where: {
+        id: categoryId,
+        userId
+      },
     })
 
-    if (!category) {
+    if (!parentCategory) {
       return NextResponse.json(
-        { error: 'CatÃ©gorie non trouvÃ©e' },
+        { error: 'Catégorie parente non trouvée' },
         { status: 404 }
       )
     }
 
-    const subCategory = await prisma.subCategory.create({
+    // Créer la sous-catégorie (Category avec parentId)
+    const subCategory = await prisma.category.create({
       data: {
         name,
-        categoryId,
+        parentId: categoryId,
+        userId,
+        isSystem: false,
       },
       include: {
-        category: {
+        parent: {
           select: {
             id: true,
             name: true,
@@ -115,22 +128,22 @@ export async function POST(req: Request) {
     return NextResponse.json({
       id: subCategory.id,
       name: subCategory.name,
-      categoryId: subCategory.categoryId,
-      category: subCategory.category,
+      categoryId: subCategory.parentId,
+      category: subCategory.parent,
     })
   } catch (error: any) {
     console.error('SubCategories POST error:', error)
     if (error.code === 'P2002') {
       return NextResponse.json(
-        { error: 'Cette sous-catÃ©gorie existe dÃ©jÃ  pour cette catÃ©gorie' },
+        { error: 'Cette sous-catégorie existe déjà pour cette catégorie' },
         { status: 409 }
       )
     }
     if (error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Non autorisÃ©' }, { status: 401 })
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
     return NextResponse.json(
-      { error: 'Erreur lors de la crÃ©ation de la sous-catÃ©gorie' },
+      { error: 'Erreur lors de la création de la sous-catégorie' },
       { status: 500 }
     )
   }
