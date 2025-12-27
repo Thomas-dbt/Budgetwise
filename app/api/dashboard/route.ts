@@ -1,0 +1,147 @@
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getCurrentUserId } from '@/lib/server-auth'
+
+export async function GET() {
+  // #region agent log
+  await fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/dashboard/route.ts:5',message:'Dashboard API GET called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  try {
+    let userId
+    try {
+      // #region agent log
+      await fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/dashboard/route.ts:9',message:'Before getCurrentUserId',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      userId = await getCurrentUserId()
+      // #region agent log
+      await fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/dashboard/route.ts:12',message:'After getCurrentUserId',data:{hasUserId:!!userId,timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+    } catch (authError) {
+      // #region agent log
+      await fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/dashboard/route.ts:15',message:'Auth error in dashboard API',data:{errorMessage:authError instanceof Error ? authError.message : String(authError),timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      console.error('Dashboard API auth error:', authError)
+      return NextResponse.json(
+        { error: 'Non autorisé. Veuillez vous reconnecter.' },
+        { status: 401 }
+      )
+    }
+    // Récupérer tous les comptes
+    const accounts = await prisma.account.findMany({ where: { ownerId: userId } })
+    const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0)
+
+    // Date du début et fin du mois actuel
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+
+    // Transactions du mois
+    const monthTransactions = await prisma.transaction.findMany({
+      where: {
+        account: { ownerId: userId },
+        date: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+      },
+      include: {
+        category: true,
+        account: true,
+      },
+    })
+
+    const monthlyIncome = monthTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0)
+
+    const monthlyExpenses = monthTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
+
+    const savingsRate = monthlyIncome > 0 
+      ? parseFloat(((monthlyIncome - monthlyExpenses) / monthlyIncome * 100).toFixed(1))
+      : 0.0
+
+    // Transactions récentes (10 dernières)
+    const recentTransactions = await prisma.transaction.findMany({
+      where: { account: { ownerId: userId } },
+      take: 10,
+      orderBy: { date: 'desc' },
+      include: {
+        category: true,
+        account: true,
+      },
+    })
+
+    // Formater les dates correctement
+    const formatDateForResponse = (date: Date) => {
+      return date.toISOString()
+    }
+
+    // Données pour le graphique (6 derniers mois)
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+    const monthlyData = []
+
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59)
+      
+      const monthTxs = await prisma.transaction.findMany({
+        where: {
+          account: { ownerId: userId },
+          date: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
+        },
+      })
+
+      const income = monthTxs
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + Number(t.amount), 0)
+
+      const expenses = monthTxs
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
+
+      const monthNames = ['janv.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+      
+      monthlyData.push({
+        month: monthNames[monthStart.getMonth()],
+        revenus: income,
+        depenses: expenses
+      })
+    }
+
+    // #region agent log
+    await fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/dashboard/route.ts:104',message:'Before returning success response',data:{totalBalance,timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    return NextResponse.json({
+      totalBalance: totalBalance || 0,
+      monthlyIncome: monthlyIncome || 0,
+      monthlyExpenses: monthlyExpenses || 0,
+      savingsRate: savingsRate || 0,
+      recentTransactions: recentTransactions.map(t => ({
+        id: t.id,
+        description: t.description || 'Transaction',
+        amount: Number(t.amount),
+        type: t.type,
+        date: formatDateForResponse(t.date),
+        category: t.category ? { name: t.category.name, emoji: t.category.emoji } : null,
+        account: { name: t.account.name }
+      })),
+      monthlyEvolution: monthlyData
+    })
+  } catch (error) {
+    // #region agent log
+    await fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/dashboard/route.ts:121',message:'Error in dashboard API catch block',data:{errorMessage:error instanceof Error ? error.message : String(error),timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    console.error('Dashboard API error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    return NextResponse.json(
+      { error: `Erreur lors du chargement des données: ${errorMessage}` },
+      { status: 500 }
+    )
+  }
+}
+

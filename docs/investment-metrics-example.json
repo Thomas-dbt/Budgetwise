@@ -1,0 +1,59 @@
+{
+  "investmentId": "clx1234567890",
+  "investmentName": "Bitcoin",
+  "baseSymbol": "BTC",
+  "quoteSymbol": "USD",
+  "buyPriceUsd": 25000.00,
+  "currentPriceUsd": 88000.00,
+  "valueUsd": 176000.00,
+  "costUsd": 50000.00,
+  "plUsd": 126000.00,
+  "plPct": 252.00,
+  "quantity": 2.0,
+  "quoteCurrency": "USD",
+  "positions": [
+    {
+      "id": "pos1234567890",
+      "quantity": 2.0,
+      "paidAmount": 500.00,
+      "paidCurrency": "EUR",
+      "purchaseDate": "2019-01-15T10:30:00.000Z",
+      "fxRateToQuote": 1.14
+    }
+  ]
+}
+
+
+
+  "investmentId": "clx1234567890",
+  "investmentName": "Bitcoin",
+  "baseSymbol": "BTC",
+  "quoteSymbol": "USD",
+  "buyPriceUsd": 25000.00,
+  "currentPriceUsd": 88000.00,
+  "valueUsd": 176000.00,
+  "costUsd": 50000.00,
+  "plUsd": 126000.00,
+  "plPct": 252.00,
+  "quantity": 2.0,
+  "quoteCurrency": "USD",
+  "positions": [
+    {
+      "id": "pos1234567890",
+      "quantity": 2.0,
+      "paidAmount": 500.00,
+      "paidCurrency": "EUR",
+      "purchaseDate": "2019-01-15T10:30:00.000Z",
+      "fxRateToQuote": 1.14
+    }
+  ]
+}
+
+
+
+
+
+
+
+
+

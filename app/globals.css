@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 255 255 255;
+  --fg: 17 24 39;
+}
+
+.dark {
+  --bg: 17 24 39;
+  --fg: 243 244 246;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--fg));
+}
+
+a {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+/* Simple container spacing */
+.container {
+  @apply mx-auto px-4 max-w-6xl;
+}
+
+

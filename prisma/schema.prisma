@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                        String            @id @default(cuid())
+  email                     String            @unique
+  passwordHash              String
+  name                      String?
+  firebaseUid               String?           @unique
+  calendarSubscriptionToken String?           @unique
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+  accounts                  Account[]
+  accountShares             AccountShare[]
+  calendarEvents            CalendarEvent[]
+  investments               InvestmentAsset[]
+  calendarSyncs             CalendarSync[]
+  realEstateInvestments     RealEstateInvestment[]
+}
+
+model Account {
+  id                    String          @id @default(cuid())
+  name                  String
+  bank                  String?
+  type                  String // checking, savings, credit, cash
+  balance               Decimal         @default(0)
+  ownerId               String
+  owner                 User            @relation(fields: [ownerId], references: [id])
+  transactions          Transaction[]   @relation("TransactionFromAccount")
+  transferToTransactions Transaction[] @relation("TransactionToAccount")
+  shares                AccountShare[]
+  calendarEvents        CalendarEvent[]
+  investmentAssets      InvestmentAsset[] // Relation inverse pour les Livrets liés
+  isJoint               Boolean         @default(false)
+  jointAccessCode       String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+}
+
+model AccountShare {
+  id         String    @id @default(cuid())
+  accountId  String
+  userId     String?
+  email      String
+  role       String // editor | viewer
+  accessCode String
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  account    Account   @relation(fields: [accountId], references: [id])
+  user       User?     @relation(fields: [userId], references: [id])
+
+  @@unique([accountId, email])
+}
+
+model Category {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  emoji          String?
+  transactions   Transaction[]
+  calendarEvents CalendarEvent[]
+  subCategories  SubCategory[]
+}
+
+model SubCategory {
+  id             String          @id @default(cuid())
+  name           String
+  categoryId     String
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+  calendarEvents CalendarEvent[]
+  createdAt      DateTime        @default(now())
+
+  @@unique([categoryId, name])
+}
+
+model Transaction {
+  id              String       @id @default(cuid())
+  accountId       String
+  account         Account      @relation("TransactionFromAccount", fields: [accountId], references: [id])
+  toAccountId     String?
+  toAccount       Account?     @relation("TransactionToAccount", fields: [toAccountId], references: [id])
+  amount          Decimal
+  type            String // income | expense | transfer
+  date            DateTime
+  description     String?
+  categoryId      String?
+  category        Category?    @relation(fields: [categoryId], references: [id])
+  subCategoryId   String?
+  subCategory     SubCategory? @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  attachment      String?
+  pending         Boolean      @default(false)
+  transferGroupId String?
+  createdAt       DateTime     @default(now())
+}
+
+model CalendarEvent {
+  id                      String       @id @default(cuid())
+  userId                  String
+  user                    User         @relation(fields: [userId], references: [id])
+  title                   String
+  type                    String // debit | credit
+  amount                  Decimal
+  dueDate                 DateTime
+  recurring               String? // monthly | yearly | weekly | custom
+  confirmed               Boolean      @default(false)
+  notifyByEmail           Boolean      @default(false)
+  emailReminderDaysBefore Int?
+  categoryId              String?
+  category                Category?    @relation(fields: [categoryId], references: [id])
+  subCategoryId           String?
+  subCategory             SubCategory? @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  accountId               String?
+  account                 Account?     @relation(fields: [accountId], references: [id])
+  createdAt               DateTime     @default(now())
+}
+
+model InvestmentAsset {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Informations générales
+  name        String
+  symbol      String? // Optionnel pour certains types (immobilier, etc.)
+  category    String  @default("Action") // Action, ETF, Livret, Fonds euros, Crypto, Immobilier, Crowdfunding, Royaltiz, etc.
+  subCategory String? // PEA, CTO, PER, compte courant, etc.
+  platform    String? // Boursorama, Degiro, Binance, Royaltiz, etc.
+  currency    String  @default("EUR") // EUR, USD, etc.
+  comment     String? // Note ou commentaire optionnel
+
+  // Mode de valorisation
+  valuationMode String  @default("marché") // marché, taux, manuel, import_externe
+  readOnly      Boolean @default(false) // true pour les imports externes
+  source        String? // tradingview, royaltiz_csv, manuel, taux_calcule
+
+  // Données de valorisation communes
+  quantity          Decimal   @default(1)
+  currentPrice      Decimal? // Prix ou valeur unitaire actuelle
+  currentValue      Decimal   @default(0) // Valeur actuelle totale (calculée)
+  amountInvested    Decimal? // Montant investi optionnel
+  lastValuationDate DateTime? // Date de dernière valorisation
+
+  // Mode marché
+  tradingViewSymbol String? // Symbole personnalisé pour TradingView
+  priceProvider     String? // tradingview, yahoo_finance, coingecko, etc.
+  baseSymbol        String? // Symbole de base (ex: BTC, ETH, AAPL)
+  quoteSymbol       String? // Symbole de quote (ex: USD, EUR) - devise de cotation
+
+  // Mode taux (pour produits d'épargne)
+  baseAmount         Decimal? // Montant de base (dépôts/retraits cumulés)
+  annualRate         Decimal? // Taux annuel en pourcentage
+  capitalizationMode String? // annuelle, mensuelle, quotidienne
+  startDate          DateTime? // Date de début du placement
+
+  // Mode manuel
+  manualPrice Decimal? // Dernière valeur saisie manuellement
+
+  // Mode import externe
+  externalId    String? // Identifiant côté plateforme externe
+  importBatchId String? // Identifiant de lot d'import
+
+  // Anciens champs (conservés pour compatibilité)
+  kind String @default("stock") // stock | etf | crypto (déprécié, utiliser category)
+
+  // Lien avec Account (pour synchronisation Livrets)
+  accountId     String?
+  account       Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  positions     Position[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @default(now()) @updatedAt
+  PriceSnapshot PriceSnapshot[]
+}
+
+model Position {
+  id        String          @id @default(cuid())
+  assetId   String
+  asset     InvestmentAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  quantity  Decimal // Quantité en base (ex: 2 BTC)
+  costBasis Decimal // Coût unitaire en quote (ex: USD par BTC)
+
+  // Informations de transaction avec taux de change (optionnels pour compatibilité)
+  paidAmount    Decimal? // Montant payé dans la devise d'origine
+  paidCurrency  String? // Devise d'origine (ex: EUR)
+  purchaseDate  DateTime? // Date d'achat (par défaut createdAt)
+  fxRateToQuote Decimal? // Taux de change au moment de l'achat (paidCurrency -> quoteSymbol)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model PriceSnapshot {
+  id            String          @id @default(cuid())
+  assetId       String
+  asset         InvestmentAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  quoteCurrency String // Devise de cotation (USD, EUR, etc.)
+  price         Decimal // Prix au moment du snapshot
+  timestamp     DateTime        @default(now())
+
+  @@index([assetId, timestamp])
+  @@index([assetId, quoteCurrency, timestamp])
+}
+
+model CalendarSync {
+  id                 String    @id @default(cuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider           String // "google" | "apple"
+  calendarId         String // ID du calendrier externe
+  calendarName       String // Nom du calendrier
+  accessToken        String // Token d'accès (chiffré)
+  refreshToken       String? // Token de rafraîchissement (chiffré)
+  expiresAt          DateTime? // Expiration du token
+  syncEnabled        Boolean   @default(true)
+  lastSyncAt         DateTime?
+  externalEventIdMap String? // JSON: Map des IDs: { budgetwiseId: externalId }
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([userId, provider, calendarId])
+}
+
+model RealEstateInvestment {
+  id                          String   @id @default(cuid())
+  userId                      String
+  user                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Informations générales
+  name                        String
+  address                     String?
+  propertyType                String? // Appartement, Maison, Studio, etc.
+  purchaseDate                DateTime?
+  
+  // Coûts d'acquisition
+  purchasePrice               Decimal  // Prix d'achat
+  notaryFees                  Decimal  @default(0) // Frais de notaire
+  initialWorks                Decimal  @default(0) // Travaux initiaux
+  downPayment                 Decimal  // Apport initial
+  
+  // Prêt
+  loanMonthlyPayment          Decimal  @default(0) // Mensualité de crédit
+  loanInsuranceMonthly        Decimal  @default(0) // Assurance emprunteur mensuelle
+  
+  // Revenus
+  rentMonthly                 Decimal  // Loyer mensuel
+  vacancyRatePct              Decimal  @default(5) // Taux de vacance (%)
+  
+  // Charges
+  nonRecoverableChargesMonthly Decimal  @default(0) // Charges non récupérables mensuelles
+  propertyTaxYearly           Decimal  @default(0) // Taxe foncière annuelle
+  insuranceYearly             Decimal  @default(0) // Assurance PNO annuelle
+  maintenanceReserveMonthly   Decimal? // Réserve maintenance mensuelle (optionnel)
+  
+  // Métadonnées
+  comment                     String?
+  
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+}
