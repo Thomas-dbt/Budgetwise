@@ -57,6 +57,9 @@ export default function SettingsPage() {
   const [editCategoryName, setEditCategoryName] = useState<string>('')
   const [editCategoryEmoji, setEditCategoryEmoji] = useState<string>('')
   const [editCategoryLoading, setEditCategoryLoading] = useState(false)
+  const [editCategoryKeywords, setEditCategoryKeywords] = useState<{ id: string; keyword: string }[]>([])
+  const [newKeyword, setNewKeyword] = useState('')
+  const [keywordsLoading, setKeywordsLoading] = useState(false)
 
   const [editSubCategoryModal, setEditSubCategoryModal] = useState<SubCategory | null>(null)
   const [editSubCategoryName, setEditSubCategoryName] = useState<string>('')
@@ -285,11 +288,81 @@ export default function SettingsPage() {
     }
   }
 
-  const openEditCategoryModal = (category: Category) => {
+  const handleAddKeyword = async () => {
+    const categoryId = editCategoryModal?.id || editSubCategoryModal?.id
+    if (!categoryId || !newKeyword.trim()) return
+
+    setKeywordsLoading(true)
+    try {
+      const response = await authFetch('/api/keywords', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryId: categoryId,
+          keyword: newKeyword.trim()
+        })
+      })
+
+      if (!response.ok) throw new Error('Erreur lors de l\'ajout')
+      const added = await response.json()
+
+      setEditCategoryKeywords(prev => [...prev, added])
+      setNewKeyword('')
+    } catch (err) {
+      console.error('Add keyword error:', err)
+      // Optionally show toast/error
+    } finally {
+      setKeywordsLoading(false)
+    }
+  }
+
+  const handleDeleteKeyword = async (keywordId: string) => {
+    setKeywordsLoading(true)
+    try {
+      const response = await authFetch(`/api/keywords/${keywordId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) throw new Error('Erreur lors de la suppression')
+
+      setEditCategoryKeywords(prev => prev.filter(k => k.id !== keywordId))
+    } catch (err) {
+      console.error('Delete keyword error:', err)
+    } finally {
+      setKeywordsLoading(false)
+    }
+  }
+
+  const openEditCategoryModal = async (category: Category) => {
     setEditCategoryModal(category)
     setEditCategoryName(category.name)
     setEditCategoryEmoji(category.emoji || '')
     setError(null)
+
+    // Fetch keywords
+    setKeywordsLoading(true)
+    setEditCategoryKeywords([])
+    try {
+      const res = await authFetch(`/api/categories/${category.id}?t=${Date.now()}`, { cache: 'no-store' })
+      if (!res.ok) {
+        console.error('Failed to fetch keywords:', res.status, res.statusText)
+        setError(`Erreur chargement mots-clés: ${res.status}`)
+        return
+      }
+
+      const data = await res.json()
+      console.log('Keywords fetched:', data.keywords)
+      if (data.keywords) {
+        setEditCategoryKeywords(data.keywords)
+      } else {
+        console.warn('No keywords field in response')
+      }
+    } catch (err: any) {
+      console.error('Error fetching keywords:', err)
+      setError('Erreur technique chargement mots-clés')
+    } finally {
+      setKeywordsLoading(false)
+    }
   }
 
   const handleEditCategory = async () => {
@@ -327,10 +400,33 @@ export default function SettingsPage() {
     }
   }
 
-  const openEditSubCategoryModal = (subCategory: SubCategory) => {
+  const openEditSubCategoryModal = async (subCategory: SubCategory) => {
     setEditSubCategoryModal(subCategory)
     setEditSubCategoryName(subCategory.name)
     setError(null)
+
+    // Fetch keywords
+    setKeywordsLoading(true)
+    setEditCategoryKeywords([])
+    try {
+      const res = await authFetch(`/api/categories/${subCategory.id}?t=${Date.now()}`, { cache: 'no-store' })
+      if (!res.ok) {
+        console.error('Failed to fetch keywords:', res.status)
+        setError(`Erreur chargement mots-clés: ${res.status}`)
+        return
+      }
+
+      const data = await res.json()
+      console.log('Keywords fetched:', data.keywords)
+      if (data.keywords) {
+        setEditCategoryKeywords(data.keywords)
+      }
+    } catch (err) {
+      console.error('Error fetching keywords:', err)
+      setError('Erreur technique chargement mots-clés')
+    } finally {
+      setKeywordsLoading(false)
+    }
   }
 
   const handleEditSubCategory = async () => {
@@ -982,6 +1078,51 @@ export default function SettingsPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Mots-clés pour auto-catégorisation
+                </label>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={newKeyword}
+                    onChange={(e) => setNewKeyword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAddKeyword()
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="Ex: Uber, Carrefour..."
+                  />
+                  <button
+                    onClick={handleAddKeyword}
+                    disabled={keywordsLoading || !newKeyword.trim()}
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
+                  >
+                    Ajouter
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2 min-h-[2rem]">
+                  {keywordsLoading && editCategoryKeywords.length === 0 ? (
+                    <span className="text-xs text-gray-500">Chargement...</span>
+                  ) : editCategoryKeywords.length > 0 ? (
+                    editCategoryKeywords.map(k => (
+                      <span key={k.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        {k.keyword}
+                        <button onClick={() => handleDeleteKeyword(k.id)} className="hover:text-red-500 ml-1">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">Aucun mot-clé défini</span>
+                  )}
+                </div>
+              </div>
+
               {error && (
                 <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
                   {error}
@@ -1044,6 +1185,51 @@ export default function SettingsPage() {
                   className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   placeholder="Ex: Restaurants"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Mots-clés pour auto-catégorisation
+                </label>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={newKeyword}
+                    onChange={(e) => setNewKeyword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAddKeyword()
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="Ex: Uber, Carrefour..."
+                  />
+                  <button
+                    onClick={handleAddKeyword}
+                    disabled={keywordsLoading || !newKeyword.trim()}
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
+                  >
+                    Ajouter
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2 min-h-[2rem]">
+                  {keywordsLoading && editCategoryKeywords.length === 0 ? (
+                    <span className="text-xs text-gray-500">Chargement...</span>
+                  ) : editCategoryKeywords.length > 0 ? (
+                    editCategoryKeywords.map(k => (
+                      <span key={k.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        {k.keyword}
+                        <button onClick={() => handleDeleteKeyword(k.id)} className="hover:text-red-500 ml-1">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">Aucun mot-clé défini</span>
+                  )}
+                </div>
               </div>
 
               {error && (

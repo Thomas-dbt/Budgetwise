@@ -23,8 +23,8 @@ export async function GET(req: Request) {
           category: {
             include: { parent: true }
           }
-        },
-      })
+        } as any, // Cast include to any
+      }) as any[] // Cast result to any[]
     } catch (includeError: any) {
       // Fallback
       txs = await prisma.transaction.findMany({
@@ -36,8 +36,8 @@ export async function GET(req: Request) {
           category: {
             include: { parent: true }
           }
-        },
-      })
+        } as any, // Cast include to any
+      }) as any[] // Cast result to any[]
       // Manually add toAccount as null for now
       txs = txs.map((tx: any) => ({ ...tx, toAccount: null }))
     }
@@ -145,7 +145,7 @@ export async function POST(req: Request) {
 
     // Determine correct category ID logic
     if (subCategoryId) {
-      const sub = await prisma.category.findUnique({ where: { id: subCategoryId } }) // check existence
+      const sub = await prisma.category.findUnique({ where: { id: subCategoryId } }) as any // check existence
       if (!sub) return NextResponse.json({ error: 'Sous-catégorie inconnue' }, { status: 400 })
 
       if (categoryId && sub.parentId !== categoryId) {
@@ -179,8 +179,8 @@ export async function POST(req: Request) {
           },
           account: true,
           toAccount: true
-        },
-      })
+        } as any,
+      }) as any
 
       // Mettre à jour le solde du compte source
       const updatedFromAccount = await txClient.account.update({

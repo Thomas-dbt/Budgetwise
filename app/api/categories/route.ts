@@ -10,26 +10,26 @@ export async function GET() {
       where: {
         userId,
         parentId: null // Only fetch top-level categories
-      },
+      } as any,
       orderBy: { name: 'asc' },
       include: {
         children: {
           orderBy: { name: 'asc' }
         }
-      }
-    })
+      } as any
+    }) as any[]
 
     return NextResponse.json(
-      categories.map((cat) => ({
+      categories.map((cat: any) => ({
         id: cat.id,
         name: cat.name,
         emoji: cat.emoji,
         isSystem: cat.isSystem,
-        subCategories: cat.children.map(sub => ({
+        subCategories: cat.children ? cat.children.map((sub: any) => ({
           id: sub.id,
           name: sub.name,
           categoryId: sub.parentId // Map parentId to categoryId for frontend compatibility
-        }))
+        })) : []
       }))
     )
   } catch (error: any) {
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
       where: {
         userId,
         name: trimmedName
-      },
+      } as any,
     })
 
     if (existing) {
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
         name: trimmedName,
         emoji: emoji || null,
         isSystem: false
-      },
+      } as any,
     })
 
     return NextResponse.json({

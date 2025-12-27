@@ -53,7 +53,7 @@ export async function getCurrentUserId() {
 
   // Initialisation des catégories par défaut si l'utilisateur n'en a pas
   const categoriesCount = await prisma.category.count({
-    where: { userId: user.id }
+    where: { userId: user.id } as any
   })
 
   console.log('Categories count for user:', categoriesCount)
@@ -71,12 +71,15 @@ export async function getCurrentUserId() {
             name: cat.name,
             emoji: cat.emoji,
             children: {
-              create: cat.subCategories.map(name => ({
-                name,
-                userId: user.id
+              create: cat.subCategories.map((sub: any) => ({
+                name: sub.name,
+                userId: user.id,
+                keywords: {
+                  create: (sub.keywords || []).map((k: string) => ({ keyword: k }))
+                }
               }))
             }
-          }
+          } as any
         })
       }
       console.log('Default categories seeded successfully')

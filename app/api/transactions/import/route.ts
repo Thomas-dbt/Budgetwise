@@ -34,57 +34,75 @@ export async function POST(request: Request) {
     const abonnementCategoryId = abonnementCategoryEntry ? abonnementCategoryEntry[1] : undefined
     const subscriptionKeywords = /(abonn|spotify|netflix|canal|prime video|primevideo|youtube|deezer|disney|molotov|salto|mycanal|itunes|apple music|playstation plus|xbox game pass|basic fit|fitness park|club|box internet|freebox|bbox|livebox)/
 
-    const transactionsData = rows
-      .map((row) => {
-        const normalizedType = row.type.toLowerCase()
-        if (!['income', 'expense', 'transfer'].includes(normalizedType)) {
-          return null
-        }
+    // Import helper
+    const { autoCategorize } = await import('@/lib/auto-categorize')
 
-        const parsedDate = row.date ? new Date(row.date) : null
-        if (!parsedDate || Number.isNaN(parsedDate.getTime())) {
-          return null
-        }
+    const transactionsData = (await Promise.all(rows.map(async (row) => {
+      const normalizedType = row.type.toLowerCase()
+      if (!['income', 'expense', 'transfer'].includes(normalizedType)) {
+        return null
+      }
 
-        let amount = Number(row.amount)
-        if (Number.isNaN(amount)) {
-          return null
-        }
+      const parsedDate = row.date ? new Date(row.date) : null
+      if (!parsedDate || Number.isNaN(parsedDate.getTime())) {
+        return null
+      }
 
-        if (normalizedType === 'expense' && amount > 0) {
-          amount = -amount
-        }
-        if (normalizedType === 'income' && amount < 0) {
-          amount = Math.abs(amount)
-        }
+      let amount = Number(row.amount)
+      if (Number.isNaN(amount)) {
+        return null
+      }
 
-        let categoryId: string | undefined
-        if (row.categoryId) {
-          categoryId = row.categoryId
-        } else if (row.categoryName) {
-          const key = row.categoryName.trim().toLowerCase()
-          if (categoryMap.has(key)) {
-            categoryId = categoryMap.get(key)
-          } else if (subscriptionKeywords.test(key) && abonnementCategoryId) {
-            categoryId = abonnementCategoryId
-          } else if (fallbackCategory) {
-            categoryId = fallbackCategory
-          }
-        } else if (abonnementCategoryId && row.description && subscriptionKeywords.test(row.description.toLowerCase())) {
+      if (normalizedType === 'expense' && amount > 0) {
+        amount = -amount
+      }
+      if (normalizedType === 'income' && amount < 0) {
+        amount = Math.abs(amount)
+      }
+
+      // 1. Try provided ID
+      let categoryId: string | undefined = row.categoryId
+
+      // 2. Try provided Name
+      if (!categoryId && row.categoryName) {
+        const key = row.categoryName.trim().toLowerCase()
+        if (categoryMap.has(key)) {
+          categoryId = categoryMap.get(key)
+        }
+      }
+
+      // 3. Try Auto-Categorize (User Keywords)
+      if (!categoryId && row.description) {
+        const match = await autoCategorize(row.description, userId)
+        if (match) {
+          categoryId = match.id
+        }
+      }
+
+      // 4. Fallback: Hardcoded Subscriptions
+      if (!categoryId && abonnementCategoryId) {
+        const descToCheck = (row.description || '') + ' ' + (row.categoryName || '')
+        if (subscriptionKeywords.test(descToCheck.toLowerCase())) {
           categoryId = abonnementCategoryId
         }
+      }
 
-        return {
-          accountId,
-          amount,
-          type: normalizedType as ImportRow['type'],
-          date: parsedDate,
-          description: row.description || null,
-          pending: !!row.pending,
-          categoryId
-        }
-      })
-      .filter(Boolean) as Array<{ accountId: string; amount: number; type: string; date: Date; description: string | null; pending: boolean; categoryId?: string }>
+      // 5. Fallback: "Autres" (only if explicitly requested or legacy behavior? The original code put fallbackCategory if row.categoryName was present but not found. I'll preserve that specific behavior if categoryName was provided but not found.)
+      if (!categoryId && row.categoryName && fallbackCategory) {
+        // Only if we really didn't find anything and had a name input
+        categoryId = fallbackCategory
+      }
+
+      return {
+        accountId,
+        amount,
+        type: normalizedType as ImportRow['type'],
+        date: parsedDate,
+        description: row.description || null,
+        pending: !!row.pending,
+        categoryId
+      }
+    }))).filter(Boolean) as Array<{ accountId: string; amount: number; type: string; date: Date; description: string | null; pending: boolean; categoryId?: string }>
 
     if (transactionsData.length === 0) {
       return NextResponse.json({ error: 'Aucune transaction valide à importer' }, { status: 400 })
@@ -94,7 +112,7 @@ export async function POST(request: Request) {
     const normalizeDescription = (desc: string | null): string => {
       if (!desc) return ''
       let normalized = desc.trim().toLowerCase()
-      
+
       // Supprimer les préfixes communs des relevés bancaires (plusieurs passes pour être sûr)
       normalized = normalized.replace(/^prlv\s+sepa\s+/i, '')
       normalized = normalized.replace(/^virement\s+sepa\s+/i, '')
@@ -103,16 +121,16 @@ export async function POST(request: Request) {
       normalized = normalized.replace(/^virement\s+/i, '')
       normalized = normalized.replace(/^carte\s+\d{2}\/\d{2}\/\d{2,4}\s+/i, '')
       normalized = normalized.replace(/^carte\s+/i, '')
-      
+
       // Supprimer les numéros de carte (CB*1234, CARTE *1234, etc.)
       normalized = normalized.replace(/cb\*?\d{4,}/gi, '')
       normalized = normalized.replace(/carte\s*\d{2}\/\d{2}\/\d{2,4}\s*/gi, '')
       normalized = normalized.replace(/\*\d{4,}/g, '')
-      
+
       // Supprimer les dates dans la description (27/11/25, 2025-11-27, etc.)
       normalized = normalized.replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/g, '')
       normalized = normalized.replace(/\d{4}-\d{2}-\d{2}/g, '')
-      
+
       // Supprimer les suffixes communs (FRANCE, PARIS, etc.) - plusieurs passes
       normalized = normalized.replace(/\s+france\s*$/i, '')
       normalized = normalized.replace(/\s+paris\s*$/i, '')
@@ -126,12 +144,12 @@ export async function POST(request: Request) {
       normalized = normalized.replace(/\s+bordeaux\s*$/i, '')
       normalized = normalized.replace(/\s+saint\s*$/i, '')
       normalized = normalized.replace(/\s+st\.?\s*$/i, '')
-      
+
       // Supprimer les espaces multiples et caractères spéciaux répétés
       normalized = normalized.replace(/\s+/g, ' ')
       normalized = normalized.replace(/[^\w\s]/g, ' ')
       normalized = normalized.replace(/\s+/g, ' ')
-      
+
       return normalized.trim()
     }
 
@@ -146,10 +164,10 @@ export async function POST(request: Request) {
     const calculateSimilarity = (desc1: string, desc2: string): number => {
       const normalized1 = normalizeDescription(desc1)
       const normalized2 = normalizeDescription(desc2)
-      
+
       // Si les descriptions normalisées sont identiques, similarité = 1
       if (normalized1 === normalized2) return 1.0
-      
+
       // Si une description est vide après normalisation, comparer les originelles
       if (!normalized1 || !normalized2) {
         const orig1 = (desc1 || '').toLowerCase()
@@ -161,7 +179,7 @@ export async function POST(request: Request) {
         }
         return 0
       }
-      
+
       // Vérifier si une description contient l'autre (cas "Basic fit" dans "PRLV SEPA BASIC FIT FRANCE")
       if (normalized1.includes(normalized2) && normalized2.length > 3) {
         return 0.9 // Très forte similarité
@@ -169,42 +187,42 @@ export async function POST(request: Request) {
       if (normalized2.includes(normalized1) && normalized1.length > 3) {
         return 0.9 // Très forte similarité
       }
-      
+
       // Comparer les mots-clés
       const keywords1 = extractKeywords(normalized1)
       const keywords2 = extractKeywords(normalized2)
-      
+
       if (keywords1.length === 0 || keywords2.length === 0) {
         // Si pas de mots-clés, comparer les sous-chaînes communes
         const longer = normalized1.length > normalized2.length ? normalized1 : normalized2
         const shorter = normalized1.length > normalized2.length ? normalized2 : normalized1
-        
+
         if (longer.includes(shorter) && shorter.length > 3) {
           return Math.max(0.7, shorter.length / longer.length)
         }
         return 0
       }
-      
+
       // Calculer le ratio de mots-clés communs
       const commonKeywords = keywords1.filter(k => keywords2.includes(k))
       const totalKeywords = Math.max(keywords1.length, keywords2.length)
-      
+
       if (totalKeywords === 0) return 0
-      
+
       let similarity = commonKeywords.length / totalKeywords
-      
+
       // Si tous les mots-clés de la description courte sont dans la longue, c'est très probablement un doublon
       const shorterKeywords = keywords1.length <= keywords2.length ? keywords1 : keywords2
       const longerKeywords = keywords1.length > keywords2.length ? keywords1 : keywords2
       if (shorterKeywords.length > 0 && shorterKeywords.every(k => longerKeywords.includes(k))) {
         similarity = Math.max(0.85, similarity)
       }
-      
+
       // Bonus si les descriptions commencent de la même manière
       if (normalized1.slice(0, 8) === normalized2.slice(0, 8) && normalized1.length > 8) {
         similarity = Math.min(1.0, similarity + 0.15)
       }
-      
+
       return similarity
     }
 
@@ -236,17 +254,17 @@ export async function POST(request: Request) {
     const newTransactionsData = transactionsData.filter(tx => {
       const txDate = tx.date.toISOString().split('T')[0] // YYYY-MM-DD
       const txAmount = Number(tx.amount).toFixed(2)
-      
+
       // Chercher une transaction existante avec la même date et le même montant
       const candidates = existingTransactions.filter(existing => {
         const existingDate = existing.date.toISOString().split('T')[0]
         const existingAmount = Number(existing.amount).toFixed(2)
         return existingDate === txDate && existingAmount === txAmount
       })
-      
+
       // Si aucune transaction avec même date/montant, ce n'est pas un doublon
       if (candidates.length === 0) return true
-      
+
       // Vérifier la similarité des descriptions
       const txDesc = tx.description || ''
       for (const candidate of candidates) {
@@ -257,7 +275,7 @@ export async function POST(request: Request) {
           return false
         }
       }
-      
+
       return true
     })
 

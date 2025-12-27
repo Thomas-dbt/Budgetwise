@@ -494,6 +494,7 @@ export default function CalendarPage() {
       description: event.title,
       date: event.dueDate.slice(0, 10),
       categoryId: event.categoryId || '',
+      subCategoryId: event.subCategoryId || '',
     })
 
     // Confirmer automatiquement

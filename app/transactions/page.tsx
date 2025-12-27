@@ -114,35 +114,35 @@ export default function TransactionsPage() {
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
-type ManualFormState = {
-  accountId: string
-  type: Transaction['type']
-  amount: string
-  date: string
-  description: string
-  categoryId: string
-  subCategoryId: string
-  pending: boolean
-  attachment: string | null
-  attachmentName: string
-  transferAccountId: string
-  transferGroupId: string | null
-}
+  type ManualFormState = {
+    accountId: string
+    type: Transaction['type']
+    amount: string
+    date: string
+    description: string
+    categoryId: string
+    subCategoryId: string
+    pending: boolean
+    attachment: string | null
+    attachmentName: string
+    transferAccountId: string
+    transferGroupId: string | null
+  }
 
-const [manualForm, setManualForm] = useState<ManualFormState>({
-  accountId: '',
-  type: 'expense',
-  amount: '',
-  date: DEFAULT_DATE(),
-  description: '',
-  categoryId: '',
-  subCategoryId: '',
-  pending: false,
-  attachment: null,
-  attachmentName: '',
-  transferAccountId: '',
-  transferGroupId: null
-})
+  const [manualForm, setManualForm] = useState<ManualFormState>({
+    accountId: '',
+    type: 'expense',
+    amount: '',
+    date: DEFAULT_DATE(),
+    description: '',
+    categoryId: '',
+    subCategoryId: '',
+    pending: false,
+    attachment: null,
+    attachmentName: '',
+    transferAccountId: '',
+    transferGroupId: null
+  })
 
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [importAccountId, setImportAccountId] = useState('')
@@ -152,8 +152,8 @@ const [manualForm, setManualForm] = useState<ManualFormState>({
   const [importLoading, setImportLoading] = useState(false)
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-const [attachmentPreview, setAttachmentPreview] = useState<{ url: string; title: string } | null>(null)
-const [clearingTransactions, setClearingTransactions] = useState(false)
+  const [attachmentPreview, setAttachmentPreview] = useState<{ url: string; title: string } | null>(null)
+  const [clearingTransactions, setClearingTransactions] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [exportStartDate, setExportStartDate] = useState(() => {
     const start = new Date()
@@ -168,16 +168,16 @@ const [clearingTransactions, setClearingTransactions] = useState(false)
   const [exportLoading, setExportLoading] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const { toast } = useToast()
-const [importRowEditor, setImportRowEditor] = useState<{
-  id: number
-  description: string
-  date: string
-  amount: string
-  type: Transaction['type']
-  categoryId: string
-  pending: boolean
-  error?: string
-} | null>(null)
+  const [importRowEditor, setImportRowEditor] = useState<{
+    id: number
+    description: string
+    date: string
+    amount: string
+    type: Transaction['type']
+    categoryId: string
+    pending: boolean
+    error?: string
+  } | null>(null)
 
   const readFileAsDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -190,6 +190,48 @@ const [importRowEditor, setImportRowEditor] = useState<{
   useEffect(() => {
     fetchAllData()
   }, [])
+
+  // Auto-categorization suggestion
+  useEffect(() => {
+    const checkSuggestion = async () => {
+      if (!manualForm.description || manualForm.description.length < 3) return
+      // Only suggest if no category is selected yet
+      if (manualForm.categoryId) return
+
+      try {
+        const response = await authFetch('/api/categories/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description: manualForm.description })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.match) {
+            setManualForm(prev => {
+              // If user already selected a category while request was in flight, don't overwrite
+              if (prev.categoryId) return prev
+
+              const isSubCategory = !!data.match.parentId
+              return {
+                ...prev,
+                categoryId: isSubCategory ? data.match.parentId : data.match.id,
+                subCategoryId: isSubCategory ? data.match.id : ''
+              }
+            })
+
+            // Optional: Show toast or feedback?
+            // toast('Catégorie suggérée : ' + data.match.name)
+          }
+        }
+      } catch (err) {
+        console.error('Suggestion error', err)
+      }
+    }
+
+    const timeoutId = setTimeout(checkSuggestion, 500)
+    return () => clearTimeout(timeoutId)
+  }, [manualForm.description, manualForm.categoryId])
 
   useEffect(() => {
     if (!exportOpen || exportAccountsLoading || exportAccounts.length > 0) {
@@ -473,16 +515,16 @@ const [importRowEditor, setImportRowEditor] = useState<{
     } catch (error) {
       console.error('Error fetching categories:', error)
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
-      setFeedback({ 
-        type: 'error', 
-        message: `Impossible de charger les catégories: ${errorMessage}` 
+      setFeedback({
+        type: 'error',
+        message: `Impossible de charger les catégories: ${errorMessage}`
       })
     }
   }
 
   const fetchSubCategories = async (categoryId?: string) => {
     try {
-      const url = categoryId 
+      const url = categoryId
         ? `/api/subcategories?categoryId=${categoryId}`
         : '/api/subcategories'
       const response = await authFetch(url)
@@ -690,7 +732,7 @@ const [importRowEditor, setImportRowEditor] = useState<{
   const openEditModal = async (tx: Transaction) => {
     const categoryId = tx.category?.id || ''
     const subCategoryId = tx.subCategory?.id || ''
-    
+
     // Charger les sous-catégories avant de définir le formulaire
     if (categoryId) {
       await fetchSubCategories(categoryId)
@@ -1227,7 +1269,7 @@ const [importRowEditor, setImportRowEditor] = useState<{
       const importedCount = result.imported || 0
       const skippedCount = result.skipped || 0
       const totalCount = result.total || importedCount
-      
+
       let message = `${importedCount} transaction${importedCount > 1 ? 's' : ''} importée${importedCount > 1 ? 's' : ''}`
       if (skippedCount > 0) {
         message += `. ${skippedCount} doublon${skippedCount > 1 ? 's' : ''} ignoré${skippedCount > 1 ? 's' : ''}`
@@ -1318,56 +1360,51 @@ const [importRowEditor, setImportRowEditor] = useState<{
           <div className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner">
             <button
               onClick={() => setFilterOption('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                filterOption === 'all'
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'all'
                   ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
+                }`}
             >
               Toutes
             </button>
             <button
               onClick={() => setFilterOption('income')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                filterOption === 'income'
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'income'
                   ? 'bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
+                }`}
             >
               Revenus
             </button>
             <button
               onClick={() => setFilterOption('expense')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                filterOption === 'expense'
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'expense'
                   ? 'bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
+                }`}
             >
               Dépenses
             </button>
             <button
               onClick={() => setFilterOption('transfer')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                filterOption === 'transfer'
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'transfer'
                   ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
+                }`}
             >
               Transferts
             </button>
             <button
               onClick={() => setFilterOption('pending')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                filterOption === 'pending'
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'pending'
                   ? 'bg-white dark:bg-gray-700 text-yellow-600 dark:text-yellow-400 shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
+                }`}
             >
               En attente
             </button>
           </div>
-          
+
           {/* Sélecteur de catégorie amélioré */}
           {categories.length > 0 && (
             <div className="relative md:w-64">
@@ -1443,10 +1480,10 @@ const [importRowEditor, setImportRowEditor] = useState<{
                   const amountColor = isTransfer
                     ? 'text-blue-600 dark:text-blue-400'
                     : isExpense
-                    ? 'text-red-600 dark:text-red-400'
-                    : isIncome
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-gray-600 dark:text-gray-400'
+                      ? 'text-red-600 dark:text-red-400'
+                      : isIncome
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-gray-600 dark:text-gray-400'
 
                   const title = isTransfer
                     ? tx.description || `Transfert depuis ${tx.account.name} vers ${tx.toAccount?.name ?? ''}`
@@ -1460,13 +1497,13 @@ const [importRowEditor, setImportRowEditor] = useState<{
                   const iconBg = isTransfer
                     ? 'bg-blue-100 dark:bg-blue-900/30'
                     : isExpense
-                    ? 'bg-red-100 dark:bg-red-900/30'
-                    : 'bg-green-100 dark:bg-green-900/30'
+                      ? 'bg-red-100 dark:bg-red-900/30'
+                      : 'bg-green-100 dark:bg-green-900/30'
                   const iconColor = isTransfer
                     ? 'text-blue-600'
                     : isExpense
-                    ? 'text-red-600'
-                    : 'text-green-600'
+                      ? 'text-red-600'
+                      : 'text-green-600'
 
                   return (
                     <div
@@ -1491,7 +1528,7 @@ const [importRowEditor, setImportRowEditor] = useState<{
                               </span>
                             )}
                           </div>
-                          
+
                           <div className="flex flex-wrap items-center gap-2 mb-2">
                             <span className="text-xs px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium border border-gray-200 dark:border-gray-700">
                               {isTransfer ? 'Transfert' : TYPE_LABELS[tx.type]}
@@ -1502,9 +1539,8 @@ const [importRowEditor, setImportRowEditor] = useState<{
                               </span>
                             )}
                             {tx.category && (
-                              <span className={`text-xs px-3 py-1 rounded-md font-medium border ${
-                                categoryColors[tx.category.name] || categoryColors['Autres']
-                              }`}>
+                              <span className={`text-xs px-3 py-1 rounded-md font-medium border ${categoryColors[tx.category.name] || categoryColors['Autres']
+                                }`}>
                                 {tx.category.emoji ? `${tx.category.emoji} ` : ''}{tx.category.name}
                                 {tx.subCategory && (
                                   <span className="ml-1.5 opacity-75">• {tx.subCategory.name}</span>
@@ -1512,7 +1548,7 @@ const [importRowEditor, setImportRowEditor] = useState<{
                               </span>
                             )}
                           </div>
-                          
+
                           <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                             <span className="flex items-center gap-1">
                               <span>🏦</span>
@@ -1829,7 +1865,7 @@ const [importRowEditor, setImportRowEditor] = useState<{
                   )}
                 </div>
               </div>
-              
+
               <div>
                 <label className="flex items-center gap-3 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">
                   <input

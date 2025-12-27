@@ -2,6 +2,42 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUserId } from '@/lib/server-auth'
 
+export const dynamic = 'force-dynamic'
+
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const userId = await getCurrentUserId()
+    const categoryId = params.id
+
+    const category = await prisma.category.findUnique({
+      where: {
+        id: categoryId,
+      },
+      include: {
+        keywords: true
+      } as any
+    }) as any
+
+    console.log(`API GET /categories/${categoryId} - Found:`, category ? 'Yes' : 'No')
+    if (category) {
+      console.log(`Category ${categoryId} keywords count:`, category?.keywords?.length)
+    }
+
+    if (!category || category.userId !== userId) {
+      return NextResponse.json({ error: 'Catégorie non trouvée' }, { status: 404 })
+    }
+
+    return NextResponse.json(category)
+  } catch (error: any) {
+    console.error('Category GET error:', error)
+    return NextResponse.json({ error: 'Erreur lors de la récupération de la catégorie' }, { status: 500 })
+  }
+}
+
+
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
@@ -15,14 +51,14 @@ export async function PATCH(
     const categoryId = params.id
 
     // Vérifier que la catégorie existe et appartient à l'utilisateur
-    const category = await prisma.category.findFirst({
+    // Using findUnique + manual check to avoid type errors with stale client AND valid unique constraint
+    const category = await prisma.category.findUnique({
       where: {
         id: categoryId,
-        userId
       },
-    })
+    }) as any
 
-    if (!category) {
+    if (!category || category.userId !== userId) {
       return NextResponse.json(
         { error: 'Catégorie non trouvée' },
         { status: 404 }
@@ -54,7 +90,7 @@ export async function PATCH(
         where: {
           userId,
           name: trimmedName
-        },
+        } as any, // Cast for userId
       })
 
       if (existing && existing.id !== categoryId) {
@@ -76,7 +112,7 @@ export async function PATCH(
     const updatedCategory = await prisma.category.update({
       where: { id: categoryId },
       data: updateData,
-    })
+    }) as any
 
     return NextResponse.json({
       id: updatedCategory.id,
@@ -115,17 +151,16 @@ export async function DELETE(
     const categoryId = params.id
 
     // Vérifier que la catégorie existe et appartient à l'utilisateur
-    const category = await prisma.category.findFirst({
+    const category = await prisma.category.findUnique({
       where: {
         id: categoryId,
-        userId
       },
       include: {
-        subCategories: true,
-      },
-    })
+        children: true, // ERROR WAS: subCategories: true
+      } as any,
+    }) as any
 
-    if (!category) {
+    if (!category || category.userId !== userId) {
       return NextResponse.json(
         { error: 'Catégorie non trouvée' },
         { status: 404 }
@@ -145,14 +180,13 @@ export async function DELETE(
     // Si une catégorie de réassignation est fournie
     if (reassignToCategoryId) {
       // Vérifier que la catégorie de réassignation existe et appartient à l'utilisateur
-      const reassignCategory = await prisma.category.findFirst({
+      const reassignCategory = await prisma.category.findUnique({
         where: {
           id: reassignToCategoryId,
-          userId
         },
-      })
+      }) as any
 
-      if (!reassignCategory) {
+      if (!reassignCategory || reassignCategory.userId !== userId) {
         return NextResponse.json(
           { error: 'Catégorie de réassignation non trouvée' },
           { status: 404 }
@@ -181,15 +215,19 @@ export async function DELETE(
       eventsUpdated = eventsResult.count
 
       // Mettre à jour les sous-catégories : déplacer leurs transactions vers la nouvelle catégorie
-      for (const subCategory of category.subCategories) {
+      // CORRECTED: subCategories -> children
+      for (const subCategory of category.children) {
         const subTransactionsResult = await prisma.transaction.updateMany({
-          where: { subCategoryId: subCategory.id },
+          where: { categoryId: subCategory.id }, // WAS: subCategoryId which might be wrong if model unified
+          // In unified model, subCategory IS a category. Transactions point to it via categoryId.
+          // Wait, if transaction pointed to subCategory, it has categoryId = subCategory.id.
+          // So we need to find transactions where categoryId = subCategory.id and update them.
           data: { categoryId: reassignToCategoryId },
         })
         transactionsUpdated += subTransactionsResult.count
 
         const subEventsResult = await prisma.calendarEvent.updateMany({
-          where: { subCategoryId: subCategory.id },
+          where: { categoryId: subCategory.id },
           data: { categoryId: reassignToCategoryId },
         })
         eventsUpdated += subEventsResult.count
