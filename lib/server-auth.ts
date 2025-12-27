@@ -15,12 +15,14 @@ export async function getCurrentUserId() {
     decoded = await adminAuth.verifyIdToken(token)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    const errorStack = error instanceof Error ? error.stack : undefined
-    console.error('Firebase token verification failed:', {
-      message: errorMessage,
-      stack: errorStack,
-      tokenLength: token.length,
-      hasProjectId: !!process.env.FIREBASE_ADMIN_PROJECT_ID,
+    // Detailed error logging
+    console.error('Firebase Admin Token Verification Failed:', {
+      error: errorMessage,
+      tokenPreview: token.substring(0, 10) + '...',
+      projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+      hasClientEmail: !!process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      hasPrivateKey: !!process.env.FIREBASE_ADMIN_PRIVATE_KEY,
+      privateKeyLength: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.length
     })
     throw new Error('UNAUTHORIZED')
   }
