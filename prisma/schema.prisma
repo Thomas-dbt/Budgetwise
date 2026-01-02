@@ -23,6 +23,7 @@ model User {
   calendarSyncs             CalendarSync[]
   realEstateInvestments     RealEstateInvestment[]
   categories                Category[]
+  budgets                   Budget[]
 }
 
 model Account {
@@ -78,6 +79,7 @@ model Category {
 
   @@unique([userId, name])
   keywords       CategoryKeyword[]
+  budgets        Budget[]
 }
 
 model CategoryKeyword {
@@ -103,7 +105,6 @@ model Transaction {
   description     String?
   categoryId      String?
   category        Category?    @relation(fields: [categoryId], references: [id])
-  // subCategoryId removed - now just points to a Category that might represent a subcategory
   attachment      String?
   pending         Boolean      @default(false)
   transferGroupId String?
@@ -124,7 +125,6 @@ model CalendarEvent {
   emailReminderDaysBefore Int?
   categoryId              String?
   category                Category?    @relation(fields: [categoryId], references: [id])
-  // subCategoryId removed
   accountId               String?
   account                 Account?     @relation(fields: [accountId], references: [id])
   createdAt               DateTime     @default(now())
@@ -272,4 +272,19 @@ model RealEstateInvestment {
   
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  amount     Decimal
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  month      String   @default("global")
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([categoryId, month])
+  @@index([userId])
 }
