@@ -7,10 +7,22 @@ export async function GET(req: Request) {
     const userId = await getCurrentUserId()
     const { searchParams } = new URL(req.url)
     const accountId = searchParams.get('accountId') || undefined
-    const take = Number(searchParams.get('take') || 50)
-    const where = accountId
+    const startDate = searchParams.get('start')
+    const endDate = searchParams.get('end')
+
+    // Default limit increased to 2000 to verify full history availability, user can paginate later if needed
+    const take = Number(searchParams.get('take') || 2000)
+
+    const where: any = accountId
       ? { accountId, account: { ownerId: userId } }
       : { account: { ownerId: userId } }
+
+    if (startDate || endDate) {
+      where.date = {}
+      if (startDate) where.date.gte = new Date(startDate)
+      if (endDate) where.date.lte = new Date(endDate)
+    }
+
     let txs
     try {
       txs = await prisma.transaction.findMany({

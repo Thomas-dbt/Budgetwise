@@ -101,6 +101,10 @@ export default function TransactionsPage() {
   const [filterStartDate, setFilterStartDate] = useState<string | null>(null)
   const [filterEndDate, setFilterEndDate] = useState<string | null>(null)
 
+  useEffect(() => {
+    fetchTransactions()
+  }, [filterStartDate, filterEndDate])
+
   const [accounts, setAccounts] = useState<AccountOption[]>([])
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [subCategories, setSubCategories] = useState<SubCategoryOption[]>([])
@@ -448,9 +452,18 @@ export default function TransactionsPage() {
   }
 
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (startDate?: string | null, endDate?: string | null) => {
     try {
-      const response = await authFetch('/api/transactions?take=200')
+      const params = new URLSearchParams()
+      params.set('take', '2000') // Explicitly request high limit to match backend
+
+      const effectiveStart = startDate !== undefined ? startDate : filterStartDate
+      const effectiveEnd = endDate !== undefined ? endDate : filterEndDate
+
+      if (effectiveStart) params.set('start', effectiveStart)
+      if (effectiveEnd) params.set('end', effectiveEnd)
+
+      const response = await authFetch(`/api/transactions?${params.toString()}`)
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}`)
       }
@@ -1361,8 +1374,8 @@ export default function TransactionsPage() {
             <button
               onClick={() => setFilterOption('all')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'all'
-                  ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
             >
               Toutes
@@ -1370,8 +1383,8 @@ export default function TransactionsPage() {
             <button
               onClick={() => setFilterOption('income')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'income'
-                  ? 'bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                ? 'bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
             >
               Revenus
@@ -1379,8 +1392,8 @@ export default function TransactionsPage() {
             <button
               onClick={() => setFilterOption('expense')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'expense'
-                  ? 'bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                ? 'bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
             >
               Dépenses
@@ -1388,8 +1401,8 @@ export default function TransactionsPage() {
             <button
               onClick={() => setFilterOption('transfer')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'transfer'
-                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
             >
               Transferts
@@ -1397,8 +1410,8 @@ export default function TransactionsPage() {
             <button
               onClick={() => setFilterOption('pending')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'pending'
-                  ? 'bg-white dark:bg-gray-700 text-yellow-600 dark:text-yellow-400 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                ? 'bg-white dark:bg-gray-700 text-yellow-600 dark:text-yellow-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
             >
               En attente

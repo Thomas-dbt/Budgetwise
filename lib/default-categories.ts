@@ -4,7 +4,7 @@ export const defaultCategories = [
         emoji: '🍎',
         subCategories: [
             { name: 'Courses', keywords: ['Carrefour', 'Leclerc', 'Auchan', 'Intermarché', 'Lidl', 'Aldi', 'Monoprix', 'Franprix', 'Super U', 'Casino', 'Cora', 'Mini Market'] },
-            { name: 'Restaurant', keywords: ['Restaurant', 'McDonald', 'Burger King', 'KFC', 'Uber Eats', 'O Tacos', 'Deliveroo', 'Sushi', 'Pizza', 'Bistrot', 'Tacos', 'Cafe', 'Bar', 'Kebab'] },
+            { name: 'Restaurant/Fast Food', keywords: ['Restaurant', 'McDonald', 'Burger King', 'KFC', 'Uber Eats', 'O Tacos', 'Deliveroo', 'Sushi', 'Pizza', 'Bistrot', 'Tacos', 'Cafe', 'Bar', 'Kebab'] },
             { name: 'Livraison', keywords: ['Uber Eats', 'Deliveroo', 'Foodora'] },
             { name: 'Boulangerie', keywords: ['Boulangerie', 'Pain', 'Paul', 'Brioche', 'Boulanger'] }
         ]
@@ -93,6 +93,7 @@ export const defaultCategories = [
             { name: 'Frais bancaires', keywords: ['Cotisation', 'Frais de tenue'] },
             { name: 'Agios', keywords: ['Interets debiteurs'] },
             { name: 'Intérêts', keywords: [] },
+            { name: 'Retraits', keywords: ['Retrait'] },
             { name: 'Epargne', keywords: ['Virement Epargne', 'Livret A', 'LDDS', 'Assurance Vie', 'Generali', 'Placement'] }
         ]
     },
