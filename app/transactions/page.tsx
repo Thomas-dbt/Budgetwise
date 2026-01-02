@@ -1308,7 +1308,7 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
@@ -1359,7 +1359,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Search and Filter Bar */}
-      <div className="mb-6 flex flex-col lg:flex-row gap-4">
+      <div className="mb-6 flex flex-col lg:flex-row lg:flex-wrap gap-4">
         <div className="flex-1 relative">
           <input
             type="text"
@@ -1370,7 +1370,7 @@ export default function TransactionsPage() {
           />
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">🔍</span>
         </div>
-        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:flex-wrap gap-3 md:gap-4">
           {/* Onglets de filtres améliorés */}
           <div className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner">
             <button
