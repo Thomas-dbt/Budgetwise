@@ -100,10 +100,11 @@ export default function TransactionsPage() {
   const [filterOption, setFilterOption] = useState<'all' | 'income' | 'expense' | 'transfer' | 'pending' | `category:${string}`>('all')
   const [filterStartDate, setFilterStartDate] = useState<string | null>(null)
   const [filterEndDate, setFilterEndDate] = useState<string | null>(null)
+  const [filterAccountId, setFilterAccountId] = useState<string>('all')
 
   useEffect(() => {
     fetchTransactions()
-  }, [filterStartDate, filterEndDate])
+  }, [filterStartDate, filterEndDate, filterAccountId])
 
   const [accounts, setAccounts] = useState<AccountOption[]>([])
   const [categories, setCategories] = useState<CategoryOption[]>([])
@@ -462,6 +463,7 @@ export default function TransactionsPage() {
 
       if (effectiveStart) params.set('start', effectiveStart)
       if (effectiveEnd) params.set('end', effectiveEnd)
+      if (filterAccountId && filterAccountId !== 'all') params.set('accountId', filterAccountId)
 
       const response = await authFetch(`/api/transactions?${params.toString()}`)
       if (!response.ok) {
@@ -1417,6 +1419,26 @@ export default function TransactionsPage() {
               En attente
             </button>
           </div>
+
+          {/* Sélecteur de catégorie amélioré */}
+          {/* Account Selector */}
+          {accounts.length > 0 && (
+            <div className="relative md:w-64">
+              <select
+                value={filterAccountId}
+                onChange={(e) => setFilterAccountId(e.target.value)}
+                className="w-full pl-4 pr-10 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 appearance-none transition-all shadow-sm hover:shadow-md"
+              >
+                <option value="all">Tous les comptes</option>
+                {accounts.map(acc => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">▼</span>
+            </div>
+          )}
 
           {/* Sélecteur de catégorie amélioré */}
           {categories.length > 0 && (
