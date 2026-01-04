@@ -1,0 +1,78 @@
+{
+  "name": "PrismaClientValidationError",
+  "clientVersion": "5.22.0"
+}
+
+PrismaClientValidationError: 
+Invalid `prisma.transaction.findMany()` invocation in
+C:\Source\Budgetwise\scripts\debug-search.ts:35:46
+
+  32 
+  33 try {
+  34     console.log("Executing query:", JSON.stringify(where, null, 2))
+→ 35     const txs = await prisma.transaction.findMany({
+           where: {
+             account: {
+               ownerId: "cmjzn9qkj000xq3t2f0vuegsu"
+             },
+             OR: [
+               {
+                 description: {
+                   contains: "basic",
+                   mode: "insensitive"
+                 }
+               },
+               {
+                 category: {
+                   name: {
+                     contains: "basic",
+                     mode: "insensitive"
+                   }
+                 }
+               }
+             ]
+           },
+           take: 5
+         })
+
+Unknown argument `mode`. Did you mean `lte`? Available options are marked with ?.
+
+PrismaClientValidationError: 
+Invalid `prisma.transaction.findMany()` invocation in
+C:\Source\Budgetwise\scripts\debug-search.ts:35:46
+
+  32 
+  33 try {
+  34     console.log("Executing query:", JSON.stringify(where, null, 2))
+→ 35     const txs = await prisma.transaction.findMany({
+           where: {
+             account: {
+               ownerId: "cmjzn9qkj000xq3t2f0vuegsu"
+             },
+             OR: [
+               {
+                 description: {
+                   contains: "basic",
+                   mode: "insensitive"
+                 }
+               },
+               {
+                 category: {
+                   name: {
+                     contains: "basic",
+                     mode: "insensitive"
+                   }
+                 }
+               }
+             ]
+           },
+           take: 5
+         })
+
+Unknown argument `mode`. Did you mean `lte`? Available options are marked with ?.
+    at wn (C:\Source\Budgetwise\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Source\Budgetwise\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Source\Budgetwise\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Source\Budgetwise\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Source\Budgetwise\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async testSearch (C:\Source\Budgetwise\scripts\debug-search.ts:35:21)

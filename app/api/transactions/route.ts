@@ -11,7 +11,10 @@ export async function GET(req: Request) {
     const endDate = searchParams.get('end')
 
     // Default limit increased to 2000 to verify full history availability, user can paginate later if needed
-    const take = Number(searchParams.get('take') || 2000)
+    const take = Number(searchParams.get('take') || 200)
+    const skip = Number(searchParams.get('skip') || 0)
+
+    const search = searchParams.get('search') || searchParams.get('q')
 
     const where: any = accountId
       ? { accountId, account: { ownerId: userId } }
@@ -23,12 +26,31 @@ export async function GET(req: Request) {
       if (endDate) where.date.lte = new Date(endDate)
     }
 
+    if (search) {
+      const searchNumber = Number(search)
+      const isNumber = !Number.isNaN(searchNumber)
+
+      const safeOR: any[] = [
+        { description: { contains: search } },
+        { category: { name: { contains: search } } }
+      ]
+
+      if (isNumber) {
+        safeOR.push({ amount: { equals: searchNumber } })
+      }
+
+      where.OR = safeOR
+    }
+
+
+
     let txs
     try {
       txs = await prisma.transaction.findMany({
         where,
         orderBy: { date: 'desc' },
         take,
+        skip,
         include: {
           account: true,
           toAccount: true,

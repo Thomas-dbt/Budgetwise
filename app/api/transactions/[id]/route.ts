@@ -7,23 +7,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const userId = await getCurrentUserId()
     const { id } = params
     const body = await req.json()
-    const { amount, type, date, description, categoryId, subCategoryId, pending, attachment, transferGroupId, toAccountId, accountId: newAccountId } = body as {
-      amount?: number
-      type?: string
-      date?: string
-      description?: string | null
-      categoryId?: string | null
-      subCategoryId?: string | null
-      pending?: boolean
-      attachment?: string | null
-      transferGroupId?: string | null
-      toAccountId?: string | null
-      accountId?: string
-    }
+    const { amount, type, date, description, categoryId, subCategoryId, pending, attachment, transferGroupId, toAccountId, accountId: newAccountId } = body
 
     const existing = await prisma.transaction.findUnique({
       where: { id },
-      include: { account: true, toAccount: true },
+      include: {
+        account: true,
+        toAccount: true,
+        category: {
+          include: { parent: true }
+        }
+      },
     })
     if (!existing) {
       return NextResponse.json({ error: 'Transaction introuvable' }, { status: 404 })
@@ -77,23 +71,23 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: 'Date invalide' }, { status: 400 })
     }
 
-    let newCategoryId: string | null | undefined = categoryId === undefined ? existing.categoryId : categoryId
-    if (newCategoryId) {
-      const category = await prisma.category.findUnique({ where: { id: newCategoryId } })
-      if (!category) {
-        return NextResponse.json({ error: 'Catégorie inconnue' }, { status: 400 })
-      }
-    }
+    // Determine correct category ID logic
+    let finalCategoryId = undefined
+    if (categoryId !== undefined || subCategoryId !== undefined) {
+      if (subCategoryId) {
+        const sub = await prisma.category.findUnique({ where: { id: subCategoryId } })
+        if (!sub) return NextResponse.json({ error: 'Sous-catégorie inconnue' }, { status: 400 })
 
-    let newSubCategoryId: string | null | undefined = subCategoryId === undefined ? existing.subCategoryId : subCategoryId
-    if (newSubCategoryId) {
-      const subCategory = await prisma.subCategory.findUnique({ where: { id: newSubCategoryId } })
-      if (!subCategory) {
-        return NextResponse.json({ error: 'Sous-catégorie inconnue' }, { status: 400 })
-      }
-      // Vérifier que la sous-catégorie appartient à la catégorie sélectionnée
-      if (newCategoryId && subCategory.categoryId !== newCategoryId) {
-        return NextResponse.json({ error: 'La sous-catégorie ne correspond pas à la catégorie sélectionnée' }, { status: 400 })
+        if (categoryId && sub.parentId !== categoryId) {
+          return NextResponse.json({ error: 'La sous-catégorie ne correspond pas à la catégorie sélectionnée' }, { status: 400 })
+        }
+        finalCategoryId = subCategoryId
+      } else if (categoryId) {
+        const cat = await prisma.category.findUnique({ where: { id: categoryId } })
+        if (!cat) return NextResponse.json({ error: 'Catégorie inconnue' }, { status: 400 })
+        finalCategoryId = categoryId
+      } else {
+        finalCategoryId = null
       }
     }
 
@@ -103,10 +97,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       date: parsedDate,
       description: description !== undefined ? description : existing.description,
       pending: pending !== undefined ? !!pending : existing.pending,
-      categoryId: newCategoryId ?? null,
-      subCategoryId: newSubCategoryId ?? null,
       transferGroupId: transferGroupId === undefined ? existing.transferGroupId : transferGroupId,
       toAccountId: normalizedType === 'transfer' ? finalToAccountId : null,
+    }
+
+    if (finalCategoryId !== undefined) {
+      updateData.categoryId = finalCategoryId
     }
 
     if (newAccountId) {
@@ -158,7 +154,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       const updatedTransaction = await txClient.transaction.update({
         where: { id },
         data: updateData,
-        include: { category: true, subCategory: true, account: true, toAccount: true },
+        include: {
+          category: {
+            include: { parent: true }
+          },
+          account: true,
+          toAccount: true
+        },
       })
 
       // Appliquer l'impact de la nouvelle transaction
@@ -231,6 +233,29 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     const { updatedTransaction, updatedFromAccount, updatedToAccount } = result
 
+    // Reconstruction of response format
+    let resCategory = null
+    let resSubCategory = null
+    if (updatedTransaction.category) {
+      if (updatedTransaction.category.parent) {
+        resCategory = {
+          id: updatedTransaction.category.parent.id,
+          name: updatedTransaction.category.parent.name,
+          emoji: updatedTransaction.category.parent.emoji
+        }
+        resSubCategory = {
+          id: updatedTransaction.category.id,
+          name: updatedTransaction.category.name
+        }
+      } else {
+        resCategory = {
+          id: updatedTransaction.category.id,
+          name: updatedTransaction.category.name,
+          emoji: updatedTransaction.category.emoji
+        }
+      }
+    }
+
     return NextResponse.json({
       id: updatedTransaction.id,
       amount: Number(updatedTransaction.amount),
@@ -239,8 +264,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       description: updatedTransaction.description,
       pending: updatedTransaction.pending,
       attachment: updatedTransaction.attachment,
-      category: updatedTransaction.category ? { id: updatedTransaction.category.id, name: updatedTransaction.category.name, emoji: updatedTransaction.category.emoji } : null,
-      subCategory: updatedTransaction.subCategory ? { id: updatedTransaction.subCategory.id, name: updatedTransaction.subCategory.name } : null,
+      category: resCategory,
+      subCategory: resSubCategory,
       account: { id: updatedFromAccount.id, name: updatedFromAccount.name, balance: Number(updatedFromAccount.balance) },
       toAccount: updatedToAccount ? { id: updatedToAccount.id, name: updatedToAccount.name, balance: Number(updatedToAccount.balance) } : null,
     })
@@ -249,7 +274,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: 'Impossible de modifier la transaction' }, { status: 500 })
   }
 }
-
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   try {
     const userId = await getCurrentUserId()

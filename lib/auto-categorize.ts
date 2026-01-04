@@ -45,3 +45,44 @@ export async function autoCategorize(description: string, userId: string) {
 
     return null
 }
+
+export async function autoCategorizeBatch(descriptions: string[], userId: string) {
+    if (!descriptions || descriptions.length === 0) return []
+
+    // Récupérer tous les mots-clés de l'utilisateur UNE SEULE FOIS
+    const keywords = await (prisma as any).categoryKeyword.findMany({
+        where: {
+            category: {
+                userId: userId
+            }
+        },
+        include: {
+            category: {
+                include: {
+                    parent: true
+                }
+            }
+        }
+    }) as any[]
+
+    // Trier par longueur décroissante pour éviter les faux positifs
+    const sortedKeywords = keywords.sort((a, b) => b.keyword.length - a.keyword.length)
+
+    return descriptions.map(description => {
+        if (!description) return null
+        const normalizedDesc = description.toLowerCase()
+
+        for (const kw of sortedKeywords) {
+            if (normalizedDesc.includes(kw.keyword.toLowerCase())) {
+                return {
+                    id: kw.category.id,
+                    name: kw.category.name,
+                    emoji: kw.category.emoji,
+                    parentId: kw.category.parentId,
+                    parent: kw.category.parent
+                }
+            }
+        }
+        return null
+    })
+}

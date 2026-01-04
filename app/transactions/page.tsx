@@ -102,10 +102,6 @@ export default function TransactionsPage() {
   const [filterEndDate, setFilterEndDate] = useState<string | null>(null)
   const [filterAccountId, setFilterAccountId] = useState<string>('all')
 
-  useEffect(() => {
-    fetchTransactions()
-  }, [filterStartDate, filterEndDate, filterAccountId])
-
   const [accounts, setAccounts] = useState<AccountOption[]>([])
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [subCategories, setSubCategories] = useState<SubCategoryOption[]>([])
@@ -155,6 +151,7 @@ export default function TransactionsPage() {
   const [importFileName, setImportFileName] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
   const [importLoading, setImportLoading] = useState(false)
+  const [selectedImportRows, setSelectedImportRows] = useState<Set<number>>(new Set())
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [attachmentPreview, setAttachmentPreview] = useState<{ url: string; title: string } | null>(null)
@@ -184,6 +181,9 @@ export default function TransactionsPage() {
     error?: string
   } | null>(null)
 
+  const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set())
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null)
+
   const readFileAsDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
@@ -191,75 +191,6 @@ export default function TransactionsPage() {
       reader.onerror = reject
       reader.readAsDataURL(file)
     })
-
-  useEffect(() => {
-    fetchAllData()
-  }, [])
-
-  // Auto-categorization suggestion
-  useEffect(() => {
-    const checkSuggestion = async () => {
-      if (!manualForm.description || manualForm.description.length < 3) return
-      // Only suggest if no category is selected yet
-      if (manualForm.categoryId) return
-
-      try {
-        const response = await authFetch('/api/categories/suggest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ description: manualForm.description })
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          if (data.match) {
-            setManualForm(prev => {
-              // If user already selected a category while request was in flight, don't overwrite
-              if (prev.categoryId) return prev
-
-              const isSubCategory = !!data.match.parentId
-              return {
-                ...prev,
-                categoryId: isSubCategory ? data.match.parentId : data.match.id,
-                subCategoryId: isSubCategory ? data.match.id : ''
-              }
-            })
-
-            // Optional: Show toast or feedback?
-            // toast('Catégorie suggérée : ' + data.match.name)
-          }
-        }
-      } catch (err) {
-        console.error('Suggestion error', err)
-      }
-    }
-
-    const timeoutId = setTimeout(checkSuggestion, 500)
-    return () => clearTimeout(timeoutId)
-  }, [manualForm.description, manualForm.categoryId])
-
-  useEffect(() => {
-    if (!exportOpen || exportAccountsLoading || exportAccounts.length > 0) {
-      return
-    }
-
-    setExportAccountsLoading(true)
-    authFetch('/api/accounts')
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Erreur ${res.status}`)
-        }
-        return res.json()
-      })
-      .then((list) => {
-        setExportAccounts(list.map((account: { id: string; name: string }) => ({ id: account.id, name: account.name })))
-      })
-      .catch((error) => {
-        console.error('Erreur chargement comptes export', error)
-        setExportError('Impossible de charger la liste des comptes.')
-      })
-      .finally(() => setExportAccountsLoading(false))
-  }, [exportOpen, exportAccountsLoading, exportAccounts.length])
 
   const closeExportModal = () => {
     setExportOpen(false)
@@ -453,10 +384,18 @@ export default function TransactionsPage() {
   }
 
 
-  const fetchTransactions = async (startDate?: string | null, endDate?: string | null) => {
+  // Pagination state
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const LIMIT = 200
+
+  // Main fetch function
+  const fetchTransactions = async (startDate?: string | null, endDate?: string | null, append = false, search = '') => {
     try {
+      const currentOffset = append ? offset : 0
       const params = new URLSearchParams()
-      params.set('take', '2000') // Explicitly request high limit to match backend
+      params.set('take', String(LIMIT))
+      params.set('skip', String(currentOffset))
 
       const effectiveStart = startDate !== undefined ? startDate : filterStartDate
       const effectiveEnd = endDate !== undefined ? endDate : filterEndDate
@@ -465,31 +404,64 @@ export default function TransactionsPage() {
       if (effectiveEnd) params.set('end', effectiveEnd)
       if (filterAccountId && filterAccountId !== 'all') params.set('accountId', filterAccountId)
 
+      // Server-side search
+      if (search) params.set('search', search)
+
       const response = await authFetch(`/api/transactions?${params.toString()}`)
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}`)
       }
       const data = await response.json()
-      setTransactions(
-        data.map((tx: any) => ({
-          id: tx.id,
-          amount: Number(tx.amount),
-          type: tx.type,
-          date: tx.date,
-          description: tx.description,
-          category: tx.category,
-          subCategory: tx.subCategory || null,
-          account: tx.account,
-          toAccount: tx.toAccount || null,
-          attachment: tx.attachment || null,
-          pending: !!tx.pending,
-          transferGroupId: tx.transferGroupId || null,
-        }))
-      )
+
+      const newTransactions = data.map((tx: any) => ({
+        id: tx.id,
+        amount: Number(tx.amount),
+        type: tx.type,
+        date: tx.date,
+        description: tx.description,
+        category: tx.category,
+        subCategory: tx.subCategory || null,
+        account: tx.account,
+        toAccount: tx.toAccount || null,
+        attachment: tx.attachment || null,
+        pending: !!tx.pending,
+        transferGroupId: tx.transferGroupId || null,
+      }))
+
+      if (newTransactions.length < LIMIT) {
+        setHasMore(false)
+      } else {
+        setHasMore(true)
+      }
+
+      if (append) {
+        setTransactions(prev => [...prev, ...newTransactions])
+        setOffset(prev => prev + LIMIT)
+      } else {
+        setTransactions(newTransactions)
+        setOffset(LIMIT)
+      }
     } catch (error) {
       console.error('Error fetching transactions:', error)
       setFeedback({ type: 'error', message: 'Impossible de charger les transactions.' })
     }
+  }
+
+  // Debounce search - Defined AFTER fetchTransactions
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchTransactions(filterStartDate, filterEndDate, false, searchQuery)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery, filterStartDate, filterEndDate, filterAccountId, filterOption])
+
+  // Initial load
+  useEffect(() => {
+    fetchAllData()
+  }, [])
+
+  const loadMore = () => {
+    fetchTransactions(filterStartDate, filterEndDate, true)
   }
 
   const fetchAccounts = async () => {
@@ -548,7 +520,9 @@ export default function TransactionsPage() {
       }
       const data = await response.json()
       if (Array.isArray(data)) {
-        setSubCategories(data)
+        if (!categoryId) {
+          setSubCategories(data)
+        }
         return data
       }
       return []
@@ -685,14 +659,6 @@ export default function TransactionsPage() {
     }
 
     return transactions.filter((tx) => {
-      const matchesSearch =
-        !query ||
-        tx.description?.toLowerCase().includes(query) ||
-        tx.account.name.toLowerCase().includes(query) ||
-        tx.toAccount?.name.toLowerCase().includes(query) ||
-        tx.category?.name.toLowerCase().includes(query)
-      if (!matchesSearch) return false
-
       const txDate = new Date(tx.date)
       if (startDate && txDate < startDate) return false
       if (endDate && txDate > endDate) return false
@@ -1007,14 +973,73 @@ export default function TransactionsPage() {
       }
       setDeleteModalOpen(false)
       setTransactionToDelete(null)
+      setFeedback({ type: 'success', message: 'Transaction supprimée.' })
       fetchTransactions()
       // Déclencher un événement pour actualiser les comptes
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('accounts-refresh'))
       }
     } catch (error: any) {
-      console.error('Transaction delete error', error)
+      console.error('Delete transaction error', error)
       setFeedback({ type: 'error', message: error.message || 'Impossible de supprimer la transaction.' })
+    }
+  }
+
+  const handleBulkUpdate = async (categoryId: string) => {
+    if (selectedTransactions.size === 0) return
+
+    setLoading(true)
+    try {
+      let payloadCategoryId = categoryId
+      let payloadSubCategoryId = null
+
+      const isSub = subCategories.find(s => s.id === categoryId)
+      // Check if it's a subcategory (has a parent in our local list, or by checking if it matches a known sub id)
+      // Note: subCategories state contains all subcategories.
+      if (isSub) {
+        payloadSubCategoryId = categoryId
+        payloadCategoryId = isSub.categoryId // This is the parent ID
+      } else {
+        // Verify it is a main category
+        const isMain = categories.find(c => c.id === categoryId)
+        if (isMain) {
+          payloadCategoryId = categoryId
+        } else {
+          // Should not happen if select is correct
+          throw new Error('Catégorie invalide')
+        }
+      }
+
+      const response = await authFetch('/api/transactions/bulk-update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          transactionIds: Array.from(selectedTransactions),
+          categoryId: payloadCategoryId,
+          subCategoryId: payloadSubCategoryId
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'Erreur lors de la mise à jour')
+      }
+
+      const result = await response.json()
+      setFeedback({ type: 'success', message: `${result.count} transactions mises à jour.` })
+      setSelectedTransactions(new Set())
+      setLastSelectedId(null)
+      fetchTransactions()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('accounts-refresh'))
+      }
+    } catch (e: any) {
+      console.error(e)
+      setFeedback({ type: 'error', message: e.message || 'Erreur lors de la mise à jour massive' })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -1220,18 +1245,57 @@ export default function TransactionsPage() {
 
     setImportFileName(file.name)
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const text = String(e.target?.result || '')
       const parsed = parseCsvContent(text)
       if (parsed.length === 0) {
         setImportError("Aucune donnée valide n'a été trouvée. Vérifiez le format du fichier.")
         setImportRows([])
       } else {
-        setImportRows(parsed.map(row => ({
+        // Initial set with local guesses
+        const rowsWithLocalGuess = parsed.map(row => ({
           ...row,
           parsedCategoryId: guessCategoryId(row)
-        })))
+        }))
+        setImportRows(rowsWithLocalGuess)
         setImportError(null)
+
+        // Enhance with Server-Side Auto-Categorize (Batch)
+        // Extract descriptions for rows that don't have a strong local guess (or just all to be sure)
+        // We only really need to check those where we didn't find a category, OR we want to verify.
+        // Let's check all to overwrite "Abonnements" guess if "Carrefour" is better?
+        // Actually local guessCategoryId is weak (hardcoded subscription list), server logic is user-customized.
+        // Server logic should take precedence if it finds something.
+
+        try {
+          const descriptions = rowsWithLocalGuess.map(r => r.rawDescription)
+          // Call API
+          const res = await authFetch('/api/categories/suggest', {
+            method: 'POST',
+            body: JSON.stringify({ descriptions })
+          })
+
+          if (res.ok) {
+            const { matches } = await res.json() // Array of { id, name, ... } or null
+            if (Array.isArray(matches) && matches.length === rowsWithLocalGuess.length) {
+              setImportRows(prev => prev.map((row, idx) => {
+                const suggestion = matches[idx]
+                // If server returned a suggestion, use it. Otherwise keep local guess.
+                if (suggestion) {
+                  return {
+                    ...row,
+                    parsedCategoryId: suggestion.id,
+                    // We could also store the suggestion source/confidence if we wanted
+                  }
+                }
+                return row
+              }))
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch auto-categorization suggestions', err)
+          // Non-blocking error, we just keep local guesses
+        }
       }
     }
     reader.readAsText(file)
@@ -1332,6 +1396,7 @@ export default function TransactionsPage() {
               onClick={() => {
                 setImportModalOpen(true)
                 setImportRows([])
+                setSelectedImportRows(new Set())
                 setImportFileName('')
                 setImportError(null)
               }}
@@ -1543,9 +1608,46 @@ export default function TransactionsPage() {
                   return (
                     <div
                       key={tx.id}
-                      className="group bg-white dark:bg-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-800 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-lg transition-all duration-200"
+                      className={`group bg-white dark:bg-gray-900 rounded-xl p-5 border transition-all duration-200 ${selectedTransactions.has(tx.id)
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/10 shadow-md'
+                        : 'border-gray-200 dark:border-gray-800 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-lg'
+                        }`}
+                      onClick={(e) => {
+                        // If user is selecting text or clicking buttons, don't trigger row click
+                        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return
+
+                        // If selection mode is active or shift key pressed
+                        if (e.shiftKey && lastSelectedId) {
+                          e.preventDefault()
+                          // Logic to select range could be complex with grouped dates. 
+                          // For now just toggle. Improving range selection would require flattening the list.
+                          // Supporting simple toggle for now.
+                        }
+
+                        // If clicking specifically on the card body while selection mode (chkbox) is not strictly required but UX friendly?
+                        // Actually, let's keep click for "Edit" unless clicking the checkbox area.
+                        // But user wants "bulk edit".
+                        openEditModal(tx)
+                      }}
                     >
                       <div className="flex items-start gap-4">
+                        <div className="flex items-center justify-center pt-2">
+                          <input
+                            type="checkbox"
+                            className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                            checked={selectedTransactions.has(tx.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              setSelectedTransactions(prev => {
+                                const next = new Set(prev)
+                                if (next.has(tx.id)) next.delete(tx.id)
+                                else next.add(tx.id)
+                                return next
+                              })
+                              setLastSelectedId(tx.id)
+                            }}
+                          />
+                        </div>
                         <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-sm ${iconBg} transition-transform group-hover:scale-110`}>
                           <span className={`text-2xl font-semibold ${iconColor}`}>
                             {iconSymbol}
@@ -1637,1151 +1739,1323 @@ export default function TransactionsPage() {
         )}
       </div>
 
-      {/* Manual transaction modal */}
-      {manualModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">{editingTransactionId ? 'Modifier la transaction' : 'Ajouter une transaction'}</h2>
-              <button
-                onClick={() => { setManualModalOpen(false) }}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={submitManualForm} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Compte *</label>
-                  <select
-                    value={manualForm.accountId}
-                    onChange={(e) =>
-                      setManualForm(prev => {
-                        const nextAccount = e.target.value
-                        const nextTransfer =
-                          prev.type === 'transfer'
-                            ? accounts.find(acc => acc.id !== nextAccount)?.id || ''
-                            : prev.transferAccountId
-                        return { ...prev, accountId: nextAccount, transferAccountId: nextTransfer }
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="" disabled>Choisissez un compte</option>
-                    {accounts.map(acc => (
-                      <option key={acc.id} value={acc.id}>{acc.name}</option>
+      {/* Bulk Action Bar */}
+      {selectedTransactions.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 rounded-full shadow-2xl border border-gray-200 dark:border-gray-700 p-2 pl-6 pr-2 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-5">
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">
+            {selectedTransactions.size} sélectionnée(s)
+          </span>
+          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
+          <div className="relative">
+            <select
+              className="appearance-none bg-transparent pl-2 pr-8 py-2 text-sm font-medium text-purple-600 dark:text-purple-400 focus:outline-none cursor-pointer hover:text-purple-700 dark:hover:text-purple-300"
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleBulkUpdate(e.target.value)
+                  e.target.value = ''
+                }
+              }}
+            >
+              <option value="">Modifier la catégorie...</option>
+              {categories.map(cat => {
+                const catSubCategories = subCategories.filter(sub => sub.categoryId === cat.id)
+                if (catSubCategories.length === 0) {
+                  return (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
+                    </option>
+                  )
+                }
+                return (
+                  <optgroup key={cat.id} label={`${cat.emoji ? `${cat.emoji} ` : ''}${cat.name}`}>
+                    <option value={cat.id}>
+                      {cat.emoji ? `${cat.emoji} ` : ''}{cat.name} (Général)
+                    </option>
+                    {catSubCategories.map(sub => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </option>
                     ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Type *</label>
-                  <select
-                    value={manualForm.type}
-                    onChange={(e) =>
-                      setManualForm(prev => {
-                        const value = e.target.value as Transaction['type']
-                        return {
-                          ...prev,
-                          type: value,
-                          transferAccountId:
-                            value === 'transfer'
-                              ? accounts.find(acc => acc.id !== prev.accountId)?.id || ''
-                              : '',
-                          transferGroupId: value === 'transfer' ? prev.transferGroupId : null,
-                        }
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="expense">Dépense</option>
-                    <option value="income">Revenu</option>
-                    <option value="transfer">Transfert</option>
-                  </select>
-                </div>
-                {manualForm.type === 'transfer' && (
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium mb-2">Compte destinataire *</label>
-                    {accounts.filter(acc => acc.id !== manualForm.accountId).length === 0 ? (
-                      <p className="text-sm text-red-600 dark:text-red-400">
-                        Créez un autre compte pour effectuer un transfert.
-                      </p>
-                    ) : (
-                      <select
-                        value={manualForm.transferAccountId}
-                        onChange={(e) => setManualForm(prev => ({ ...prev, transferAccountId: e.target.value }))}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      >
-                        <option value="" disabled>Sélectionnez le compte de destination</option>
-                        {accounts.filter(acc => acc.id !== manualForm.accountId).map(acc => (
-                          <option key={acc.id} value={acc.id}>{acc.name}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium mb-2">Montant *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={manualForm.amount}
-                    onChange={(e) => setManualForm(prev => ({ ...prev, amount: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Date *</label>
-                  <input
-                    type="date"
-                    value={manualForm.date}
-                    onChange={(e) => setManualForm(prev => ({ ...prev, date: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-              </div>
+                  </optgroup>
+                )
+              })}
+            </select>
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-purple-500">▼</span>
+          </div>
+          <button
+            onClick={() => setSelectedTransactions(new Set())}
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition-colors"
+            title="Annuler la sélection"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Description</label>
-                <input
-                  type="text"
-                  value={manualForm.description}
-                  onChange={(e) => setManualForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Libellé qui apparaîtra dans l'historique"
-                />
+      {/* Manual Transaction Modal */}
+      {
+        manualModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">{editingTransactionId ? 'Modifier la transaction' : 'Ajouter une transaction'}</h2>
+                <button
+                  onClick={() => { setManualModalOpen(false) }}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  ✕
+                </button>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Catégorie</label>
-                  <select
-                    value={showNewCategoryInput ? 'new' : manualForm.categoryId}
-                    onChange={(e) => {
-                      if (e.target.value === 'new') {
-                        setShowNewCategoryInput(true)
-                        setManualForm(prev => ({ ...prev, categoryId: '', subCategoryId: '' }))
-                      } else {
-                        setShowNewCategoryInput(false)
-                        setManualForm(prev => ({ ...prev, categoryId: e.target.value, subCategoryId: '' }))
+              <form onSubmit={submitManualForm} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Compte *</label>
+                    <select
+                      value={manualForm.accountId}
+                      onChange={(e) =>
+                        setManualForm(prev => {
+                          const nextAccount = e.target.value
+                          const nextTransfer =
+                            prev.type === 'transfer'
+                              ? accounts.find(acc => acc.id !== nextAccount)?.id || ''
+                              : prev.transferAccountId
+                          return { ...prev, accountId: nextAccount, transferAccountId: nextTransfer }
+                        })
                       }
-                    }}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="" disabled>Choisissez un compte</option>
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Type *</label>
+                    <select
+                      value={manualForm.type}
+                      onChange={(e) =>
+                        setManualForm(prev => {
+                          const value = e.target.value as Transaction['type']
+                          return {
+                            ...prev,
+                            type: value,
+                            transferAccountId:
+                              value === 'transfer'
+                                ? accounts.find(acc => acc.id !== prev.accountId)?.id || ''
+                                : '',
+                            transferGroupId: value === 'transfer' ? prev.transferGroupId : null,
+                          }
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="expense">Dépense</option>
+                      <option value="income">Revenu</option>
+                      <option value="transfer">Transfert</option>
+                    </select>
+                  </div>
+                  {manualForm.type === 'transfer' && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium mb-2">Compte destinataire *</label>
+                      {accounts.filter(acc => acc.id !== manualForm.accountId).length === 0 ? (
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                          Créez un autre compte pour effectuer un transfert.
+                        </p>
+                      ) : (
+                        <select
+                          value={manualForm.transferAccountId}
+                          onChange={(e) => setManualForm(prev => ({ ...prev, transferAccountId: e.target.value }))}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        >
+                          <option value="" disabled>Sélectionnez le compte de destination</option>
+                          {accounts.filter(acc => acc.id !== manualForm.accountId).map(acc => (
+                            <option key={acc.id} value={acc.id}>{acc.name}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Montant *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={manualForm.amount}
+                      onChange={(e) => setManualForm(prev => ({ ...prev, amount: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Date *</label>
+                    <input
+                      type="date"
+                      value={manualForm.date}
+                      onChange={(e) => setManualForm(prev => ({ ...prev, date: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Description</label>
+                  <input
+                    type="text"
+                    value={manualForm.description}
+                    onChange={(e) => setManualForm(prev => ({ ...prev, description: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Sans catégorie</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
-                    ))}
-                    <option value="new">➕ Créer une nouvelle catégorie</option>
-                  </select>
-                  {showNewCategoryInput && (
-                    <div className="mt-2 flex gap-2">
-                      <input
-                        type="text"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        placeholder="Nom de la catégorie"
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
+                    placeholder="Libellé qui apparaîtra dans l'historique"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Catégorie</label>
+                    <select
+                      value={showNewCategoryInput ? 'new' : manualForm.categoryId}
+                      onChange={(e) => {
+                        if (e.target.value === 'new') {
+                          setShowNewCategoryInput(true)
+                          setManualForm(prev => ({ ...prev, categoryId: '', subCategoryId: '' }))
+                        } else {
+                          setShowNewCategoryInput(false)
+                          setManualForm(prev => ({ ...prev, categoryId: e.target.value, subCategoryId: '' }))
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Sans catégorie</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
+                      ))}
+                      <option value="new">➕ Créer une nouvelle catégorie</option>
+                    </select>
+                    {showNewCategoryInput && (
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          type="text"
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          placeholder="Nom de la catégorie"
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              if (newCategoryName.trim()) {
+                                createCategory(newCategoryName.trim()).catch(err => {
+                                  setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
+                                })
+                              }
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
                             if (newCategoryName.trim()) {
                               createCategory(newCategoryName.trim()).catch(err => {
                                 setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
                               })
                             }
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (newCategoryName.trim()) {
-                            createCategory(newCategoryName.trim()).catch(err => {
-                              setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
-                            })
-                          }
-                        }}
-                        disabled={!newCategoryName.trim()}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        ✓
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowNewCategoryInput(false)
-                          setNewCategoryName('')
-                          setManualForm(prev => ({ ...prev, categoryId: '' }))
-                        }}
-                        className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Sous-catégorie</label>
-                  <select
-                    value={showNewSubCategoryInput ? 'new' : manualForm.subCategoryId}
-                    onChange={(e) => {
-                      if (e.target.value === 'new') {
-                        setShowNewSubCategoryInput(true)
-                        setManualForm(prev => ({ ...prev, subCategoryId: '' }))
-                      } else {
-                        setShowNewSubCategoryInput(false)
-                        setManualForm(prev => ({ ...prev, subCategoryId: e.target.value }))
-                      }
-                    }}
-                    disabled={!manualForm.categoryId}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="">Sans sous-catégorie</option>
-                    {subCategories
-                      .filter(sub => sub.categoryId === manualForm.categoryId)
-                      .map(sub => (
-                        <option key={sub.id} value={sub.id}>{sub.name}</option>
-                      ))}
-                    {manualForm.categoryId && (
-                      <option value="new">➕ Créer une nouvelle sous-catégorie</option>
+                          }}
+                          disabled={!newCategoryName.trim()}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowNewCategoryInput(false)
+                            setNewCategoryName('')
+                            setManualForm(prev => ({ ...prev, categoryId: '' }))
+                          }}
+                          className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     )}
-                  </select>
-                  {showNewSubCategoryInput && manualForm.categoryId && (
-                    <div className="mt-2 flex gap-2">
-                      <input
-                        type="text"
-                        value={newSubCategoryName}
-                        onChange={(e) => setNewSubCategoryName(e.target.value)}
-                        placeholder="Nom de la sous-catégorie"
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Sous-catégorie</label>
+                    <select
+                      value={showNewSubCategoryInput ? 'new' : manualForm.subCategoryId}
+                      onChange={(e) => {
+                        if (e.target.value === 'new') {
+                          setShowNewSubCategoryInput(true)
+                          setManualForm(prev => ({ ...prev, subCategoryId: '' }))
+                        } else {
+                          setShowNewSubCategoryInput(false)
+                          setManualForm(prev => ({ ...prev, subCategoryId: e.target.value }))
+                        }
+                      }}
+                      disabled={!manualForm.categoryId}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Sans sous-catégorie</option>
+                      {subCategories
+                        .filter(sub => sub.categoryId === manualForm.categoryId)
+                        .map(sub => (
+                          <option key={sub.id} value={sub.id}>{sub.name}</option>
+                        ))}
+                      {manualForm.categoryId && (
+                        <option value="new">➕ Créer une nouvelle sous-catégorie</option>
+                      )}
+                    </select>
+                    {showNewSubCategoryInput && manualForm.categoryId && (
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          type="text"
+                          value={newSubCategoryName}
+                          onChange={(e) => setNewSubCategoryName(e.target.value)}
+                          placeholder="Nom de la sous-catégorie"
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              if (newSubCategoryName.trim()) {
+                                createSubCategory(newSubCategoryName.trim(), manualForm.categoryId).catch(err => {
+                                  setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
+                                })
+                              }
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
                             if (newSubCategoryName.trim()) {
                               createSubCategory(newSubCategoryName.trim(), manualForm.categoryId).catch(err => {
                                 setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
                               })
                             }
+                          }}
+                          disabled={!newSubCategoryName.trim()}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowNewSubCategoryInput(false)
+                            setNewSubCategoryName('')
+                            setManualForm(prev => ({ ...prev, subCategoryId: '' }))
+                          }}
+                          className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-3 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">
+                    <input
+                      type="checkbox"
+                      checked={manualForm.pending}
+                      onChange={(e) => setManualForm(prev => ({ ...prev, pending: e.target.checked }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-200">Transaction en attente de validation</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Justificatif (photo)</label>
+                  {manualForm.attachment ? (
+                    <div className="border border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {manualForm.attachmentName || 'Pièce jointe'}
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAttachmentPreview({
+                                url: manualForm.attachment as string,
+                                title: manualForm.description || manualForm.attachmentName || 'Justificatif',
+                              })
+                            }
+                            className="text-xs px-3 py-1 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                          >
+                            Voir
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setManualForm(prev => ({ ...prev, attachment: null, attachmentName: '' }))}
+                            className="text-xs px-3 py-1 border border-red-200 text-red-600 dark:border-red-800 dark:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/30"
+                          >
+                            Retirer
+                          </button>
+                        </div>
+                      </div>
+                      <img
+                        src={manualForm.attachment}
+                        alt="Pièce jointe"
+                        className="max-h-56 object-contain rounded border border-gray-200 dark:border-gray-700"
+                      />
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0]
+                          if (!file) return
+                          try {
+                            const dataUrl = await readFileAsDataUrl(file)
+                            setManualForm(prev => ({
+                              ...prev,
+                              attachment: dataUrl,
+                              attachmentName: file.name,
+                            }))
+                            event.target.value = ''
+                          } catch (error) {
+                            console.error('Attachment upload error', error)
+                            setFeedback({ type: 'error', message: 'Impossible de charger cette image.' })
+                            event.target.value = ''
                           }
                         }}
                       />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (newSubCategoryName.trim()) {
-                            createSubCategory(newSubCategoryName.trim(), manualForm.categoryId).catch(err => {
-                              setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
-                            })
-                          }
-                        }}
-                        disabled={!newSubCategoryName.trim()}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        ✓
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowNewSubCategoryInput(false)
-                          setNewSubCategoryName('')
-                          setManualForm(prev => ({ ...prev, subCategoryId: '' }))
-                        }}
-                        className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                      <span>📎 Joindre une photo</span>
+                    </label>
                   )}
                 </div>
-              </div>
 
-              <div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setManualModalOpen(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={manualLoading}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {manualLoading ? 'Enregistrement...' : editingTransactionId ? 'Enregistrer les modifications' : 'Enregistrer la transaction'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Pagination Button */}
+      <div className="mt-8 mb-12 text-center pb-20">
+        {hasMore ? (
+          <button
+            onClick={loadMore}
+            disabled={loading}
+            className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-750 transition-colors shadow-sm"
+          >
+            {loading ? 'Chargement...' : 'Afficher plus de transactions'}
+          </button>
+        ) : (
+          !loading && transactions.length > 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 italic">Toutes les transactions sont affichées.</p>
+          )
+        )}
+      </div>
+
+      {/* Import row editor modal */}
+      {
+        importRowEditor && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Modifier la ligne #{importRowEditor.id}</h2>
+                <button
+                  onClick={closeImportRowEditor}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-4">
+                {importRowEditor.error && (
+                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+                    {importRowEditor.error}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Montant *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={importRowEditor.amount}
+                      onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, amount: e.target.value, error: undefined } : prev)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Type *</label>
+                    <select
+                      value={importRowEditor.type}
+                      onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, type: e.target.value as Transaction['type'], error: undefined } : prev)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="expense">Dépense</option>
+                      <option value="income">Revenu</option>
+                      <option value="transfer">Transfert</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Date *</label>
+                    <input
+                      type="date"
+                      value={importRowEditor.date}
+                      onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, date: e.target.value, error: undefined } : prev)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Catégorie</label>
+                    <select
+                      value={importRowEditor.categoryId}
+                      onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, categoryId: e.target.value, error: undefined } : prev)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Sans catégorie</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Description</label>
+                  <input
+                    type="text"
+                    value={importRowEditor.description}
+                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, description: e.target.value, error: undefined } : prev)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
                 <label className="flex items-center gap-3 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">
                   <input
                     type="checkbox"
-                    checked={manualForm.pending}
-                    onChange={(e) => setManualForm(prev => ({ ...prev, pending: e.target.checked }))}
+                    checked={importRowEditor.pending}
+                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, pending: e.target.checked, error: undefined } : prev)}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-200">Transaction en attente de validation</span>
                 </label>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeImportRowEditor}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveImportRowEditor}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Enregistrer la ligne
+                  </button>
+                </div>
               </div>
+            </div>
+          </div>
+        )
+      }
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Justificatif (photo)</label>
-                {manualForm.attachment ? (
-                  <div className="border border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        {manualForm.attachmentName || 'Pièce jointe'}
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setAttachmentPreview({
-                              url: manualForm.attachment as string,
-                              title: manualForm.description || manualForm.attachmentName || 'Justificatif',
-                            })
-                          }
-                          className="text-xs px-3 py-1 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                        >
-                          Voir
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setManualForm(prev => ({ ...prev, attachment: null, attachmentName: '' }))}
-                          className="text-xs px-3 py-1 border border-red-200 text-red-600 dark:border-red-800 dark:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/30"
-                        >
-                          Retirer
-                        </button>
-                      </div>
-                    </div>
-                    <img
-                      src={manualForm.attachment}
-                      alt="Pièce jointe"
-                      className="max-h-56 object-contain rounded border border-gray-200 dark:border-gray-700"
-                    />
+      {/* Attachment preview */}
+      {
+        attachmentPreview && (
+          <div
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setAttachmentPreview(null)
+            }}
+          >
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 truncate">
+                  {attachmentPreview.title}
+                </h3>
+                <button
+                  onClick={() => setAttachmentPreview(null)}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-4 overflow-auto">
+                <div className="w-full flex justify-center">
+                  <img
+                    src={attachmentPreview.url}
+                    alt={attachmentPreview.title}
+                    className="object-contain rounded-md shadow-inner"
+                    style={{ maxWidth: '100%', maxHeight: '100%' }}
+                  />
+                </div>
+              </div>
+              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end">
+                <a
+                  href={attachmentPreview.url}
+                  download
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Télécharger
+                </a>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Import modal */}
+      {
+        importModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Importer un relevé bancaire</h2>
+                <button
+                  onClick={() => setImportModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleImportSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Compte cible *</label>
+                    <select
+                      value={importAccountId}
+                      onChange={(e) => setImportAccountId(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="" disabled>Choisissez un compte</option>
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))}
+                    </select>
                   </div>
-                ) : (
-                  <label className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Fichier CSV / TSV *</label>
                     <input
                       type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (event) => {
-                        const file = event.target.files?.[0]
-                        if (!file) return
-                        try {
-                          const dataUrl = await readFileAsDataUrl(file)
-                          setManualForm(prev => ({
-                            ...prev,
-                            attachment: dataUrl,
-                            attachmentName: file.name,
-                          }))
-                          event.target.value = ''
-                        } catch (error) {
-                          console.error('Attachment upload error', error)
-                          setFeedback({ type: 'error', message: 'Impossible de charger cette image.' })
-                          event.target.value = ''
-                        }
-                      }}
+                      accept=".csv,.tsv,.txt"
+                      onChange={handleImportFile}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <span>📎 Joindre une photo</span>
-                  </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Colonnes attendues : date, description, montant, type (income/expense/transfer), catégorie (optionnel), statut (en attente).
+                    </p>
+                  </div>
+                </div>
+
+                {importFileName && (
+                  <div className="text-sm text-gray-600 dark:text-gray-300">Fichier sélectionné : <strong>{importFileName}</strong></div>
                 )}
-              </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setManualModalOpen(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={manualLoading}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {manualLoading ? 'Enregistrement...' : editingTransactionId ? 'Enregistrer les modifications' : 'Enregistrer la transaction'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Import row editor modal */}
-      {importRowEditor && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Modifier la ligne #{importRowEditor.id}</h2>
-              <button
-                onClick={closeImportRowEditor}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="space-y-4">
-              {importRowEditor.error && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
-                  {importRowEditor.error}
-                </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Montant *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={importRowEditor.amount}
-                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, amount: e.target.value, error: undefined } : prev)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Type *</label>
-                  <select
-                    value={importRowEditor.type}
-                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, type: e.target.value as Transaction['type'], error: undefined } : prev)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="expense">Dépense</option>
-                    <option value="income">Revenu</option>
-                    <option value="transfer">Transfert</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Date *</label>
-                  <input
-                    type="date"
-                    value={importRowEditor.date}
-                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, date: e.target.value, error: undefined } : prev)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Catégorie</label>
-                  <select
-                    value={importRowEditor.categoryId}
-                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, categoryId: e.target.value, error: undefined } : prev)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Sans catégorie</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Description</label>
-                <input
-                  type="text"
-                  value={importRowEditor.description}
-                  onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, description: e.target.value, error: undefined } : prev)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <label className="flex items-center gap-3 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">
-                <input
-                  type="checkbox"
-                  checked={importRowEditor.pending}
-                  onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, pending: e.target.checked, error: undefined } : prev)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-200">Transaction en attente de validation</span>
-              </label>
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={closeImportRowEditor}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={saveImportRowEditor}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Enregistrer la ligne
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Attachment preview */}
-      {attachmentPreview && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setAttachmentPreview(null)
-          }}
-        >
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 truncate">
-                {attachmentPreview.title}
-              </h3>
-              <button
-                onClick={() => setAttachmentPreview(null)}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-4 overflow-auto">
-              <div className="w-full flex justify-center">
-                <img
-                  src={attachmentPreview.url}
-                  alt={attachmentPreview.title}
-                  className="object-contain rounded-md shadow-inner"
-                  style={{ maxWidth: '100%', maxHeight: '100%' }}
-                />
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end">
-              <a
-                href={attachmentPreview.url}
-                download
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Télécharger
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Import modal */}
-      {importModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Importer un relevé bancaire</h2>
-              <button
-                onClick={() => setImportModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleImportSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Compte cible *</label>
-                  <select
-                    value={importAccountId}
-                    onChange={(e) => setImportAccountId(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="" disabled>Choisissez un compte</option>
-                    {accounts.map(acc => (
-                      <option key={acc.id} value={acc.id}>{acc.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Fichier CSV / TSV *</label>
-                  <input
-                    type="file"
-                    accept=".csv,.tsv,.txt"
-                    onChange={handleImportFile}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    Colonnes attendues : date, description, montant, type (income/expense/transfer), catégorie (optionnel), statut (en attente).
-                  </p>
-                </div>
-              </div>
-
-              {importFileName && (
-                <div className="text-sm text-gray-600 dark:text-gray-300">Fichier sélectionné : <strong>{importFileName}</strong></div>
-              )}
-
-              {importError && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
-                  {importError}
-                </div>
-              )}
-
-              {importRows.length > 0 && (
-                <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300">
-                    Prévisualisation ({importRows.length} lignes)
+                {importError && (
+                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+                    {importError}
                   </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Date</th>
-                          <th className="px-3 py-2 text-left">Description</th>
-                          <th className="px-3 py-2 text-left">Montant</th>
-                          <th className="px-3 py-2 text-left">Type</th>
-                          <th className="px-3 py-2 text-left">Catégorie</th>
-                          <th className="px-3 py-2 text-left">Statut</th>
-                          <th className="px-3 py-2 text-left">État</th>
-                          <th className="px-3 py-2 text-left">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {importRows.map(row => (
-                          <tr key={row.id} className={row.valid ? 'bg-white dark:bg-gray-900' : 'bg-red-50/70 dark:bg-red-900/10'}>
-                            <td className="px-3 py-2 whitespace-nowrap">{resolveRowDate(row) || row.rawDate}</td>
-                            <td className="px-3 py-2 truncate max-w-xs">{resolveRowDescription(row)}</td>
-                            <td className="px-3 py-2">{resolveRowAmount(row) ?? row.rawAmount}</td>
-                            <td className="px-3 py-2 capitalize">{resolveRowType(row) || row.rawType}</td>
-                            <td className="px-3 py-2">
-                              <div className="relative inline-block min-w-[160px]">
-                                <select
-                                  value={resolveRowCategoryId(row) || ''}
-                                  onChange={(e) => handleInlineCategoryChange(row.id, e.target.value)}
-                                  className="w-full appearance-none pl-3 pr-8 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  <option value="">Sans catégorie</option>
-                                  {categories.map(cat => (
-                                    <option key={cat.id} value={cat.id}>
-                                      {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
-                                    </option>
-                                  ))}
-                                </select>
-                                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">▼</span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-2">{resolveRowPending(row) ? 'En attente' : (row.rawPending || '—')}</td>
-                            <td className="px-3 py-2 text-xs">
-                              {row.valid ? (
-                                <span className="text-green-600 dark:text-green-400">OK</span>
-                              ) : (
-                                <span className="text-red-600 dark:text-red-400">{row.error}</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-xs">
-                              <button
-                                type="button"
-                                onClick={() => openImportRowEditor(row)}
-                                className="px-3 py-1 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                              >
-                                Modifier
-                              </button>
-                            </td>
+                )}
+
+                {importRows.length > 0 && (
+                  <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden flex flex-col">
+                    <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+                      Prévisualisation ({importRows.length} lignes)
+                    </div>
+                    <div className="overflow-auto max-h-[60vh]">
+                      <table className="w-full text-sm relative">
+                        <thead className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 sticky top-0 z-10 shadow-sm">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium">Date</th>
+                            <th className="px-3 py-2 text-left font-medium">Description</th>
+                            <th className="px-3 py-2 text-right font-medium">Montant</th>
+                            <th className="px-3 py-2 text-left font-medium">Catégorie</th>
+                            <th className="px-3 py-2 text-center font-medium">Action</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-800 bg-white dark:bg-gray-900">
+                          {importRows.map((row) => {
+                            const effectiveAmount = resolveRowAmount(row)
+                            const isExpense = resolveRowType(row) === 'expense'
+                            const amountColor = isExpense ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setImportModalOpen(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={importRows.length === 0 || importLoading}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {importLoading ? 'Import...' : `Importer ${importRows.filter(r => r.valid).length} ligne(s)`}
-                </button>
-              </div>
-            </form>
+                            return (
+                              <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                <td className="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                                  {row.overrideDate ? formatDate(row.overrideDate) : (row.parsedDate ? formatDate(row.parsedDate) : row.rawDate)}
+                                </td>
+                                <td className="px-3 py-2 text-gray-700 dark:text-gray-300 max-w-[200px] truncate" title={resolveRowDescription(row)}>
+                                  {resolveRowDescription(row)}
+                                </td>
+                                <td className={`px-3 py-2 text-right whitespace-nowrap font-medium ${amountColor}`}>
+                                  {formatCurrency(effectiveAmount !== undefined ? effectiveAmount : Number(row.rawAmount.replace(',', '.')) || 0)}
+                                </td>
+                                <td className="px-3 py-2 text-gray-700 dark:text-gray-300">
+                                  {(() => {
+                                    const catId = resolveRowCategoryId(row)
+                                    if (!catId) return <span className="text-gray-400 italic">Non catégorisé</span>
+                                    const cat = categories.find(c => c.id === catId)
+                                    const sub = subCategories.find(s => s.id === catId) // Check if ID matches a subcategory
+
+                                    if (sub) {
+                                      return (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                          {sub.name}
+                                        </span>
+                                      )
+                                    }
+
+                                    if (cat) {
+                                      return (
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${categoryColors[cat.name] || 'bg-gray-100 text-gray-800'}`}>
+                                          {cat.emoji} {cat.name}
+                                        </span>
+                                      )
+                                    }
+                                    return <span className="text-gray-400 italic">Inconnu</span>
+                                  })()}
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <button
+                                    onClick={() => openImportRowEditor(row)}
+                                    className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                    title="Modifier"
+                                  >
+                                    ✏️
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setImportModalOpen(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={importRows.length === 0 || importLoading}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {importLoading ? 'Import...' : `Importer ${importRows.filter(r => r.valid).length} ligne(s)`}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Feedback overlay */}
-      {feedback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setFeedback(null)}></div>
-          <div className={`relative rounded-xl shadow-xl max-w-md w-full p-6 text-center ${feedback.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-900/60 dark:text-green-200' : 'bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-900/60 dark:text-red-200'}`}>
-            <div className="text-2xl mb-3">{feedback.type === 'success' ? '✅' : '⚠️'}</div>
-            <h3 className="text-lg font-semibold mb-2">{feedback.type === 'success' ? 'Opération réussie' : 'Une erreur est survenue'}</h3>
-            <p className="text-sm mb-6 whitespace-pre-wrap">{feedback.message}</p>
-            <button
-              onClick={() => setFeedback(null)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation suppression */}
-      {deleteModalOpen && transactionToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setDeleteModalOpen(false)}></div>
-          <div className="relative bg-white dark:bg-gray-900 border border-red-200 dark:border-red-800 rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Supprimer ce compte ?</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
-              Cette action est irréversible. La transaction « {transactionToDelete.description || TYPE_LABELS[transactionToDelete.type]} » sera supprimée.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
+      {
+        feedback && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setFeedback(null)}></div>
+            <div className={`relative rounded-xl shadow-xl max-w-md w-full p-6 text-center ${feedback.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-900/60 dark:text-green-200' : 'bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-900/60 dark:text-red-200'}`}>
+              <div className="text-2xl mb-3">{feedback.type === 'success' ? '✅' : '⚠️'}</div>
+              <h3 className="text-lg font-semibold mb-2">{feedback.type === 'success' ? 'Opération réussie' : 'Une erreur est survenue'}</h3>
+              <p className="text-sm mb-6 whitespace-pre-wrap">{feedback.message}</p>
               <button
-                onClick={() => setDeleteModalOpen(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleDeleteTransaction}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60"
-              >
-                Je confirme la suppression
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Import row editor modal */}
-      {importRowEditor && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Modifier la ligne #{importRowEditor.id}</h2>
-              <button
-                onClick={closeImportRowEditor}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="space-y-4">
-              {importRowEditor.error && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
-                  {importRowEditor.error}
-                </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Montant *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={importRowEditor.amount}
-                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, amount: e.target.value, error: undefined } : prev)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Type *</label>
-                  <select
-                    value={importRowEditor.type}
-                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, type: e.target.value as Transaction['type'], error: undefined } : prev)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="expense">Dépense</option>
-                    <option value="income">Revenu</option>
-                    <option value="transfer">Transfert</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Date *</label>
-                  <input
-                    type="date"
-                    value={importRowEditor.date}
-                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, date: e.target.value, error: undefined } : prev)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Catégorie</label>
-                  <select
-                    value={importRowEditor.categoryId}
-                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, categoryId: e.target.value, error: undefined } : prev)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Sans catégorie</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Description</label>
-                <input
-                  type="text"
-                  value={importRowEditor.description}
-                  onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, description: e.target.value, error: undefined } : prev)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <label className="flex items-center gap-3 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">
-                <input
-                  type="checkbox"
-                  checked={importRowEditor.pending}
-                  onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, pending: e.target.checked, error: undefined } : prev)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-200">Transaction en attente de validation</span>
-              </label>
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={closeImportRowEditor}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={saveImportRowEditor}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Enregistrer la ligne
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Attachment preview */}
-      {attachmentPreview && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setAttachmentPreview(null)
-          }}
-        >
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 truncate">
-                {attachmentPreview.title}
-              </h3>
-              <button
-                onClick={() => setAttachmentPreview(null)}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-4 overflow-auto">
-              <div className="w-full flex justify-center">
-                <img
-                  src={attachmentPreview.url}
-                  alt={attachmentPreview.title}
-                  className="object-contain rounded-md shadow-inner"
-                  style={{ maxWidth: '100%', maxHeight: '100%' }}
-                />
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end">
-              <a
-                href={attachmentPreview.url}
-                download
+                onClick={() => setFeedback(null)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                Télécharger
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Import modal */}
-      {importModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Importer un relevé bancaire</h2>
-              <button
-                onClick={() => setImportModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                ✕
+                Fermer
               </button>
             </div>
-            <form onSubmit={handleImportSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Compte cible *</label>
-                  <select
-                    value={importAccountId}
-                    onChange={(e) => setImportAccountId(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="" disabled>Choisissez un compte</option>
-                    {accounts.map(acc => (
-                      <option key={acc.id} value={acc.id}>{acc.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Fichier CSV / TSV *</label>
-                  <input
-                    type="file"
-                    accept=".csv,.tsv,.txt"
-                    onChange={handleImportFile}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    Colonnes attendues : date, description, montant, type (income/expense/transfer), catégorie (optionnel), statut (en attente).
-                  </p>
-                </div>
-              </div>
+          </div>
+        )
+      }
 
-              {importFileName && (
-                <div className="text-sm text-gray-600 dark:text-gray-300">Fichier sélectionné : <strong>{importFileName}</strong></div>
-              )}
-
-              {importError && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
-                  {importError}
-                </div>
-              )}
-
-              {importRows.length > 0 && (
-                <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300">
-                    Prévisualisation ({importRows.length} lignes)
-                  </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Date</th>
-                          <th className="px-3 py-2 text-left">Description</th>
-                          <th className="px-3 py-2 text-left">Montant</th>
-                          <th className="px-3 py-2 text-left">Type</th>
-                          <th className="px-3 py-2 text-left">Catégorie</th>
-                          <th className="px-3 py-2 text-left">Statut</th>
-                          <th className="px-3 py-2 text-left">État</th>
-                          <th className="px-3 py-2 text-left">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {importRows.map(row => (
-                          <tr key={row.id} className={row.valid ? 'bg-white dark:bg-gray-900' : 'bg-red-50/70 dark:bg-red-900/10'}>
-                            <td className="px-3 py-2 whitespace-nowrap">{resolveRowDate(row) || row.rawDate}</td>
-                            <td className="px-3 py-2 truncate max-w-xs">{resolveRowDescription(row)}</td>
-                            <td className="px-3 py-2">{resolveRowAmount(row) ?? row.rawAmount}</td>
-                            <td className="px-3 py-2 capitalize">{resolveRowType(row) || row.rawType}</td>
-                            <td className="px-3 py-2">
-                              <div className="relative inline-block min-w-[160px]">
-                                <select
-                                  value={resolveRowCategoryId(row) || ''}
-                                  onChange={(e) => handleInlineCategoryChange(row.id, e.target.value)}
-                                  className="w-full appearance-none pl-3 pr-8 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  <option value="">Sans catégorie</option>
-                                  {categories.map(cat => (
-                                    <option key={cat.id} value={cat.id}>
-                                      {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
-                                    </option>
-                                  ))}
-                                </select>
-                                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">▼</span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-2">{resolveRowPending(row) ? 'En attente' : (row.rawPending || '—')}</td>
-                            <td className="px-3 py-2 text-xs">
-                              {row.valid ? (
-                                <span className="text-green-600 dark:text-green-400">OK</span>
-                              ) : (
-                                <span className="text-red-600 dark:text-red-400">{row.error}</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-xs">
-                              <button
-                                type="button"
-                                onClick={() => openImportRowEditor(row)}
-                                className="px-3 py-1 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                              >
-                                Modifier
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-4">
+      {/* Confirmation suppression */}
+      {
+        deleteModalOpen && transactionToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setDeleteModalOpen(false)}></div>
+            <div className="relative bg-white dark:bg-gray-900 border border-red-200 dark:border-red-800 rounded-xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Supprimer ce compte ?</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+                Cette action est irréversible. La transaction « {transactionToDelete.description || TYPE_LABELS[transactionToDelete.type]} » sera supprimée.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
-                  type="button"
-                  onClick={() => setImportModalOpen(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                  onClick={() => setDeleteModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60"
                 >
                   Annuler
                 </button>
                 <button
-                  type="submit"
-                  disabled={importRows.length === 0 || importLoading}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                  onClick={handleDeleteTransaction}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60"
                 >
-                  {importLoading ? 'Import...' : `Importer ${importRows.filter(r => r.valid).length} ligne(s)`}
+                  Je confirme la suppression
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Feedback overlay */}
-      {feedback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setFeedback(null)}></div>
-          <div className={`relative rounded-xl shadow-xl max-w-md w-full p-6 text-center ${feedback.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-900/60 dark:text-green-200' : 'bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-900/60 dark:text-red-200'}`}>
-            <div className="text-2xl mb-3">{feedback.type === 'success' ? '✅' : '⚠️'}</div>
-            <h3 className="text-lg font-semibold mb-2">{feedback.type === 'success' ? 'Opération réussie' : 'Une erreur est survenue'}</h3>
-            <p className="text-sm mb-6 whitespace-pre-wrap">{feedback.message}</p>
-            <button
-              onClick={() => setFeedback(null)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation suppression */}
-      {deleteModalOpen && transactionToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setDeleteModalOpen(false)}></div>
-          <div className="relative bg-white dark:bg-gray-900 border border-red-200 dark:border-red-800 rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Supprimer ce compte ?</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
-              Cette action est irréversible. La transaction « {transactionToDelete.description || TYPE_LABELS[transactionToDelete.type]} » sera supprimée.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => setDeleteModalOpen(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleDeleteTransaction}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60"
-              >
-                Je confirme la suppression
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {exportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Import row editor modal */}
+      {
+        importRowEditor && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Modifier la ligne #{importRowEditor.id}</h2>
+                <button
+                  onClick={closeImportRowEditor}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-4">
+                {importRowEditor.error && (
+                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+                    {importRowEditor.error}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Montant *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={importRowEditor.amount}
+                      onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, amount: e.target.value, error: undefined } : prev)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Type *</label>
+                    <select
+                      value={importRowEditor.type}
+                      onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, type: e.target.value as Transaction['type'], error: undefined } : prev)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="expense">Dépense</option>
+                      <option value="income">Revenu</option>
+                      <option value="transfer">Transfert</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Date *</label>
+                    <input
+                      type="date"
+                      value={importRowEditor.date}
+                      onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, date: e.target.value, error: undefined } : prev)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Catégorie</label>
+                    <select
+                      value={importRowEditor.categoryId}
+                      onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, categoryId: e.target.value, error: undefined } : prev)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Sans catégorie</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Description</label>
+                  <input
+                    type="text"
+                    value={importRowEditor.description}
+                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, description: e.target.value, error: undefined } : prev)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <label className="flex items-center gap-3 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">
+                  <input
+                    type="checkbox"
+                    checked={importRowEditor.pending}
+                    onChange={(e) => setImportRowEditor(prev => prev ? { ...prev, pending: e.target.checked, error: undefined } : prev)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-200">Transaction en attente de validation</span>
+                </label>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeImportRowEditor}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveImportRowEditor}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Enregistrer la ligne
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Attachment preview */}
+      {
+        attachmentPreview && (
           <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => {
-              if (!exportLoading) {
-                closeExportModal()
-              }
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setAttachmentPreview(null)
             }}
-          ></div>
-          <div className="relative bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-xl w-full max-w-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Exporter les mouvements</h2>
+          >
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 truncate">
+                  {attachmentPreview.title}
+                </h3>
+                <button
+                  onClick={() => setAttachmentPreview(null)}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-4 overflow-auto">
+                <div className="w-full flex justify-center">
+                  <img
+                    src={attachmentPreview.url}
+                    alt={attachmentPreview.title}
+                    className="object-contain rounded-md shadow-inner"
+                    style={{ maxWidth: '100%', maxHeight: '100%' }}
+                  />
+                </div>
+              </div>
+              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end">
+                <a
+                  href={attachmentPreview.url}
+                  download
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Télécharger
+                </a>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Import modal */}
+      {
+        false && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Importer un relevé bancaire</h2>
+                <button
+                  onClick={() => setImportModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleImportSubmit} className="flex-1 flex flex-col overflow-hidden">
+                <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Compte cible *</label>
+                      <select
+                        value={importAccountId}
+                        onChange={(e) => setImportAccountId(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="" disabled>Choisissez un compte</option>
+                        {accounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Fichier CSV / TSV *</label>
+                      <input
+                        type="file"
+                        accept=".csv,.tsv,.txt"
+                        onChange={handleImportFile}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        Colonnes attendues : date, description, montant, type (income/expense/transfer), catégorie (optionnel), statut (en attente).
+                      </p>
+                    </div>
+                  </div>
+
+                  {importFileName && (
+                    <div className="text-sm text-gray-600 dark:text-gray-300">Fichier sélectionné : <strong>{importFileName}</strong></div>
+                  )}
+
+                  {importError && (
+                    <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+                      {importError}
+                    </div>
+                  )}
+
+                  {importRows.length > 0 && (
+                    <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden flex flex-col flex-1 min-h-0">
+                      <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center justify-between sticky top-0 z-10">
+                        <span>Prévisualisation ({importRows.length} lignes)</span>
+                        {selectedImportRows.size > 0 && (
+                          <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                            <span className="text-blue-700 dark:text-blue-300 text-xs font-semibold">{selectedImportRows.size} sélectionnée(s)</span>
+                            <div className="h-4 w-px bg-blue-200 dark:bg-blue-700/50 mx-1"></div>
+                            <select
+                              className="text-xs bg-transparent border-none focus:ring-0 text-blue-700 dark:text-blue-300 font-medium cursor-pointer"
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  const categoryId = e.target.value
+                                  setImportRows(prev => prev.map(row => {
+                                    if (selectedImportRows.has(row.id)) {
+                                      return {
+                                        ...row,
+                                        parsedCategoryId: categoryId,
+                                        overrideCategoryId: categoryId
+                                      }
+                                    }
+                                    return row
+                                  }))
+                                  e.target.value = '' // Reset select
+                                }
+                              }}
+                            >
+                              <option value="">Modifier la catégorie...</option>
+                              {categories.map(cat => (
+                                <option key={cat.id} value={cat.id}>
+                                  {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                      <div className="overflow-auto flex-1">
+                        <table className="w-full text-sm relative">
+                          <thead className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 sticky top-0 z-10 shadow-sm">
+                            <tr>
+                              <th className="px-3 py-2 w-10 text-center">
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                  checked={importRows.length > 0 && selectedImportRows.size === importRows.length}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedImportRows(new Set(importRows.map(r => r.id)))
+                                    } else {
+                                      setSelectedImportRows(new Set())
+                                    }
+                                  }}
+                                />
+                              </th>
+                              <th className="px-3 py-2 text-left">Date</th>
+                              <th className="px-3 py-2 text-left">Description</th>
+                              <th className="px-3 py-2 text-left">Montant</th>
+                              <th className="px-3 py-2 text-left">Type</th>
+                              <th className="px-3 py-2 text-left">Catégorie</th>
+                              <th className="px-3 py-2 text-left">Statut</th>
+                              <th className="px-3 py-2 text-left">État</th>
+                              <th className="px-3 py-2 text-left">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {importRows.map(row => (
+                              <tr
+                                key={row.id}
+                                className={`
+                              ${row.valid ? 'bg-white dark:bg-gray-900' : 'bg-red-50/70 dark:bg-red-900/10'} 
+                              ${selectedImportRows.has(row.id) ? '!bg-purple-50 dark:!bg-purple-900/20' : ''}
+                            `}
+                              >
+                                <td className="px-3 py-2 text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    checked={selectedImportRows.has(row.id)}
+                                    onChange={() => {
+                                      setSelectedImportRows(prev => {
+                                        const next = new Set(prev)
+                                        if (next.has(row.id)) next.delete(row.id)
+                                        else next.add(row.id)
+                                        return next
+                                      })
+                                    }}
+                                  />
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap">{resolveRowDate(row) || row.rawDate}</td>
+                                <td className="px-3 py-2 truncate max-w-xs">{resolveRowDescription(row)}</td>
+                                <td className="px-3 py-2">{resolveRowAmount(row) ?? row.rawAmount}</td>
+                                <td className="px-3 py-2 capitalize">{resolveRowType(row) || row.rawType}</td>
+                                <td className="px-3 py-2">
+                                  <div className="relative inline-block min-w-[160px]">
+                                    <select
+                                      value={resolveRowCategoryId(row) || ''}
+                                      onChange={(e) => handleInlineCategoryChange(row.id, e.target.value)}
+                                      className="w-full appearance-none pl-3 pr-8 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                      <option value="">Sans catégorie</option>
+                                      {categories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>
+                                          {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">▼</span>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2">{resolveRowPending(row) ? 'En attente' : (row.rawPending || '—')}</td>
+                                <td className="px-3 py-2 text-xs">
+                                  {row.valid ? (
+                                    <span className="text-green-600 dark:text-green-400">OK</span>
+                                  ) : (
+                                    <span className="text-red-600 dark:text-red-400">{row.error}</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-xs">
+                                  <button
+                                    type="button"
+                                    onClick={() => openImportRowEditor(row)}
+                                    className="px-3 py-1 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                  >
+                                    Modifier
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+                <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900">
+                  <button
+                    type="button"
+                    onClick={() => setImportModalOpen(false)}
+                    className="px-6 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
+                  >
+                    Annuler
+                  </button>
+                  <div className="flex-1"></div>
+                  <button
+                    type="submit"
+                    disabled={importRows.length === 0 || importLoading}
+                    className="px-8 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-60 disabled:shadow-none transition-all font-medium"
+                  >
+                    {importLoading ? 'Import en cours...' : `Importer ${importRows.filter(r => r.valid).length} ligne(s)`}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Feedback overlay */}
+      {
+        feedback && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setFeedback(null)}></div>
+            <div className={`relative rounded-xl shadow-xl max-w-md w-full p-6 text-center ${feedback.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-900/60 dark:text-green-200' : 'bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-900/60 dark:text-red-200'}`}>
+              <div className="text-2xl mb-3">{feedback.type === 'success' ? '✅' : '⚠️'}</div>
+              <h3 className="text-lg font-semibold mb-2">{feedback.type === 'success' ? 'Opération réussie' : 'Une erreur est survenue'}</h3>
+              <p className="text-sm mb-6 whitespace-pre-wrap">{feedback.message}</p>
               <button
-                type="button"
-                onClick={closeExportModal}
-                disabled={exportLoading}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50"
+                onClick={() => setFeedback(null)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                ✕
+                Fermer
               </button>
             </div>
-            <form onSubmit={handleExportSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Période</label>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <input
-                    type="date"
-                    value={exportStartDate}
-                    onChange={(e) => setExportStartDate(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="hidden sm:inline text-gray-400">→</span>
-                  <input
-                    type="date"
-                    value={exportEndDate}
-                    onChange={(e) => setExportEndDate(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
+          </div>
+        )
+      }
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Compte</label>
-                <select
-                  value={exportAccountId}
-                  onChange={(e) => setExportAccountId(e.target.value)}
-                  disabled={exportAccountsLoading}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      {/* Confirmation suppression */}
+      {
+        deleteModalOpen && transactionToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setDeleteModalOpen(false)}></div>
+            <div className="relative bg-white dark:bg-gray-900 border border-red-200 dark:border-red-800 rounded-xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Supprimer ce compte ?</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+                Cette action est irréversible. La transaction « {transactionToDelete.description || TYPE_LABELS[transactionToDelete.type]} » sera supprimée.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setDeleteModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60"
                 >
-                  <option value="all">Tous les comptes</option>
-                  {exportAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name}
-                    </option>
-                  ))}
-                </select>
-                {exportAccountsLoading && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Chargement des comptes...</p>
-                )}
+                  Annuler
+                </button>
+                <button
+                  onClick={handleDeleteTransaction}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60"
+                >
+                  Je confirme la suppression
+                </button>
               </div>
+            </div>
+          </div>
+        )
+      }
 
-              <div>
-                <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Format</span>
-                <div className="flex items-center gap-4">
-                  <label className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer ${exportFormat === 'xlsx' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-700'}`}>
-                    <input
-                      type="radio"
-                      name="export-format"
-                      value="xlsx"
-                      checked={exportFormat === 'xlsx'}
-                      onChange={() => setExportFormat('xlsx')}
-                    />
-                    <span className="text-sm">Excel (.xlsx)</span>
-                  </label>
-                  <label className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer ${exportFormat === 'pdf' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-700'}`}>
-                    <input
-                      type="radio"
-                      name="export-format"
-                      value="pdf"
-                      checked={exportFormat === 'pdf'}
-                      onChange={() => setExportFormat('pdf')}
-                    />
-                    <span className="text-sm">PDF</span>
-                  </label>
-                </div>
-              </div>
-
-              {exportError && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
-                  {exportError}
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-3 pt-2">
+      {
+        exportOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => {
+                if (!exportLoading) {
+                  closeExportModal()
+                }
+              }}
+            ></div>
+            <div className="relative bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-xl w-full max-w-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Exporter les mouvements</h2>
                 <button
                   type="button"
                   onClick={closeExportModal}
                   disabled={exportLoading}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50"
                 >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={exportLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {exportLoading ? 'Préparation…' : 'Télécharger'}
+                  ✕
                 </button>
               </div>
-            </form>
+              <form onSubmit={handleExportSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Période</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <input
+                      type="date"
+                      value={exportStartDate}
+                      onChange={(e) => setExportStartDate(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="hidden sm:inline text-gray-400">→</span>
+                    <input
+                      type="date"
+                      value={exportEndDate}
+                      onChange={(e) => setExportEndDate(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Compte</label>
+                  <select
+                    value={exportAccountId}
+                    onChange={(e) => setExportAccountId(e.target.value)}
+                    disabled={exportAccountsLoading}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">Tous les comptes</option>
+                    {exportAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </select>
+                  {exportAccountsLoading && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Chargement des comptes...</p>
+                  )}
+                </div>
+
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Format</span>
+                  <div className="flex items-center gap-4">
+                    <label className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer ${exportFormat === 'xlsx' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-700'}`}>
+                      <input
+                        type="radio"
+                        name="export-format"
+                        value="xlsx"
+                        checked={exportFormat === 'xlsx'}
+                        onChange={() => setExportFormat('xlsx')}
+                      />
+                      <span className="text-sm">Excel (.xlsx)</span>
+                    </label>
+                    <label className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer ${exportFormat === 'pdf' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-700'}`}>
+                      <input
+                        type="radio"
+                        name="export-format"
+                        value="pdf"
+                        checked={exportFormat === 'pdf'}
+                        onChange={() => setExportFormat('pdf')}
+                      />
+                      <span className="text-sm">PDF</span>
+                    </label>
+                  </div>
+                </div>
+
+                {exportError && (
+                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+                    {exportError}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={closeExportModal}
+                    disabled={exportLoading}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={exportLoading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {exportLoading ? 'Préparation…' : 'Télécharger'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   )
 }

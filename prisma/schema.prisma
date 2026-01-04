@@ -109,6 +109,11 @@ model Transaction {
   pending         Boolean      @default(false)
   transferGroupId String?
   createdAt       DateTime     @default(now())
+
+  @@index([accountId])
+  @@index([date])
+  @@index([categoryId])
+  @@index([accountId, date])
 }
 
 model CalendarEvent {
