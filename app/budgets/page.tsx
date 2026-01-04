@@ -134,7 +134,7 @@ export default function BudgetsPage() {
                 id: existing?.id || 'temp-' + categoryId,
                 categoryId,
                 amount: numAmount,
-                isGlobal: false // Assume edit makes it specific to this month initially
+                isGlobal: existing ? existing.isGlobal : true // Default to Global for new budgets
             }
 
             if (existing) {
@@ -146,20 +146,52 @@ export default function BudgetsPage() {
     }
 
     const saveBudget = async (categoryId: string, amount: number) => {
-        // Default behavior: save for THIS month
+        // Determine scope based on current state
+        const budget = budgets.find(b => b.categoryId === categoryId)
+        const isGlobal = budget ? budget.isGlobal : true // Default Global if not found
+        const targetMonth = isGlobal ? 'global' : currentMonthKey
+
         try {
             const res = await authFetch('/api/budgets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ categoryId, amount, month: currentMonthKey })
+                body: JSON.stringify({ categoryId, amount, month: targetMonth })
             })
 
             if (!res.ok) throw new Error()
-
-            // Refresh logic could go here to confirm "isGlobal" status changes, but optimistic UI is smoother
         } catch {
             toast('Erreur de sauvegarde')
         }
+    }
+
+    const toggleScope = (categoryId: string) => {
+        setBudgets(prev => {
+            const existing = prev.find(b => b.categoryId === categoryId)
+            if (!existing) return prev
+
+            // Toggle logic
+            const newIsGlobal = !existing.isGlobal
+            const updated = { ...existing, isGlobal: newIsGlobal }
+
+            // Trigger save immediately with new scope
+            // We use setTimeout to let state update first or pass directly?
+            // Safer to just call saveBudget with explicit param? 
+            // Actually saveBudget reads from state. So we need to wait or pass params.
+            // Let's modify saveBudget to accept overrides or just duplicate logic here.
+
+            // Async save
+            authFetch('/api/budgets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    categoryId,
+                    amount: existing.amount,
+                    month: newIsGlobal ? 'global' : currentMonthKey
+                })
+            }).catch(() => toast('Erreur de mise à jour du type'))
+
+            return prev.map(b => b.categoryId === categoryId ? updated : b)
+        })
     }
 
     const applySuggestion = (categoryId: string, amount: number) => {
@@ -197,6 +229,22 @@ export default function BudgetsPage() {
                         Aujourd'hui
                     </button>
                     <button
+                        onClick={async () => {
+                            if (!confirm('Voulez-vous vraiment supprimer tous les budgets ?')) return
+                            try {
+                                await authFetch('/api/budgets', { method: 'DELETE' })
+                                toast('Budgets réinitialisés')
+                                setBudgets([])
+                                fetchData()
+                            } catch {
+                                toast('Erreur lors de la réinitialisation')
+                            }
+                        }}
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors text-sm font-medium"
+                    >
+                        🗑️ Réinitialiser
+                    </button>
+                    <button
                         onClick={fetchSuggestions}
                         disabled={suggestionsLoading}
                         className="group relative px-6 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all duration-300 font-medium overflow-hidden"
@@ -218,7 +266,7 @@ export default function BudgetsPage() {
                     const spent = spending[category.id] || 0
                     const remaining = Math.max(0, amount - spent)
                     const percent = amount > 0 ? Math.min(100, (spent / amount) * 100) : (spent > 0 ? 100 : 0)
-                    const isGlobal = budget?.isGlobal
+                    const isGlobal = budget ? budget.isGlobal : true // Default display as Global
 
                     const suggestion = suggestions[category.id]
                     const isOverBudget = spent > amount && amount > 0
@@ -234,11 +282,7 @@ export default function BudgetsPage() {
                                     <span className="text-3xl bg-gray-50 dark:bg-gray-800 p-3 rounded-xl">{category.emoji || '📁'}</span>
                                     <div>
                                         <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{category.name}</h3>
-                                        {isGlobal === false && (
-                                            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
-                                                Exception mensuelle
-                                            </span>
-                                        )}
+
                                         {suggestion !== undefined && suggestion > 0 && Math.abs(suggestion - amount) > 1 && (
                                             <button
                                                 onClick={() => applySuggestion(category.id, suggestion)}
@@ -251,17 +295,30 @@ export default function BudgetsPage() {
                                     </div>
                                 </div>
 
-                                <div className="relative group/input">
-                                    <input
-                                        type="number"
-                                        value={amount || ''}
-                                        onChange={(e) => handleBudgetChange(category.id, e.target.value)}
-                                        onBlur={(e) => saveBudget(category.id, Number(e.target.value))}
-                                        placeholder="0"
-                                        className="w-28 px-3 py-2 text-right font-bold text-lg bg-transparent border-b-2 border-gray-200 dark:border-gray-700 focus:border-purple-500 outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                    />
-                                    <span className="absolute right-0 -top-4 text-xs text-gray-400 opacity-0 group-hover/input:opacity-100 transition-opacity">Objectif</span>
-                                    <span className="absolute right-[calc(100%+4px)] top-3 text-gray-400 text-sm">€</span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => toggleScope(category.id)}
+                                        className={`text-sm p-1.5 rounded-lg transition-colors ${isGlobal
+                                            ? 'text-gray-400 hover:text-purple-600 hover:bg-gray-50'
+                                            : 'text-purple-600 bg-purple-50 hover:bg-purple-100'
+                                            }`}
+                                        title={isGlobal ? "Budget Global (s'applique à tous les mois)" : `Budget spécifique à ${monthDisplay}`}
+                                    >
+                                        {isGlobal ? '🌍' : '📅'}
+                                    </button>
+
+                                    <div className="relative group/input">
+                                        <input
+                                            type="number"
+                                            value={amount || ''}
+                                            onChange={(e) => handleBudgetChange(category.id, e.target.value)}
+                                            onBlur={(e) => saveBudget(category.id, Number(e.target.value))}
+                                            placeholder="0"
+                                            className="w-28 px-3 py-2 text-right font-bold text-lg bg-transparent border-b-2 border-gray-200 dark:border-gray-700 focus:border-purple-500 outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <span className="absolute right-0 -top-4 text-xs text-gray-400 opacity-0 group-hover/input:opacity-100 transition-opacity">Objectif</span>
+                                        <span className="absolute right-[calc(100%+4px)] top-3 text-gray-400 text-sm">€</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -278,8 +335,8 @@ export default function BudgetsPage() {
                                 <div className="h-3 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                                     <div
                                         className={`h-full rounded-full transition-all duration-1000 ease-out ${percent >= 100 ? 'bg-gradient-to-r from-red-500 to-red-600' :
-                                                percent > 85 ? 'bg-gradient-to-r from-orange-400 to-orange-500' :
-                                                    'bg-gradient-to-r from-green-400 to-emerald-500'
+                                            percent > 85 ? 'bg-gradient-to-r from-orange-400 to-orange-500' :
+                                                'bg-gradient-to-r from-green-400 to-emerald-500'
                                             }`}
                                         style={{ width: `${percent}%` }}
                                     />

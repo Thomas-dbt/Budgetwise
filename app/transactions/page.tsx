@@ -70,6 +70,14 @@ interface ParsedImportRow {
   overrideCategoryId?: string
 }
 
+interface CategoryKeyword {
+  id: string
+  keyword: string
+  matchType: 'contains' | 'exact'
+  categoryId: string
+  category?: { id: string; name: string }
+}
+
 const categoryColors: Record<string, string> = {
   'Alimentation': 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800',
   'Transport': 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
@@ -101,10 +109,14 @@ export default function TransactionsPage() {
   const [filterStartDate, setFilterStartDate] = useState<string | null>(null)
   const [filterEndDate, setFilterEndDate] = useState<string | null>(null)
   const [filterAccountId, setFilterAccountId] = useState<string>('all')
+  const [filterMinAmount, setFilterMinAmount] = useState<string>('')
+  const [filterMaxAmount, setFilterMaxAmount] = useState<string>('')
 
   const [accounts, setAccounts] = useState<AccountOption[]>([])
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [subCategories, setSubCategories] = useState<SubCategoryOption[]>([])
+  const [categoryKeywords, setCategoryKeywords] = useState<CategoryKeyword[]>([])
+
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [showNewSubCategoryInput, setShowNewSubCategoryInput] = useState(false)
@@ -257,7 +269,26 @@ export default function TransactionsPage() {
 
   const fetchAllData = async () => {
     setLoading(true)
-    await Promise.all([fetchTransactions(), fetchAccounts(), fetchCategories(), fetchSubCategories()])
+    await Promise.all([
+      fetchTransactions(),
+      fetchAccounts(),
+      fetchCategories(),
+      fetchSubCategories(),
+      authFetch('/api/keywords')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setCategoryKeywords(data)
+          } else {
+            console.error('Failed to load keywords:', data)
+            setCategoryKeywords([])
+          }
+        })
+        .catch(err => {
+          console.error(err)
+          setCategoryKeywords([])
+        })
+    ])
     setLoading(false)
   }
   const handleClearTransactions = async () => {
@@ -673,9 +704,18 @@ export default function TransactionsPage() {
         matchesFilter = tx.category?.id === categoryId
       }
 
+      if (filterMinAmount) {
+        const min = parseFloat(filterMinAmount)
+        if (!isNaN(min) && Math.abs(tx.amount) < min) return false
+      }
+      if (filterMaxAmount) {
+        const max = parseFloat(filterMaxAmount)
+        if (!isNaN(max) && Math.abs(tx.amount) > max) return false
+      }
+
       return matchesFilter
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [transactions, searchQuery, filterOption, filterStartDate, filterEndDate])
+  }, [transactions, searchQuery, filterOption, filterStartDate, filterEndDate, filterMinAmount, filterMaxAmount])
 
   const groupedTransactions = useMemo(() => {
     return filteredTransactions.reduce((groups, tx) => {
@@ -739,6 +779,8 @@ export default function TransactionsPage() {
     setManualModalOpen(true)
   }
 
+
+
   const handleManualSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!manualForm.accountId) {
@@ -761,6 +803,7 @@ export default function TransactionsPage() {
 
     setManualLoading(true)
     try {
+
       if (manualForm.type === 'transfer') {
         const response = await authFetch('/api/transactions', {
           method: 'POST',
@@ -864,6 +907,7 @@ export default function TransactionsPage() {
 
     setManualLoading(true)
     try {
+
       if (manualForm.type === 'transfer') {
         const response = await authFetch(`/api/transactions/${editingTransactionId}`, {
           method: 'PATCH',
@@ -1191,15 +1235,42 @@ export default function TransactionsPage() {
     })
   }
 
+  const escapeRegExp = (string: string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  }
+
   function guessCategoryId(row: ParsedImportRow): string | undefined {
-    const abonnementsCategory = categories.find(cat => cat.name.toLowerCase().includes('abonn'))
+    // 1. Check Keywords (Exact & Contains)
     const textBlobs = [
+      row.rawDescription,
       row.rawCategory,
-      row.rawCategoryParent,
-      row.rawDescription
-    ]
-      .filter(Boolean)
-      .map(value => value.toLowerCase())
+      row.rawCategoryParent
+    ].filter(Boolean) as string[]
+
+    for (const keyword of categoryKeywords) {
+      if (!keyword.category) continue // Should not happen with include check
+
+      const term = keyword.keyword
+      if (!term) continue
+
+      if (keyword.matchType === 'exact') {
+        const regex = new RegExp(`\\b${escapeRegExp(term)}\\b`, 'i')
+        if (textBlobs.some(blob => regex.test(blob))) {
+          return keyword.categoryId
+        }
+      } else {
+        // Contains (default)
+        const lowerTerm = term.toLowerCase()
+        if (textBlobs.some(blob => blob.toLowerCase().includes(lowerTerm))) {
+          return keyword.categoryId
+        }
+      }
+    }
+
+    // 2. Fallback to existing logic
+    const abonnementsCategory = categories.find(cat => cat.name.toLowerCase().includes('abonn'))
+    const processedBlobs = textBlobs.map(value => value.toLowerCase())
+
 
     const subscriptionKeywords = /(abonn|spotify|netflix|canal|prime video|primevideo|youtube|deezer|disney|molotov|salto|mycanal|itunes|apple music|playstation plus|xbox game pass|udemy|coursera|fit|basic fit|fitness park|club|assur mobile|forfait|box internet|freebox|bbox|livebox)/
 
@@ -1424,23 +1495,23 @@ export default function TransactionsPage() {
       </div>
 
       {/* Search and Filter Bar */}
-      <div className="mb-6 flex flex-col lg:flex-row lg:flex-wrap gap-4">
-        <div className="flex-1 relative">
+      <div className="mb-6 flex flex-col gap-4">
+        <div className="w-full relative">
           <input
             type="text"
             placeholder="Rechercher une transaction (libellé, compte, catégorie)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm hover:shadow-md"
+            className="w-full pl-10 pr-4 py-2.5 h-[46px] border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm hover:shadow-md"
           />
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">🔍</span>
         </div>
-        <div className="flex flex-col md:flex-row md:items-center md:flex-wrap gap-3 md:gap-4">
-          {/* Onglets de filtres améliorés */}
-          <div className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner">
+        <div className="w-full flex flex-col xl:flex-row xl:items-center gap-4 justify-between">
+          {/* Onglets de filtres - Retour au style "bulle" unifié */}
+          <div className="inline-flex items-center flex-shrink-0 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner h-[46px]">
             <button
               onClick={() => setFilterOption('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'all'
+              className={`px-3 h-[38px] rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center ${filterOption === 'all'
                 ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
@@ -1449,7 +1520,7 @@ export default function TransactionsPage() {
             </button>
             <button
               onClick={() => setFilterOption('income')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'income'
+              className={`px-3 h-[38px] rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center ${filterOption === 'income'
                 ? 'bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
@@ -1458,7 +1529,7 @@ export default function TransactionsPage() {
             </button>
             <button
               onClick={() => setFilterOption('expense')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'expense'
+              className={`px-3 h-[38px] rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center ${filterOption === 'expense'
                 ? 'bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
@@ -1467,7 +1538,7 @@ export default function TransactionsPage() {
             </button>
             <button
               onClick={() => setFilterOption('transfer')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'transfer'
+              className={`px-3 h-[38px] rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center ${filterOption === 'transfer'
                 ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
@@ -1476,7 +1547,7 @@ export default function TransactionsPage() {
             </button>
             <button
               onClick={() => setFilterOption('pending')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filterOption === 'pending'
+              className={`px-3 h-[38px] rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center ${filterOption === 'pending'
                 ? 'bg-white dark:bg-gray-700 text-yellow-600 dark:text-yellow-400 shadow-sm'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
@@ -1485,75 +1556,132 @@ export default function TransactionsPage() {
             </button>
           </div>
 
-          {/* Sélecteur de catégorie amélioré */}
-          {/* Account Selector */}
-          {accounts.length > 0 && (
-            <div className="relative md:w-64">
-              <select
-                value={filterAccountId}
-                onChange={(e) => setFilterAccountId(e.target.value)}
-                className="w-full pl-4 pr-10 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 appearance-none transition-all shadow-sm hover:shadow-md"
-              >
-                <option value="all">Tous les comptes</option>
-                {accounts.map(acc => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.name}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">▼</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-1 xl:justify-end pb-1 xl:pb-0">
+            {/* Account Selector */}
+            {accounts.length > 0 && (
+              <div className="relative flex-1 min-w-[150px]">
+                <select
+                  value={filterAccountId}
+                  onChange={(e) => setFilterAccountId(e.target.value)}
+                  className="w-full pl-3 pr-8 h-[46px] border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 appearance-none transition-all shadow-sm hover:shadow-md text-sm truncate text-gray-600 dark:text-gray-300"
+                >
+                  <option value="all">Tous les comptes</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">▼</span>
+              </div>
+            )}
 
-          {/* Sélecteur de catégorie amélioré */}
-          {categories.length > 0 && (
-            <div className="relative md:w-64">
-              <select
-                value={filterOption.startsWith('category:') ? filterOption : ''}
-                onChange={(e) => {
-                  const value = e.target.value
-                  setFilterOption(value ? (value as `category:${string}`) : 'all')
-                }}
-                className="pl-4 pr-10 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 appearance-none transition-all shadow-sm hover:shadow-md"
-              >
-                <option value="">Filtrer par catégorie</option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={`category:${cat.id}`}>
-                    {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">▼</span>
+            {/* Sélecteur de catégorie amélioré */}
+            {categories.length > 0 && (
+              <div className="relative flex-1 min-w-[150px]">
+                <select
+                  value={filterOption.startsWith('category:') ? filterOption : ''}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setFilterOption(value ? (value as `category:${string}`) : 'all')
+                  }}
+                  className="w-full pl-3 pr-8 h-[46px] border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 appearance-none transition-all shadow-sm hover:shadow-md text-sm truncate text-gray-600 dark:text-gray-300"
+                >
+                  <option value="">Filtrer par catégorie</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={`category:${cat.id}`}>
+                      {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">▼</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                placeholder="Min €"
+                value={filterMinAmount}
+                onChange={(e) => setFilterMinAmount(e.target.value)}
+                className="h-[46px] border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm hover:shadow-md px-2 text-sm text-center text-gray-600 dark:text-gray-300 w-[80px] [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="number"
+                placeholder="Max €"
+                value={filterMaxAmount}
+                onChange={(e) => setFilterMaxAmount(e.target.value)}
+                className="h-[46px] border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm hover:shadow-md px-2 text-sm text-center text-gray-600 dark:text-gray-300 w-[80px] [&::-webkit-inner-spin-button]:appearance-none"
+              />
             </div>
-          )}
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={filterStartDate || ''}
-              onChange={(e) => setFilterStartDate(e.target.value || null)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm w-full md:w-40 transition-all shadow-sm hover:shadow-md"
-            />
-            <span className="text-gray-500 dark:text-gray-400 font-medium">→</span>
-            <input
-              type="date"
-              value={filterEndDate || ''}
-              onChange={(e) => setFilterEndDate(e.target.value || null)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm w-full md:w-40 transition-all shadow-sm hover:shadow-md"
-            />
-            {(filterStartDate || filterEndDate) && (
+
+            <div className="flex items-center gap-1">
+              <input
+                type="date"
+                value={filterStartDate || ''}
+                onChange={(e) => setFilterStartDate(e.target.value || null)}
+                className="h-[46px] border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm hover:shadow-md px-2 text-sm text-center text-gray-600 dark:text-gray-300 w-[115px]"
+              />
+              <span className="text-gray-400">→</span>
+              <input
+                type="date"
+                value={filterEndDate || ''}
+                onChange={(e) => setFilterEndDate(e.target.value || null)}
+                className="h-[46px] border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm hover:shadow-md px-2 text-sm text-center text-gray-600 dark:text-gray-300 w-[115px]"
+              />
+            </div>
+
+            {(filterStartDate || filterEndDate || filterMinAmount || filterMaxAmount) && (
               <button
                 type="button"
                 onClick={() => {
                   setFilterStartDate(null)
                   setFilterEndDate(null)
+                  setFilterMinAmount('')
+                  setFilterMaxAmount('')
                 }}
-                className="px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                className="px-3 h-[46px] text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center justify-center border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
               >
                 ✕
               </button>
             )}
           </div>
         </div>
+      </div>
+
+      {/* Bulk Selection Toolbar */}
+      <div className="flex items-center justify-between mb-4 px-1">
+        <div className="text-gray-500 dark:text-gray-400 font-medium">
+          {filteredTransactions.length} transaction{filteredTransactions.length > 1 ? 's' : ''} trouvée{filteredTransactions.length > 1 ? 's' : ''}
+        </div>
+        {filteredTransactions.length > 0 && (
+          <button
+            onClick={() => {
+              const allSelected = filteredTransactions.every(tx => selectedTransactions.has(tx.id))
+              if (allSelected) {
+                // Deselect all visible
+                setSelectedTransactions(prev => {
+                  const next = new Set(prev)
+                  filteredTransactions.forEach(tx => next.delete(tx.id))
+                  return next
+                })
+              } else {
+                // Select all visible
+                setSelectedTransactions(prev => {
+                  const next = new Set(prev)
+                  filteredTransactions.forEach(tx => next.add(tx.id))
+                  return next
+                })
+              }
+            }}
+            className="text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+          >
+            {filteredTransactions.every(tx => selectedTransactions.has(tx.id))
+              ? 'Tout désélectionner'
+              : 'Tout sélectionner'}
+          </button>
+        )}
       </div>
 
       {/* Transaction List */}
@@ -1740,57 +1868,59 @@ export default function TransactionsPage() {
       </div>
 
       {/* Bulk Action Bar */}
-      {selectedTransactions.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 rounded-full shadow-2xl border border-gray-200 dark:border-gray-700 p-2 pl-6 pr-2 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-5">
-          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">
-            {selectedTransactions.size} sélectionnée(s)
-          </span>
-          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
-          <div className="relative">
-            <select
-              className="appearance-none bg-transparent pl-2 pr-8 py-2 text-sm font-medium text-purple-600 dark:text-purple-400 focus:outline-none cursor-pointer hover:text-purple-700 dark:hover:text-purple-300"
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleBulkUpdate(e.target.value)
-                  e.target.value = ''
-                }
-              }}
-            >
-              <option value="">Modifier la catégorie...</option>
-              {categories.map(cat => {
-                const catSubCategories = subCategories.filter(sub => sub.categoryId === cat.id)
-                if (catSubCategories.length === 0) {
-                  return (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
-                    </option>
-                  )
-                }
-                return (
-                  <optgroup key={cat.id} label={`${cat.emoji ? `${cat.emoji} ` : ''}${cat.name}`}>
-                    <option value={cat.id}>
-                      {cat.emoji ? `${cat.emoji} ` : ''}{cat.name} (Général)
-                    </option>
-                    {catSubCategories.map(sub => (
-                      <option key={sub.id} value={sub.id}>
-                        {sub.name}
+      {
+        selectedTransactions.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 rounded-full shadow-2xl border border-gray-200 dark:border-gray-700 p-2 pl-6 pr-2 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-5">
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">
+              {selectedTransactions.size} sélectionnée(s)
+            </span>
+            <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <div className="relative">
+              <select
+                className="appearance-none bg-transparent pl-2 pr-8 py-2 text-sm font-medium text-purple-600 dark:text-purple-400 focus:outline-none cursor-pointer hover:text-purple-700 dark:hover:text-purple-300"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleBulkUpdate(e.target.value)
+                    e.target.value = ''
+                  }
+                }}
+              >
+                <option value="">Modifier la catégorie...</option>
+                {categories.map(cat => {
+                  const catSubCategories = subCategories.filter(sub => sub.categoryId === cat.id)
+                  if (catSubCategories.length === 0) {
+                    return (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
                       </option>
-                    ))}
-                  </optgroup>
-                )
-              })}
-            </select>
-            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-purple-500">▼</span>
+                    )
+                  }
+                  return (
+                    <optgroup key={cat.id} label={`${cat.emoji ? `${cat.emoji} ` : ''}${cat.name}`}>
+                      <option value={cat.id}>
+                        {cat.emoji ? `${cat.emoji} ` : ''}{cat.name} (Général)
+                      </option>
+                      {catSubCategories.map(sub => (
+                        <option key={sub.id} value={sub.id}>
+                          {sub.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )
+                })}
+              </select>
+              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-purple-500">▼</span>
+            </div>
+            <button
+              onClick={() => setSelectedTransactions(new Set())}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition-colors"
+              title="Annuler la sélection"
+            >
+              ✕
+            </button>
           </div>
-          <button
-            onClick={() => setSelectedTransactions(new Set())}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition-colors"
-            title="Annuler la sélection"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+        )
+      }
 
       {/* Manual Transaction Modal */}
       {
@@ -2056,6 +2186,8 @@ export default function TransactionsPage() {
                     )}
                   </div>
                 </div>
+
+
 
                 <div>
                   <label className="flex items-center gap-3 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">

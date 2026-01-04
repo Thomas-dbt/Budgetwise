@@ -90,17 +90,31 @@ export async function GET() {
       .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
 
     const investmentKeywords = ['épargne', 'epargne', 'investissement', 'invest', 'savings']
+    const excludedKeywords = ['immobilier', 'apport', 'notaire', 'capital', 'transfert']
+
     const monthlyInvested = monthTransactions
       .filter(t => {
-        if (t.type !== 'expense') return false
         if (!t.category) return false
         const catName = t.category.name.toLowerCase()
-        return investmentKeywords.some(kw => catName.includes(kw))
+
+        // Must match inclusion keywords
+        const isInvestment = investmentKeywords.some(kw => catName.includes(kw))
+        if (!isInvestment) return false
+
+        // Must NOT match exclusion keywords
+        const isExcluded = excludedKeywords.some(kw => catName.includes(kw))
+        if (isExcluded) return false
+
+        return true
       })
-      .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
+      .reduce((sum, t) => {
+        if (t.type === 'expense') return sum + Math.abs(Number(t.amount))
+        if (t.type === 'income') return sum - Math.abs(Number(t.amount))
+        return sum
+      }, 0)
 
     const savingsRate = monthlyIncome > 0
-      ? parseFloat(((monthlyInvested / monthlyIncome) * 100).toFixed(1))
+      ? parseFloat((Math.max(0, monthlyInvested) / monthlyIncome * 100).toFixed(1))
       : 0.0
 
     // Traitement des données pour le graphique (en mémoire plutôt qu'en SQL séquentiel)

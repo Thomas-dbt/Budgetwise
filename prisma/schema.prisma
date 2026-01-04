@@ -23,6 +23,7 @@ model User {
   calendarSyncs             CalendarSync[]
   realEstateInvestments     RealEstateInvestment[]
   categories                Category[]
+  categoryKeywords          CategoryKeyword[]
   budgets                   Budget[]
 }
 
@@ -82,16 +83,7 @@ model Category {
   budgets        Budget[]
 }
 
-model CategoryKeyword {
-  id         String   @id @default(cuid())
-  keyword    String
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
 
-  @@index([keyword])
-  @@unique([categoryId, keyword])
-}
 
 model Transaction {
   id              String       @id @default(cuid())
@@ -114,6 +106,22 @@ model Transaction {
   @@index([date])
   @@index([categoryId])
   @@index([accountId, date])
+}
+
+model CategoryKeyword {
+  id         String   @id @default(cuid())
+  keyword    String
+  matchType  String   @default("contains") // contains | exact
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, keyword]) // One rule per keyword per user
+  @@index([userId])
+  @@index([categoryId])
 }
 
 model CalendarEvent {

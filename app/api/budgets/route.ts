@@ -76,3 +76,18 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Impossible de sauvegarder le budget' }, { status: 500 })
     }
 }
+
+export async function DELETE(req: Request) {
+    try {
+        const userId = await getCurrentUserId()
+
+        await prisma.budget.deleteMany({
+            where: { userId }
+        })
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error('Budget delete error', error)
+        return NextResponse.json({ error: 'Impossible de supprimer les budgets' }, { status: 500 })
+    }
+}

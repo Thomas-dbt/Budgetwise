@@ -58,31 +58,52 @@ export async function getCurrentUserId() {
 
   console.log('Categories count for user:', categoriesCount)
 
-  if (categoriesCount === 0) {
-    console.log('Seeding default categories...')
+  // Check if we need to seed (either 0 or incomplete)
+  // We do a lightweight check first, then import the heavy defaultCategories if needed
+  if (categoriesCount < 15) { // Arbitrary threshold close to default length (16)
+    console.log(`Seeding/Fixing categories (Current: ${categoriesCount})...`)
     try {
       const { defaultCategories } = await import('@/lib/default-categories')
-      console.log('Default categories loaded:', defaultCategories.length)
+      // If we have fewer categories than defaults, we likely need to seed/repair
+      // Use upsert to be safe against existing ones
 
       for (const cat of defaultCategories) {
-        await prisma.category.create({
-          data: {
-            userId: user.id,
-            name: cat.name,
-            emoji: cat.emoji,
-            children: {
-              create: cat.subCategories.map((sub: any) => ({
-                name: sub.name,
+        try {
+          // Upsert ensures we don't break existing, but create missing
+          await prisma.category.upsert({
+            where: {
+              userId_name: {
                 userId: user.id,
-                keywords: {
-                  create: (sub.keywords || []).map((k: string) => ({ keyword: k }))
-                }
-              }))
-            }
-          } as any
-        })
+                name: cat.name
+              }
+            },
+            update: {
+              // Update emoji if needed, but safe to just touch nothing or emoji
+              emoji: cat.emoji
+            },
+            create: {
+              userId: user.id,
+              name: cat.name,
+              emoji: cat.emoji,
+              children: {
+                create: cat.subCategories.map((sub: any) => ({
+                  name: sub.name,
+                  userId: user.id,
+                  keywords: {
+                    create: (sub.keywords || []).map((k: string) => ({
+                      keyword: k,
+                      userId: user.id
+                    }))
+                  }
+                }))
+              }
+            } as any
+          })
+        } catch (catError) {
+          console.error(`Error seeding category ${cat.name}:`, catError)
+        }
       }
-      console.log('Default categories seeded successfully')
+      console.log('Default categories synced successfully')
     } catch (seedError) {
       console.error('Error seeding categories:', seedError)
     }
