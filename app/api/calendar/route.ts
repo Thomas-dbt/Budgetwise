@@ -123,8 +123,7 @@ export async function GET(req: Request) {
       if (!e.recurring &&
         e.type === 'debit' &&
         new Date(e.dueDate) > now &&
-        new Date(e.dueDate) <= sevenDaysFromNow &&
-        e.confirmed) {
+        new Date(e.dueDate) <= sevenDaysFromNow) {
         upcomingNext7Days.push(e)
       }
     })
@@ -134,7 +133,7 @@ export async function GET(req: Request) {
       if (e.recurring) {
         const occurrences = generateRecurringOccurrences(e, now, sevenDaysFromNow)
         occurrences.forEach(occ => {
-          if (occ.type === 'debit' && occ.confirmed) {
+          if (occ.type === 'debit') {
             upcomingNext7Days.push(occ)
           }
         })
@@ -242,7 +241,7 @@ export async function POST(req: Request) {
   try {
     const userId = await getCurrentUserId()
     const body = await req.json()
-    const { title, type, amount, dueDate, recurring, confirmed, notifyByEmail, emailReminderDaysBefore } = body
+    const { title, type, amount, dueDate, recurring, confirmed, notifyByEmail, emailReminderDaysBefore, toAccountId } = body
 
     if (!title || !type || amount === undefined || amount === null || !dueDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -285,7 +284,8 @@ export async function POST(req: Request) {
         emailReminderDaysBefore: typeof emailReminderDaysBefore === 'number' ? emailReminderDaysBefore : null,
         categoryId: finalCategoryId,
         // subCategoryId removed
-        accountId: body.accountId || null
+        accountId: body.accountId || null,
+        toAccountId: body.toAccountId || null
       }
     })
 
@@ -325,6 +325,9 @@ export async function PATCH(req: Request) {
     const event = await prisma.calendarEvent.update({
       where: { id },
       data: {
+        ...(updateData.title && { title: updateData.title }),
+        ...(updateData.amount !== undefined && { amount: Number(updateData.amount) }),
+        ...(updateData.type && { type: updateData.type }),
         ...(updateData.confirmed !== undefined && { confirmed: updateData.confirmed }),
         ...(updateData.dueDate && { dueDate: new Date(updateData.dueDate) }),
         ...(updateData.notifyByEmail !== undefined && { notifyByEmail: !!updateData.notifyByEmail }),
@@ -335,7 +338,8 @@ export async function PATCH(req: Request) {
         }),
         ...(updateData.recurring && { recurring: updateData.recurring }),
         ...(finalCategoryId !== undefined && { categoryId: finalCategoryId }),
-        ...(updateData.accountId !== undefined && { accountId: updateData.accountId || null })
+        ...(updateData.accountId !== undefined && { accountId: updateData.accountId || null }),
+        ...(updateData.toAccountId !== undefined && { toAccountId: updateData.toAccountId || null })
       }
     })
 
@@ -385,6 +389,7 @@ function serializeCalendarEvent(e: any) {
       categoryId: category ? category.id : null,
       subCategoryId: subCategory ? subCategory.id : null,
       accountId: e.accountId,
+      toAccountId: e.toAccountId,
       category,
       subCategory
     }

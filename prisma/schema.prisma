@@ -39,6 +39,7 @@ model Account {
   transferToTransactions Transaction[] @relation("TransactionToAccount")
   shares                AccountShare[]
   calendarEvents        CalendarEvent[]
+  calendarEventsTo      CalendarEvent[] @relation("CalendarEventToAccount")
   investmentAssets      InvestmentAsset[] // Relation inverse pour les Livrets liés
   isJoint               Boolean         @default(false)
   jointAccessCode       String?
@@ -140,6 +141,8 @@ model CalendarEvent {
   category                Category?    @relation(fields: [categoryId], references: [id])
   accountId               String?
   account                 Account?     @relation(fields: [accountId], references: [id])
+  toAccountId             String?
+  toAccount               Account?     @relation("CalendarEventToAccount", fields: [toAccountId], references: [id])
   createdAt               DateTime     @default(now())
 }
 

@@ -53,7 +53,7 @@ export async function GET() {
           account: { ownerId: userId },
           date: { gte: startOfMonth, lte: endOfMonth },
         },
-        include: { category: true, account: true },
+        include: { category: true, account: true, toAccount: true },
       }),
 
       // 3. Transactions récentes (10 dernières)
@@ -89,8 +89,10 @@ export async function GET() {
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
 
-    const investmentKeywords = ['épargne', 'epargne', 'investissement', 'invest', 'savings']
-    const excludedKeywords = ['immobilier', 'apport', 'notaire', 'capital', 'transfert']
+    const investmentKeywords = ['épargne', 'epargne', 'investissement', 'invest', 'savings', 'bourse', 'pea', 'cto', 'livret', 'av']
+    const excludedKeywords = ['immobilier', 'apport', 'notaire', 'capital'] // removed 'transfert' as it might be relevant
+
+    const savingsAccountTypes = ['savings', 'investment']
 
     const monthlyInvested = monthTransactions
       .filter(t => {
@@ -108,8 +110,46 @@ export async function GET() {
         return true
       })
       .reduce((sum, t) => {
-        if (t.type === 'expense') return sum + Math.abs(Number(t.amount))
-        if (t.type === 'income') return sum - Math.abs(Number(t.amount))
+        const amount = Math.abs(Number(t.amount))
+
+        if (t.type === 'expense') {
+          // Expense tagged as savings = Positive Saving
+          return sum + amount
+        }
+
+        if (t.type === 'income') {
+          // Income tagged as savings (e.g. reversal) = Negative Saving
+          return sum - amount
+        }
+
+        if (t.type === 'transfer') {
+          // Check source and destination account types
+          const sourceIsSavings = savingsAccountTypes.includes(t.account.type)
+          const destIsSavings = t.toAccount ? savingsAccountTypes.includes(t.toAccount.type) : false // If no destination, assume external/checking
+
+          if (sourceIsSavings && destIsSavings) {
+            // Moving money between savings accounts = Neutral
+            return sum
+          }
+
+          if (sourceIsSavings && !destIsSavings) {
+            // Withdrawal from Savings to Checking/External = Negative Saving
+            return sum - amount
+          }
+
+          if (!sourceIsSavings && destIsSavings) {
+            // Contribution from Checking to Savings = Positive Saving
+            return sum + amount
+          }
+
+          if (!sourceIsSavings && !destIsSavings) {
+            // Checking to Checking, but user tagged as "Savings"
+            // Ambiguous. Assume Positive if user explicitly tagged it? 
+            // Or Neutral? Let's assume Positive as they tagged it "Epargne".
+            return sum + amount
+          }
+        }
+
         return sum
       }, 0)
 

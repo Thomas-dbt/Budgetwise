@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { authFetch } from '@/lib/auth-fetch'
 
 interface CategoryOption {
@@ -30,6 +30,7 @@ interface CalendarEvent {
   subCategoryId?: string | null
   subCategory?: SubCategoryOption | null
   accountId?: string | null
+  toAccountId?: string | null
 }
 
 type RecurringOption = 'none' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
@@ -89,7 +90,7 @@ export default function CalendarPage() {
     title: string
     amount: string
     dueDate: string
-    type: 'debit' | 'credit'
+    type: 'debit' | 'credit' | 'transfer'
     recurring: RecurringOption
     confirmed: boolean
     notifyByEmail: boolean
@@ -97,6 +98,7 @@ export default function CalendarPage() {
     categoryId: string
     subCategoryId: string
     accountId: string
+    toAccountId: string
   }>({
     title: '',
     amount: '',
@@ -108,7 +110,8 @@ export default function CalendarPage() {
     emailReminderDaysBefore: '2',
     categoryId: '',
     subCategoryId: '',
-    accountId: ''
+    accountId: '',
+    toAccountId: ''
   })
   const [accounts, setAccounts] = useState<AccountOption[]>([])
   const [categories, setCategories] = useState<CategoryOption[]>([])
@@ -121,6 +124,7 @@ export default function CalendarPage() {
   const [confirmModal, setConfirmModal] = useState<{
     event: CalendarEvent
     accountId: string
+    toAccountId?: string
     description: string
     date: string
     categoryId: string
@@ -128,6 +132,7 @@ export default function CalendarPage() {
   } | null>(null)
   const [confirmModalError, setConfirmModalError] = useState<string | null>(null)
   const [confirmModalLoading, setConfirmModalLoading] = useState(false)
+  const isSubmittingRef = useRef(false)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [hoveredDay, setHoveredDay] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar')
@@ -135,7 +140,7 @@ export default function CalendarPage() {
     title: string
     amount: string
     dueDate: string
-    type: 'debit' | 'credit'
+    type: 'debit' | 'credit' | 'transfer'
     recurring: RecurringOption
     confirmed: boolean
     notifyByEmail: boolean
@@ -143,6 +148,7 @@ export default function CalendarPage() {
     categoryId: string
     subCategoryId: string
     accountId: string
+    toAccountId: string
   }>({
     title: '',
     amount: '',
@@ -154,7 +160,8 @@ export default function CalendarPage() {
     emailReminderDaysBefore: '2',
     categoryId: '',
     subCategoryId: '',
-    accountId: ''
+    accountId: '',
+    toAccountId: ''
   })
 
   useEffect(() => {
@@ -393,6 +400,7 @@ export default function CalendarPage() {
     setConfirmModal({
       event,
       accountId,
+      toAccountId: event.toAccountId || '',
       description: event.title,
       date: event.dueDate.slice(0, 10),
       categoryId,
@@ -413,12 +421,19 @@ export default function CalendarPage() {
   const handleConfirmModalSubmit = async (e?: FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault()
     if (!confirmModal) return
+    if (isSubmittingRef.current) return // Prevent double submission
+
     if (!confirmModal.accountId) {
       setConfirmModalError('Sélectionnez un compte pour enregistrer la transaction.')
       return
     }
 
-    const transactionType = confirmModal.event.type === 'credit' ? 'income' : 'expense'
+    isSubmittingRef.current = true
+
+    const transactionType = confirmModal.event.type === 'transfer'
+      ? 'transfer'
+      : (confirmModal.event.type === 'credit' ? 'income' : 'expense')
+
     const amount = Math.abs(Number(confirmModal.event.amount))
     if (Number.isNaN(amount) || amount === 0) {
       setConfirmModalError("Montant d'échéance invalide.")
@@ -433,6 +448,7 @@ export default function CalendarPage() {
         method: 'POST',
         body: JSON.stringify({
           accountId: confirmModal.accountId,
+          toAccountId: confirmModal.event.type === 'transfer' ? confirmModal.toAccountId : undefined,
           amount,
           type: transactionType,
           date: confirmModal.date,
@@ -475,6 +491,7 @@ export default function CalendarPage() {
       setConfirmModalError(error?.message || 'Impossible de confirmer cette échéance.')
     } finally {
       setConfirmModalLoading(false)
+      isSubmittingRef.current = false
     }
   }
 
@@ -485,6 +502,9 @@ export default function CalendarPage() {
       openConfirmModal(event)
       return
     }
+
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
 
     // Pré-remplir le modal avec les infos disponibles
     setConfirmModalError(null)
@@ -498,15 +518,20 @@ export default function CalendarPage() {
     })
 
     // Confirmer automatiquement
+    // Confirmer automatiquement
     setConfirmModalLoading(true)
+    let transactionCreated = false
     try {
-      const transactionType = event.type === 'credit' ? 'income' : 'expense'
+      const transactionType = event.type === 'transfer'
+        ? 'transfer'
+        : (event.type === 'credit' ? 'income' : 'expense')
       const amount = Math.abs(Number(event.amount))
 
       const transactionResponse = await authFetch('/api/transactions', {
         method: 'POST',
         body: JSON.stringify({
           accountId: event.accountId,
+          toAccountId: event.type === 'transfer' ? event.toAccountId : undefined,
           amount,
           type: transactionType,
           date: event.dueDate.slice(0, 10),
@@ -519,6 +544,8 @@ export default function CalendarPage() {
       if (!transactionResponse.ok) {
         throw new Error("Impossible d'ajouter la transaction.")
       }
+
+      transactionCreated = true
 
       const eventIdToConfirm = event.id.includes('-')
         ? event.id.split('-')[0]
@@ -534,10 +561,20 @@ export default function CalendarPage() {
     } catch (error: any) {
       console.error('Quick confirm error:', error)
       setConfirmModalError(error?.message || 'Impossible de confirmer cette échéance.')
-      // Ouvrir le modal en cas d'erreur pour permettre la correction
-      openConfirmModal(event)
+
+      if (transactionCreated) {
+        // Si la transaction a été créée mais que la confirmation calendrier a échoué,
+        // on ne rouvre PAS le modal pour éviter les doublons.
+        // On essaie juste de rafraîchir les données.
+        setNewEventSuccess('Transaction ajoutée, mais erreur de mise à jour du calendrier.')
+        await fetchCalendarData().catch(console.error)
+      } else {
+        // Ouvrir le modal uniquement si la transaction n'a pas été créée
+        openConfirmModal(event)
+      }
     } finally {
       setConfirmModalLoading(false)
+      isSubmittingRef.current = false
     }
   }
 
@@ -548,14 +585,15 @@ export default function CalendarPage() {
       title: '',
       amount: '',
       dueDate: new Date().toISOString().slice(0, 10),
-      type: 'debit',
-      recurring: 'none',
+      type: 'debit' as 'debit' | 'credit' | 'transfer',
+      recurring: 'none' as RecurringOption,
       confirmed: false,
       notifyByEmail: true,
       emailReminderDaysBefore: '2',
       categoryId: categories[0]?.id || '',
       subCategoryId: '',
       accountId: accounts[0]?.id || '',
+      toAccountId: '',
     })
     setSubCategories([])
     setShowNewSubCategoryInput(false)
@@ -576,14 +614,16 @@ export default function CalendarPage() {
       title: event.title,
       amount: event.amount.toString(),
       dueDate: event.dueDate.slice(0, 10),
-      type: event.type as 'debit' | 'credit',
+      type: event.type as 'debit' | 'credit' | 'transfer',
       recurring: (event.recurring || 'none') as RecurringOption,
       confirmed: event.confirmed || false,
       notifyByEmail: event.notifyByEmail || false,
       emailReminderDaysBefore: event.emailReminderDaysBefore?.toString() || '2',
       categoryId: event.categoryId || '',
+
       subCategoryId: event.subCategoryId || '',
-      accountId: event.accountId || ''
+      accountId: event.accountId || '',
+      toAccountId: event.toAccountId || ''
     })
 
     // Charger les sous-catégories si une catégorie est sélectionnée
@@ -651,6 +691,7 @@ export default function CalendarPage() {
           categoryId: editEventForm.categoryId || null,
           subCategoryId: editEventForm.subCategoryId || null,
           accountId: editEventForm.accountId || null,
+          toAccountId: editEventForm.type === 'transfer' ? editEventForm.toAccountId : null,
         }),
       })
 
@@ -719,6 +760,7 @@ export default function CalendarPage() {
           categoryId: newEventForm.categoryId || null,
           subCategoryId: newEventForm.subCategoryId || null,
           accountId: newEventForm.accountId || null,
+          toAccountId: newEventForm.type === 'transfer' ? newEventForm.toAccountId : null,
         }),
       })
 
@@ -846,15 +888,14 @@ export default function CalendarPage() {
   const today = new Date()
 
   return (
-    <div className="p-8">
+    <div className="p-2 min-h-screen flex flex-col">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+      <div className="mb-1 shrink-0">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Calendrier Financier
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2 text-lg">Suivez vos prélèvements et échéances</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
@@ -874,49 +915,7 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Section échéances en attente */}
-        {safeData.pendingConfirmations.length > 0 && (
-          <div className="mb-6 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-2 border-orange-200 dark:border-orange-800 rounded-xl p-4">
-            <h2 className="text-lg font-semibold mb-3 text-orange-800 dark:text-orange-200">
-              Échéances en attente de confirmation ({safeData.pendingConfirmations.length})
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {safeData.pendingConfirmations.slice(0, 6).map((event) => {
-                const daysUntil = getDaysUntil(event.dueDate)
-                return (
-                  <div
-                    key={event.id}
-                    className="bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-700 rounded-lg p-3 hover:shadow-md transition-all cursor-pointer"
-                    onClick={() => setSelectedEvent(event)}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-semibold text-sm flex-1">{event.title}</h3>
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${daysUntil < 0
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                        : daysUntil === 0
-                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                        }`}>
-                        {daysUntil < 0 ? 'En retard' : daysUntil === 0 ? 'Aujourd\'hui' : `Dans ${daysUntil}j`}
-                      </span>
-                    </div>
-                    <p className="text-base font-bold text-orange-600 dark:text-orange-400 mb-1">
-                      {formatCurrency(event.amount)}
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {formatDate(event.dueDate)}
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
-            {safeData.pendingConfirmations.length > 6 && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-3 text-center">
-                +{safeData.pendingConfirmations.length - 6} autre{safeData.pendingConfirmations.length - 6 > 1 ? 's' : ''} échéance{safeData.pendingConfirmations.length - 6 > 1 ? 's' : ''}
-              </p>
-            )}
-          </div>
-        )}
+
       </div>
 
       {newEventSuccess && (
@@ -1009,18 +1008,10 @@ export default function CalendarPage() {
                 {!selectedEvent.confirmed && (
                   <button
                     type="button"
-                    onClick={async () => {
+                    onClick={() => {
                       if (!selectedEvent) return
-
-                      // Si l'échéance a un compte, créer automatiquement la transaction
-                      if (selectedEvent.accountId) {
-                        await handleQuickConfirm(selectedEvent)
-                        setSelectedEvent(null)
-                      } else {
-                        // Sinon, ouvrir le modal pour sélectionner un compte
-                        openConfirmModal(selectedEvent)
-                        setSelectedEvent(null)
-                      }
+                      openConfirmModal(selectedEvent)
+                      setSelectedEvent(null)
                     }}
                     className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg font-medium"
                   >
@@ -1069,7 +1060,7 @@ export default function CalendarPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  Compte à débiter/créditer *
+                  {confirmModal.event.type === 'transfer' ? 'Compte à débiter *' : 'Compte à débiter/créditer *'}
                 </label>
                 {accounts.length === 0 ? (
                   <p className="text-sm text-red-600 dark:text-red-400">
@@ -1092,6 +1083,31 @@ export default function CalendarPage() {
                   </select>
                 )}
               </div>
+
+              {confirmModal.event.type === 'transfer' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Compte de destination *
+                  </label>
+                  <select
+                    value={confirmModal.toAccountId || ''}
+                    onChange={(e) =>
+                      setConfirmModal(prev => prev ? { ...prev, toAccountId: e.target.value } : prev)
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Sélectionnez un compte</option>
+                    {accounts
+                      .filter(acc => acc.id !== confirmModal.accountId)
+                      .map(account => (
+                        <option key={account.id} value={account.id}>
+                          {account.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
@@ -1616,31 +1632,31 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            {/* Onglets Calendrier / Liste */}
-            <div className="flex items-center gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setViewMode('calendar')}
-                className={`px-4 py-2 font-medium transition-all ${viewMode === 'calendar'
-                  ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                  }`}
-              >
-                Calendrier
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`px-4 py-2 font-medium transition-all ${viewMode === 'list'
-                  ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                  }`}
-              >
-                Liste
-              </button>
-            </div>
+            {/* Onglets Calendrier / Liste + Légende */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setViewMode('calendar')}
+                  className={`px-4 py-2 font-medium transition-all ${viewMode === 'calendar'
+                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                >
+                  Calendrier
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-4 py-2 font-medium transition-all ${viewMode === 'list'
+                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                >
+                  Liste
+                </button>
+              </div>
 
-            {viewMode === 'calendar' && (
-              <>
-                <div className="mb-4 flex items-center gap-4 text-sm">
+              {viewMode === 'calendar' && (
+                <div className="flex items-center gap-4 text-sm px-4 sm:px-0">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-green-500"></div>
                     <span>Confirmé</span>
@@ -1650,8 +1666,13 @@ export default function CalendarPage() {
                     <span>En attente</span>
                   </div>
                 </div>
+              )}
+            </div>
 
-                <div className="grid grid-cols-7 gap-2 mb-2">
+            {viewMode === 'calendar' && (
+              <>
+
+                <div className="grid grid-cols-7 gap-1 mb-1">
                   {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
                     <div key={day} className="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">
                       {day}
@@ -1659,10 +1680,12 @@ export default function CalendarPage() {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-7 gap-2">
+                <div
+                  className="grid grid-cols-7 gap-1"
+                >
                   {days.map((day, index) => {
                     if (day === null) {
-                      return <div key={index} className="aspect-square"></div>
+                      return <div key={index} className="h-24 bg-gray-50/50 dark:bg-gray-800/20 rounded-xl"></div>
                     }
                     const events = getEventsForDay(day, safeData.monthEvents)
                     const isToday = day === today.getDate() &&
@@ -1674,7 +1697,7 @@ export default function CalendarPage() {
                     return (
                       <div
                         key={day}
-                        className={`min-h-[100px] border rounded-xl p-2 flex flex-col relative transition-all ${isToday ? 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 border-blue-300 dark:border-blue-700 shadow-md' :
+                        className={`h-24 border rounded-xl p-1 flex flex-col relative transition-all ${isToday ? 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 border-blue-300 dark:border-blue-700 shadow-md' :
                           'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                           } ${hasEvents ? 'cursor-pointer hover:shadow-lg' : ''}`}
                         onMouseEnter={() => hasEvents && setHoveredDay(day)}
@@ -1689,18 +1712,18 @@ export default function CalendarPage() {
                           }
                         }}
                       >
-                        <span className={`text-sm font-semibold mb-1 ${isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
+                        <span className={`text-xs font-semibold mb-0.5 ${isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
                           }`}>
                           {day}
                         </span>
                         {hasEvents && (
-                          <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
+                          <div className="flex-1 flex flex-col gap-0.5 overflow-hidden">
                             {events.slice(0, 2).map((event) => {
                               const { className } = getCategoryMeta(event)
                               return (
                                 <div
                                   key={event.id}
-                                  className={`text-xs px-2 py-1 rounded-md truncate cursor-pointer transition-all hover:scale-105 ${event.confirmed
+                                  className={`text-[10px] px-1 py-0.5 rounded-sm truncate cursor-pointer transition-all hover:scale-105 ${event.confirmed
                                     ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
                                     : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400 opacity-70'
                                     }`}
@@ -1716,7 +1739,7 @@ export default function CalendarPage() {
                               )
                             })}
                             {events.length > 2 && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium px-2">
+                              <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium px-1">
                                 +{events.length - 2} autre{events.length - 2 > 1 ? 's' : ''}
                               </div>
                             )}
@@ -1853,18 +1876,14 @@ export default function CalendarPage() {
                               </p>
                               {!event.confirmed && (
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    // Si l'événement a déjà un compte, confirmation rapide
-                                    if (event.accountId) {
-                                      handleQuickConfirm(event)
-                                    } else {
-                                      openConfirmModal(event)
-                                    }
+                                    openConfirmModal(event)
                                   }}
                                   className="mt-2 px-3 py-1 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
                                 >
-                                  {event.accountId ? 'Confirmer automatiquement' : 'Confirmer'}
+                                  Confirmer
                                 </button>
                               )}
                             </div>
@@ -1880,7 +1899,7 @@ export default function CalendarPage() {
 
         {/* Colonne de droite - 7 prochains jours */}
         <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm sticky top-8">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar">
             <h2 className="text-xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               7 Prochains Jours
             </h2>
@@ -1937,18 +1956,14 @@ export default function CalendarPage() {
                       )}
                       {!event.confirmed && (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            // Si l'événement a déjà un compte, confirmation rapide
-                            if (event.accountId) {
-                              handleQuickConfirm(event)
-                            } else {
-                              openConfirmModal(event)
-                            }
+                            openConfirmModal(event)
                           }}
                           className="mt-2 w-full px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-medium"
                         >
-                          {event.accountId ? 'Confirmer automatiquement' : 'Confirmer'}
+                          Confirmer
                         </button>
                       )}
                     </div>
@@ -1957,42 +1972,7 @@ export default function CalendarPage() {
               )}
             </div>
 
-            {/* Section échéances récurrentes */}
-            {safeData.recurringEvents.length > 0 && (
-              <>
-                <h3 className="text-lg font-semibold mt-6 mb-3">Récurrentes</h3>
-                <div className="space-y-3">
-                  {safeData.recurringEvents.map((event) => {
-                    const { className, label } = getCategoryMeta(event)
-                    const eventDate = new Date(event.dueDate)
-                    const dayOfMonth = eventDate.getDate()
 
-                    return (
-                      <div key={event.id} className="border border-purple-200 dark:border-purple-800 rounded-lg p-3 bg-purple-50/50 dark:bg-purple-900/10">
-                        <h4 className="font-semibold text-sm mb-1">{event.title}</h4>
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${className}`}>
-                            {label}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                            {event.recurring === 'monthly' ? 'Mensuel' :
-                              event.recurring === 'weekly' ? 'Hebdo' :
-                                event.recurring === 'quarterly' ? 'Trim' :
-                                  event.recurring === 'yearly' ? 'Annuel' : event.recurring}
-                          </span>
-                        </div>
-                        <p className="text-base font-bold text-purple-600 dark:text-purple-400 mb-1">
-                          {formatCurrency(event.amount)}
-                        </p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                          Le {dayOfMonth} de chaque mois
-                        </p>
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
-            )}
           </div>
         </div>
       </div>
@@ -2029,34 +2009,67 @@ export default function CalendarPage() {
                   Informations principales
                 </h3>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                    Libellé de l'échéance *
-                  </label>
-                  <input
-                    type="text"
-                    value={newEventForm.title}
-                    onChange={(e) => setNewEventForm(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    placeholder="Ex: Loyer, Abonnement Netflix, Salaire..."
-                    required
-                  />
-                </div>
-
+                {/* Row 1: Compte & Type */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                      Compte *
+                    </label>
+                    <select
+                      value={newEventForm.accountId}
+                      onChange={(e) => setNewEventForm(prev => ({ ...prev, accountId: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    >
+                      <option value="">Sélectionnez un compte</option>
+                      {accounts.map(account => (
+                        <option key={account.id} value={account.id}>
+                          {account.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       Type d'échéance *
                     </label>
                     <select
                       value={newEventForm.type}
-                      onChange={(e) => setNewEventForm(prev => ({ ...prev, type: e.target.value as 'debit' | 'credit' }))}
+                      onChange={(e) => setNewEventForm(prev => ({ ...prev, type: e.target.value as 'debit' | 'credit' | 'transfer' }))}
                       className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     >
                       <option value="debit">Débit (prélèvement)</option>
                       <option value="credit">Crédit (revenu)</option>
+                      <option value="transfer">Virement</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Row 2: Destination Account (if transfer) */}
+                {newEventForm.type === 'transfer' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                      Compte de destination *
+                    </label>
+                    <select
+                      value={newEventForm.toAccountId}
+                      onChange={(e) => setNewEventForm(prev => ({ ...prev, toAccountId: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      required={newEventForm.type === 'transfer'}
+                    >
+                      <option value="">Sélectionnez un compte</option>
+                      {accounts
+                        .filter(acc => acc.id !== newEventForm.accountId)
+                        .map(account => (
+                          <option key={account.id} value={account.id}>
+                            {account.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Row 3: Amount & Date */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       Montant *
@@ -2072,9 +2085,6 @@ export default function CalendarPage() {
                       required
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       Date d'échéance *
@@ -2087,24 +2097,24 @@ export default function CalendarPage() {
                       required
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Récurrence
-                    </label>
-                    <select
-                      value={newEventForm.recurring}
-                      onChange={(e) => setNewEventForm(prev => ({ ...prev, recurring: e.target.value as RecurringOption }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    >
-                      <option value="none">Aucune (ponctuelle)</option>
-                      <option value="weekly">Hebdomadaire</option>
-                      <option value="monthly">Mensuelle</option>
-                      <option value="quarterly">Trimestrielle</option>
-                      <option value="yearly">Annuelle</option>
-                    </select>
-                  </div>
                 </div>
 
+                {/* Row 4: Description (Title) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Description (Libellé) *
+                  </label>
+                  <input
+                    type="text"
+                    value={newEventForm.title}
+                    onChange={(e) => setNewEventForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="Ex: Loyer, Virement épargne..."
+                    required
+                  />
+                </div>
+
+                {/* Row 5: Category & SubCategory */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
@@ -2217,24 +2227,22 @@ export default function CalendarPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Compte
-                    </label>
-                    <select
-                      value={newEventForm.accountId}
-                      onChange={(e) => setNewEventForm(prev => ({ ...prev, accountId: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    >
-                      <option value="">Sélectionnez un compte</option>
-                      {accounts.map(account => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Row 6: Recurrence */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Récurrence
+                  </label>
+                  <select
+                    value={newEventForm.recurring}
+                    onChange={(e) => setNewEventForm(prev => ({ ...prev, recurring: e.target.value as RecurringOption }))}
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
+                    <option value="none">Aucune (ponctuelle)</option>
+                    <option value="weekly">Hebdomadaire</option>
+                    <option value="monthly">Mensuelle</option>
+                    <option value="quarterly">Trimestrielle</option>
+                    <option value="yearly">Annuelle</option>
+                  </select>
                 </div>
               </div>
 
@@ -2308,99 +2316,262 @@ export default function CalendarPage() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+        </div >
+      )
+      }
 
-      {editModalOpen && editingEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={closeEditModal}
-          ></div>
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-              <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Modifier l'échéance
-              </h2>
-              <button
-                onClick={closeEditModal}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
-              >
-                ×
-              </button>
-            </div>
+      {
+        editModalOpen && editingEvent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={closeEditModal}
+            ></div>
+            <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+                <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Modifier l'échéance
+                </h2>
+                <button
+                  onClick={closeEditModal}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                >
+                  ×
+                </button>
+              </div>
 
-            <form onSubmit={handleEditEventSubmit} className="px-6 py-4 space-y-6">
-              {editEventError && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
-                  {editEventError}
-                </div>
-              )}
-
-              {/* Section principale - Champs essentiels */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 pb-2 border-b border-gray-200 dark:border-gray-700">
-                  Informations principales
-                </h3>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                    Libellé de l'échéance *
-                  </label>
-                  <input
-                    type="text"
-                    value={editEventForm.title}
-                    onChange={(e) => setEditEventForm(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    placeholder="Ex: Loyer, Abonnement Netflix, Salaire..."
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Type d'échéance *
-                    </label>
-                    <select
-                      value={editEventForm.type}
-                      onChange={(e) => setEditEventForm(prev => ({ ...prev, type: e.target.value as 'debit' | 'credit' }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    >
-                      <option value="debit">Débit (prélèvement)</option>
-                      <option value="credit">Crédit (revenu)</option>
-                    </select>
+              <form onSubmit={handleEditEventSubmit} className="px-6 py-4 space-y-6">
+                {editEventError && (
+                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+                    {editEventError}
                   </div>
+                )}
+
+                {/* Section principale - Champs essentiels */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 pb-2 border-b border-gray-200 dark:border-gray-700">
+                    Informations principales
+                  </h3>
+
+                  {/* Row 1: Compte & Type */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                        Compte
+                      </label>
+                      <select
+                        value={editEventForm.accountId}
+                        onChange={(e) => setEditEventForm(prev => ({ ...prev, accountId: e.target.value }))}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      >
+                        <option value="">Sélectionnez un compte</option>
+                        {accounts.map(account => (
+                          <option key={account.id} value={account.id}>
+                            {account.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                        Type d'échéance *
+                      </label>
+                      <select
+                        value={editEventForm.type}
+                        onChange={(e) => setEditEventForm(prev => ({ ...prev, type: e.target.value as 'debit' | 'credit' | 'transfer' }))}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      >
+                        <option value="debit">Débit (prélèvement)</option>
+                        <option value="credit">Crédit (revenu)</option>
+                        <option value="transfer">Virement</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Destination Account (if transfer) */}
+                  {editEventForm.type === 'transfer' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                        Compte de destination *
+                      </label>
+                      <select
+                        value={editEventForm.toAccountId}
+                        onChange={(e) => setEditEventForm(prev => ({ ...prev, toAccountId: e.target.value }))}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        required={editEventForm.type === 'transfer'}
+                      >
+                        <option value="">Sélectionnez un compte</option>
+                        {accounts
+                          .filter(acc => acc.id !== editEventForm.accountId)
+                          .map(account => (
+                            <option key={account.id} value={account.id}>
+                              {account.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Row 3: Amount & Date */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                        Montant *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editEventForm.amount}
+                        onChange={(e) => setEditEventForm(prev => ({ ...prev, amount: e.target.value }))}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        placeholder="1200.00"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                        Date d'échéance *
+                      </label>
+                      <input
+                        type="date"
+                        value={editEventForm.dueDate}
+                        onChange={(e) => setEditEventForm(prev => ({ ...prev, dueDate: e.target.value }))}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 4: Description (Title) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Montant *
+                      Libellé de l'échéance *
                     </label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editEventForm.amount}
-                      onChange={(e) => setEditEventForm(prev => ({ ...prev, amount: e.target.value }))}
+                      type="text"
+                      value={editEventForm.title}
+                      onChange={(e) => setEditEventForm(prev => ({ ...prev, title: e.target.value }))}
                       className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      placeholder="1200.00"
+                      placeholder="Ex: Loyer, Abonnement Netflix, Salaire..."
                       required
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Date d'échéance *
-                    </label>
-                    <input
-                      type="date"
-                      value={editEventForm.dueDate}
-                      onChange={(e) => setEditEventForm(prev => ({ ...prev, dueDate: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      required
-                    />
+                  {/* Row 5: Category & SubCategory */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                        Catégorie
+                      </label>
+                      <select
+                        value={editEventForm.categoryId}
+                        onChange={(e) => {
+                          setEditEventForm(prev => ({ ...prev, categoryId: e.target.value, subCategoryId: '' }))
+                          setShowNewSubCategoryInput(false)
+                          setNewSubCategoryName('')
+                        }}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      >
+                        <option value="">Sans catégorie</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                        Sous-catégorie
+                      </label>
+                      {editEventForm.categoryId ? (
+                        <div className="space-y-2">
+                          <select
+                            value={editEventForm.subCategoryId}
+                            onChange={(e) => {
+                              if (e.target.value === '__new__') {
+                                setShowNewSubCategoryInput(true)
+                                setNewSubCategoryName('')
+                              } else {
+                                setEditEventForm(prev => ({ ...prev, subCategoryId: e.target.value }))
+                                setShowNewSubCategoryInput(false)
+                              }
+                            }}
+                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                          >
+                            <option value="">Sans sous-catégorie</option>
+                            {subCategories.map(subCat => (
+                              <option key={subCat.id} value={subCat.id}>
+                                {subCat.name}
+                              </option>
+                            ))}
+                            <option value="__new__">+ Créer une nouvelle sous-catégorie</option>
+                          </select>
+                          {showNewSubCategoryInput && (
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={newSubCategoryName}
+                                onChange={(e) => setNewSubCategoryName(e.target.value)}
+                                onKeyDown={async (e) => {
+                                  if (e.key === 'Enter' && newSubCategoryName.trim()) {
+                                    e.preventDefault()
+                                    try {
+                                      const newSubCat = await createSubCategory(newSubCategoryName.trim(), editEventForm.categoryId)
+                                      setEditEventForm(prev => ({ ...prev, subCategoryId: newSubCat.id }))
+                                      setShowNewSubCategoryInput(false)
+                                      setNewSubCategoryName('')
+                                    } catch (error) {
+                                      console.error('Error creating subcategory:', error)
+                                    }
+                                  }
+                                }}
+                                placeholder="Nom de la sous-catégorie"
+                                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (newSubCategoryName.trim()) {
+                                    try {
+                                      const newSubCat = await createSubCategory(newSubCategoryName.trim(), editEventForm.categoryId)
+                                      setEditEventForm(prev => ({ ...prev, subCategoryId: newSubCat.id }))
+                                      setShowNewSubCategoryInput(false)
+                                      setNewSubCategoryName('')
+                                    } catch (error) {
+                                      console.error('Error creating subcategory:', error)
+                                    }
+                                  }
+                                }}
+                                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowNewSubCategoryInput(false)
+                                  setNewSubCategoryName('')
+                                  setEditEventForm(prev => ({ ...prev, subCategoryId: '' }))
+                                }}
+                                className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <select disabled className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed">
+                          <option value="">Sélectionnez d'abord une catégorie</option>
+                        </select>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Row 6: Recurrence */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       Récurrence
@@ -2419,212 +2590,80 @@ export default function CalendarPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Catégorie
-                    </label>
-                    <select
-                      value={editEventForm.categoryId}
-                      onChange={(e) => {
-                        setEditEventForm(prev => ({ ...prev, categoryId: e.target.value, subCategoryId: '' }))
-                        setShowNewSubCategoryInput(false)
-                        setNewSubCategoryName('')
-                      }}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    >
-                      <option value="">Sans catégorie</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
-                        </option>
-                      ))}
-                    </select>
+                {/* Section options avancées */}
+                <details className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <summary className="px-4 py-3 bg-gray-50 dark:bg-gray-800/40 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-all font-medium text-gray-700 dark:text-gray-200">
+                    Options avancées
+                  </summary>
+                  <div className="px-4 py-4 space-y-4">
+                    <div className="space-y-3 border border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-900/10 rounded-lg px-4 py-3">
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={editEventForm.confirmed}
+                          onChange={(e) => setEditEventForm(prev => ({ ...prev, confirmed: e.target.checked }))}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          Marquer comme déjà payé
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={editEventForm.notifyByEmail}
+                          onChange={(e) => setEditEventForm(prev => ({ ...prev, notifyByEmail: e.target.checked }))}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Activer les notifications par email
+                        </span>
+                      </label>
+                      {editEventForm.notifyByEmail && (
+                        <div className="ml-7">
+                          <select
+                            value={editEventForm.emailReminderDaysBefore}
+                            onChange={(e) => setEditEventForm(prev => ({ ...prev, emailReminderDaysBefore: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          >
+                            <option value="0">Le jour même</option>
+                            <option value="1">1 jour avant</option>
+                            <option value="2">2 jours avant</option>
+                            <option value="3">3 jours avant</option>
+                            <option value="7">1 semaine avant</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Sous-catégorie
-                    </label>
-                    {editEventForm.categoryId ? (
-                      <div className="space-y-2">
-                        <select
-                          value={editEventForm.subCategoryId}
-                          onChange={(e) => {
-                            if (e.target.value === '__new__') {
-                              setShowNewSubCategoryInput(true)
-                              setNewSubCategoryName('')
-                            } else {
-                              setEditEventForm(prev => ({ ...prev, subCategoryId: e.target.value }))
-                              setShowNewSubCategoryInput(false)
-                            }
-                          }}
-                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                        >
-                          <option value="">Sans sous-catégorie</option>
-                          {subCategories.map(subCat => (
-                            <option key={subCat.id} value={subCat.id}>
-                              {subCat.name}
-                            </option>
-                          ))}
-                          <option value="__new__">+ Créer une nouvelle sous-catégorie</option>
-                        </select>
-                        {showNewSubCategoryInput && (
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={newSubCategoryName}
-                              onChange={(e) => setNewSubCategoryName(e.target.value)}
-                              onKeyDown={async (e) => {
-                                if (e.key === 'Enter' && newSubCategoryName.trim()) {
-                                  e.preventDefault()
-                                  try {
-                                    const newSubCat = await createSubCategory(newSubCategoryName.trim(), editEventForm.categoryId)
-                                    setEditEventForm(prev => ({ ...prev, subCategoryId: newSubCat.id }))
-                                    setShowNewSubCategoryInput(false)
-                                    setNewSubCategoryName('')
-                                  } catch (error) {
-                                    console.error('Error creating subcategory:', error)
-                                  }
-                                }
-                              }}
-                              placeholder="Nom de la sous-catégorie"
-                              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                              autoFocus
-                            />
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (newSubCategoryName.trim()) {
-                                  try {
-                                    const newSubCat = await createSubCategory(newSubCategoryName.trim(), editEventForm.categoryId)
-                                    setEditEventForm(prev => ({ ...prev, subCategoryId: newSubCat.id }))
-                                    setShowNewSubCategoryInput(false)
-                                    setNewSubCategoryName('')
-                                  } catch (error) {
-                                    console.error('Error creating subcategory:', error)
-                                  }
-                                }
-                              }}
-                              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                            >
-                              ✓
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowNewSubCategoryInput(false)
-                                setNewSubCategoryName('')
-                                setEditEventForm(prev => ({ ...prev, subCategoryId: '' }))
-                              }}
-                              className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <select disabled className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed">
-                        <option value="">Sélectionnez d'abord une catégorie</option>
-                      </select>
-                    )}
-                  </div>
+                </details>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={closeEditModal}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editEventLoading}
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-60 transition-all shadow-md hover:shadow-lg font-medium"
+                  >
+                    {editEventLoading ? 'Modification...' : 'Enregistrer les modifications'}
+                  </button>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Compte
-                    </label>
-                    <select
-                      value={editEventForm.accountId}
-                      onChange={(e) => setEditEventForm(prev => ({ ...prev, accountId: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    >
-                      <option value="">Sélectionnez un compte</option>
-                      {accounts.map(account => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section options avancées */}
-              <details className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                <summary className="px-4 py-3 bg-gray-50 dark:bg-gray-800/40 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-all font-medium text-gray-700 dark:text-gray-200">
-                  Options avancées
-                </summary>
-                <div className="px-4 py-4 space-y-4">
-                  <div className="space-y-3 border border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-900/10 rounded-lg px-4 py-3">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={editEventForm.confirmed}
-                        onChange={(e) => setEditEventForm(prev => ({ ...prev, confirmed: e.target.checked }))}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        Marquer comme déjà payé
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={editEventForm.notifyByEmail}
-                        onChange={(e) => setEditEventForm(prev => ({ ...prev, notifyByEmail: e.target.checked }))}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Activer les notifications par email
-                      </span>
-                    </label>
-                    {editEventForm.notifyByEmail && (
-                      <div className="ml-7">
-                        <select
-                          value={editEventForm.emailReminderDaysBefore}
-                          onChange={(e) => setEditEventForm(prev => ({ ...prev, emailReminderDaysBefore: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                        >
-                          <option value="0">Le jour même</option>
-                          <option value="1">1 jour avant</option>
-                          <option value="2">2 jours avant</option>
-                          <option value="3">3 jours avant</option>
-                          <option value="7">1 semaine avant</option>
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </details>
-
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeEditModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={editEventLoading}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-60 transition-all shadow-md hover:shadow-lg font-medium"
-                >
-                  {editEventLoading ? 'Modification...' : 'Enregistrer les modifications'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </form>
+            </div >
+          </div >
+        )
+      }
 
 
-    </div>
+    </div >
   )
 }

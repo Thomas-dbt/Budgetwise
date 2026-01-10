@@ -1885,23 +1885,23 @@ export default function TransactionsPage() {
                   }
                 }}
               >
-                <option value="">Modifier la catégorie...</option>
+                <option value="" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200">Modifier la catégorie...</option>
                 {categories.map(cat => {
                   const catSubCategories = subCategories.filter(sub => sub.categoryId === cat.id)
                   if (catSubCategories.length === 0) {
                     return (
-                      <option key={cat.id} value={cat.id}>
+                      <option key={cat.id} value={cat.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200">
                         {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
                       </option>
                     )
                   }
                   return (
-                    <optgroup key={cat.id} label={`${cat.emoji ? `${cat.emoji} ` : ''}${cat.name}`}>
-                      <option value={cat.id}>
+                    <optgroup key={cat.id} label={`${cat.emoji ? `${cat.emoji} ` : ''}${cat.name}`} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 font-semibold">
+                      <option value={cat.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 font-normal">
                         {cat.emoji ? `${cat.emoji} ` : ''}{cat.name} (Général)
                       </option>
                       {catSubCategories.map(sub => (
-                        <option key={sub.id} value={sub.id}>
+                        <option key={sub.id} value={sub.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 font-normal">
                           {sub.name}
                         </option>
                       ))}

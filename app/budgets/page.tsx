@@ -96,7 +96,7 @@ export default function BudgetsPage() {
             const summary: TransactionSummary = {}
 
             txs.forEach((tx: any) => {
-                if (tx.type !== 'expense') return
+                if (['expense', 'transfer', 'income'].includes(tx.type) === false) return
                 const catId = tx.category?.id // Use parent category ID (API format: category is parent if resolved)
 
                 if (catId) {
@@ -269,7 +269,39 @@ export default function BudgetsPage() {
                     const isGlobal = budget ? budget.isGlobal : true // Default display as Global
 
                     const suggestion = suggestions[category.id]
+                    const normalizedName = category.name.toLowerCase()
+                    const isSavings = normalizedName.includes('épargne') || normalizedName.includes('investissement')
+                    const isIncome = normalizedName.includes('revenu') || normalizedName.includes('salaire') || normalizedName.includes('rente')
+
+                    // "Positive" categories where more is better (Savings or Income)
+                    const isPositiveGoal = isSavings || isIncome
+
                     const isOverBudget = spent > amount && amount > 0
+
+                    // Color logic
+                    let barColorClass = ''
+                    if (isPositiveGoal) {
+                        // For savings/income: More is better.
+                        // 0-99% = Orange/Blue (In progress)
+                        // 100%+ = Green (Goal reached!)
+                        if (percent >= 100) {
+                            barColorClass = 'bg-gradient-to-r from-green-400 to-emerald-500' // Success
+                        } else {
+                            barColorClass = 'bg-gradient-to-r from-blue-400 to-blue-500' // In progress
+                        }
+                    } else {
+                        // For expenses: Less is better.
+                        // 0-85% = Green (Safe)
+                        // 85-99% = Orange (Warning)
+                        // 100%+ = Red (Over budget)
+                        if (percent >= 100) {
+                            barColorClass = 'bg-gradient-to-r from-red-500 to-red-600'
+                        } else if (percent > 85) {
+                            barColorClass = 'bg-gradient-to-r from-orange-400 to-orange-500'
+                        } else {
+                            barColorClass = 'bg-gradient-to-r from-green-400 to-emerald-500'
+                        }
+                    }
 
                     return (
                         <div
@@ -324,8 +356,8 @@ export default function BudgetsPage() {
 
                             <div className="space-y-2">
                                 <div className="flex justify-between text-sm font-medium">
-                                    <span className={isOverBudget ? 'text-red-500' : 'text-gray-600 dark:text-gray-400'}>
-                                        {spent.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })} dépensés
+                                    <span className={(isOverBudget && !isPositiveGoal) ? 'text-red-500' : (isPositiveGoal && percent >= 100 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400')}>
+                                        {spent.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })} {isSavings ? 'épargnés' : (isIncome ? 'perçus' : 'dépensés')}
                                     </span>
                                     <span className="text-gray-400">
                                         {Math.round(percent)}%
@@ -334,17 +366,14 @@ export default function BudgetsPage() {
 
                                 <div className="h-3 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                                     <div
-                                        className={`h-full rounded-full transition-all duration-1000 ease-out ${percent >= 100 ? 'bg-gradient-to-r from-red-500 to-red-600' :
-                                            percent > 85 ? 'bg-gradient-to-r from-orange-400 to-orange-500' :
-                                                'bg-gradient-to-r from-green-400 to-emerald-500'
-                                            }`}
-                                        style={{ width: `${percent}%` }}
+                                        className={`h-full rounded-full transition-all duration-1000 ease-out ${barColorClass}`}
+                                        style={{ width: `${Math.min(percent, 100)}%` }}
                                     />
                                 </div>
 
                                 <div className="flex justify-between items-center pt-2">
                                     <span className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Restant</span>
-                                    <span className={`text-lg font-bold ${remaining === 0 && amount > 0 ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                                    <span className={`text-lg font-bold ${remaining === 0 && amount > 0 && !isPositiveGoal ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}`}>
                                         {remaining.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
                                     </span>
                                 </div>

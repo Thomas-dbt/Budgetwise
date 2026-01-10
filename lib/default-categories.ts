@@ -37,7 +37,7 @@ export const defaultCategories = [
         name: 'Loisirs',
         emoji: '🎭',
         subCategories: [
-            { name: 'Sorties', keywords: ['Bar', 'Pub', 'Boite', 'Cafe', 'Club', 'Discotheque'] },
+            { name: 'Bars', keywords: ['Bar', 'Pub', 'Boite', 'Cafe', 'Club', 'Discotheque'] },
             { name: 'Sorties culturelles', keywords: ['Cinema', 'UGC', 'Gaumont', 'Pathe', 'MK2', 'Concert', 'Ticketmaster', 'Fnac Spectacles', 'Musee', 'Exposition', 'Bowling', 'Escape Game', 'Laser Game', 'Zoo', 'Aquarium'] },
             { name: 'Événements sportifs', keywords: ['Billet', 'Ticket', 'Billetterie', 'Stade', 'Arena', 'Tournoi', 'Competition', 'Federation', 'Licence sportive'] },
             { name: 'Livres/Jeux', keywords: ['Fnac', 'Cultura', 'Furet du Nord', 'Gibert', 'Steam', 'Playstation', 'Nintendo', 'Xbox', 'Micromania'] },
