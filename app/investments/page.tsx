@@ -47,7 +47,7 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const CATEGORIES = [
-  'Crypto', 'Action', 'ETF', 'Livret', 
+  'Crypto', 'Action', 'ETF', 'Livret',
   'Immobilier', 'Autre'
 ]
 
@@ -87,9 +87,16 @@ interface InvestmentDetails {
   performance: number
 }
 
+interface Account {
+  id: string
+  name: string
+  balance: number
+}
+
 export default function InvestmentsPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [accounts, setAccounts] = useState<Account[]>([])
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedType, setSelectedType] = useState<string>('all')
@@ -228,6 +235,23 @@ export default function InvestmentsPage() {
     loading: false
   })
 
+  const fetchAccounts = async () => {
+    try {
+      const res = await authFetch('/api/accounts')
+      if (res.ok) {
+        const data = await res.json()
+        setAccounts(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch accounts', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchDashboard()
+    fetchAccounts()
+  }, [])
+
   const closeDetailsModal = () => {
     setSelectedInvestment(null)
     setInvestmentDetails(null)
@@ -236,7 +260,7 @@ export default function InvestmentsPage() {
 
   const handleDeleteInvestment = async () => {
     if (!selectedInvestment) return
-    
+
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet investissement ?')) {
       return
     }
@@ -259,7 +283,7 @@ export default function InvestmentsPage() {
           throw new Error('Erreur lors de la suppression')
         }
       }
-      
+
       closeDetailsModal()
       await fetchDashboard(true)
     } catch (err: any) {
@@ -270,7 +294,7 @@ export default function InvestmentsPage() {
 
   const handleEditInvestment = () => {
     if (!selectedInvestment) return
-    
+
     const investment = data?.items.find(i => i.id === selectedInvestment)
     if (investment?.type === 'immobilier' || selectedInvestment.startsWith('re_')) {
       // Ouvrir le modal d'édition immobilier
@@ -352,7 +376,7 @@ export default function InvestmentsPage() {
   const handleUpdateInvestment = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingInvestmentId) return
-    
+
     setFormLoading(true)
     setError(null)
 
@@ -448,18 +472,18 @@ export default function InvestmentsPage() {
 
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/investments/page.tsx:449',message:'InvestmentsPage: useEffect triggered',data:{selectedPeriod,selectedType,timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/investments/page.tsx:449', message: 'InvestmentsPage: useEffect triggered', data: { selectedPeriod, selectedType, timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
     // #endregion
     fetchDashboard()
   }, [selectedType, selectedPeriod])
 
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/investments/page.tsx:456',message:'InvestmentsPage: Component mounted',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/investments/page.tsx:456', message: 'InvestmentsPage: Component mounted', data: { timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
     // #endregion
     return () => {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/investments/page.tsx:459',message:'InvestmentsPage: Component unmounting',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/investments/page.tsx:459', message: 'InvestmentsPage: Component unmounting', data: { timestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
       // #endregion
     }
   }, [])
@@ -468,7 +492,7 @@ export default function InvestmentsPage() {
   useEffect(() => {
     if (formData.category !== 'Immobilier') {
       setRealEstateFormData({
-    name: '',
+        name: '',
         address: '',
         propertyType: '',
         purchaseDate: new Date().toISOString().split('T')[0],
@@ -605,10 +629,10 @@ export default function InvestmentsPage() {
         // Projection 1 an : solde actuel * (1 + taux) + 12 * contribution mensuelle (approximation)
         // Pour simplifier, on calcule les intérêts sur le solde actuel + les contributions moyennes
         const averageBalance = currentBalance + (monthlyContribution * 6) // Moyenne sur l'année
-        const projection1y = annualRate > 0 
+        const projection1y = annualRate > 0
           ? currentBalance * (1 + annualRate / 100) + (monthlyContribution * 12)
           : currentBalance + (monthlyContribution * 12)
-        
+
         // Intérêts estimés sur 1 an
         const estimatedInterest1y = annualRate > 0
           ? (averageBalance * annualRate / 100)
@@ -669,33 +693,33 @@ export default function InvestmentsPage() {
       if (isRefresh) {
         setRefreshing(true)
       } else {
-      setLoading(true)
+        setLoading(true)
       }
       setError(null)
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/investments/page.tsx:661',message:'fetchDashboard: Before API call',data:{period:selectedPeriod,type:selectedType,isRefresh},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/investments/page.tsx:661', message: 'fetchDashboard: Before API call', data: { period: selectedPeriod, type: selectedType, isRefresh }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
       // #endregion
       const response = await authFetch(`/api/investments/dashboard?period=${selectedPeriod}&type=${selectedType}`)
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/investments/page.tsx:663',message:'fetchDashboard: After API call',data:{ok:response.ok,status:response.status,statusText:response.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/investments/page.tsx:663', message: 'fetchDashboard: After API call', data: { ok: response.ok, status: response.status, statusText: response.statusText }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
-      
+
       if (!response.ok) {
         // #region agent log
         const errorText = await response.text().catch(() => 'Unable to read error')
-        fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/investments/page.tsx:666',message:'fetchDashboard: Response not OK',data:{status:response.status,statusText:response.statusText,errorText:errorText.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/investments/page.tsx:666', message: 'fetchDashboard: Response not OK', data: { status: response.status, statusText: response.statusText, errorText: errorText.substring(0, 200) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
         // #endregion
         throw new Error('Erreur lors du chargement des données')
       }
-      
+
       const dashboardData = await response.json()
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/investments/page.tsx:670',message:'fetchDashboard: Success parsing JSON',data:{hasData:!!dashboardData,itemsCount:dashboardData?.items?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/investments/page.tsx:670', message: 'fetchDashboard: Success parsing JSON', data: { hasData: !!dashboardData, itemsCount: dashboardData?.items?.length || 0 }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
       // #endregion
       setData(dashboardData)
     } catch (err: any) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/investments/page.tsx:672',message:'fetchDashboard: Error caught',data:{errorMessage:err?.message,errorName:err?.name,errorStack:err?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'app/investments/page.tsx:672', message: 'fetchDashboard: Error caught', data: { errorMessage: err?.message, errorName: err?.name, errorStack: err?.stack?.substring(0, 300) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
       // #endregion
       console.error('Error fetching dashboard:', err)
       setError(err?.message || 'Erreur lors du chargement')
@@ -706,8 +730,8 @@ export default function InvestmentsPage() {
   }
 
   const formatCurrency = (amount: number, currency: string = 'EUR') => {
-    return new Intl.NumberFormat('fr-FR', { 
-      style: 'currency', 
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
       currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
@@ -719,7 +743,7 @@ export default function InvestmentsPage() {
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
-    
+
     if (diffMins < 1) return 'à l\'instant'
     if (diffMins < 60) return `il y a ${diffMins} min`
     const diffHours = Math.floor(diffMins / 60)
@@ -749,11 +773,11 @@ export default function InvestmentsPage() {
       setLoadingDetails(true)
       setError(null)
       const response = await authFetch(`/api/investments?id=${id}`)
-      
+
       if (!response.ok) {
         throw new Error('Erreur lors du chargement des détails')
       }
-      
+
       const investmentsData = await response.json()
       // Trouver l'investissement spécifique dans la liste
       const investment = investmentsData.investments?.find((inv: any) => inv.id === id)
@@ -802,7 +826,7 @@ export default function InvestmentsPage() {
 
   const handleCreateInvestment = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Si c'est un investissement immobilier, utiliser la logique immobilière
     if (formData.category === 'Immobilier') {
       // Validation des champs requis pour l'immobilier
@@ -811,10 +835,10 @@ export default function InvestmentsPage() {
         return
       }
 
-    setFormLoading(true)
-    setError(null)
+      setFormLoading(true)
+      setError(null)
 
-    try {
+      try {
         const payload = {
           name: formData.name,
           address: realEstateFormData.address || null,
@@ -848,43 +872,43 @@ export default function InvestmentsPage() {
           throw new Error(errorData.error || 'Erreur lors de la création')
         }
 
-      setCreateModalOpen(false)
-      setInvestmentTypeSelected(false)
-      setFormData({
-        name: '',
-        symbol: '',
-        baseSymbol: '',
-        quoteSymbol: 'USD',
-        category: 'Crypto',
-        platform: '',
-        quantity: '',
-        paidAmount: '',
-        paidCurrency: 'EUR',
-        purchaseDate: new Date().toISOString().split('T')[0],
-        annualRate: '',
-        capitalizationMode: 'mensuelle',
-        startDate: new Date().toISOString().split('T')[0]
-      })
-      setRealEstateFormData({
-        name: '',
-        address: '',
-        propertyType: '',
-        purchaseDate: new Date().toISOString().split('T')[0],
-        purchasePrice: '',
-        notaryFees: '',
-        initialWorks: '',
-        downPayment: '',
-        loanMonthlyPayment: '',
-        loanInsuranceMonthly: '',
-        rentMonthly: '',
-        vacancyRatePct: '5',
-        nonRecoverableChargesMonthly: '',
-        propertyTaxYearly: '',
-        insuranceYearly: '',
-        maintenanceReserveMonthly: '',
-        comment: ''
-      })
-      await fetchDashboard(true)
+        setCreateModalOpen(false)
+        setInvestmentTypeSelected(false)
+        setFormData({
+          name: '',
+          symbol: '',
+          baseSymbol: '',
+          quoteSymbol: 'USD',
+          category: 'Crypto',
+          platform: '',
+          quantity: '',
+          paidAmount: '',
+          paidCurrency: 'EUR',
+          purchaseDate: new Date().toISOString().split('T')[0],
+          annualRate: '',
+          capitalizationMode: 'mensuelle',
+          startDate: new Date().toISOString().split('T')[0]
+        })
+        setRealEstateFormData({
+          name: '',
+          address: '',
+          propertyType: '',
+          purchaseDate: new Date().toISOString().split('T')[0],
+          purchasePrice: '',
+          notaryFees: '',
+          initialWorks: '',
+          downPayment: '',
+          loanMonthlyPayment: '',
+          loanInsuranceMonthly: '',
+          rentMonthly: '',
+          vacancyRatePct: '5',
+          nonRecoverableChargesMonthly: '',
+          propertyTaxYearly: '',
+          insuranceYearly: '',
+          maintenanceReserveMonthly: '',
+          comment: ''
+        })
+        await fetchDashboard(true)
       } catch (err: any) {
         console.error('Error creating real estate:', err)
         setError(err?.message || 'Erreur lors de la création')
@@ -929,117 +953,9 @@ export default function InvestmentsPage() {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(payload)
-      })
+        })
 
-      if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Erreur lors de la création' }))
-          throw new Error(errorData.error || 'Erreur lors de la création')
-        }
-
-        setCreateModalOpen(false)
-        setInvestmentTypeSelected(false)
-        setFormData({
-          name: '',
-          symbol: '',
-          baseSymbol: '',
-          quoteSymbol: 'USD',
-          category: 'Crypto',
-          platform: '',
-          quantity: '',
-          paidAmount: '',
-          paidCurrency: 'EUR',
-          purchaseDate: new Date().toISOString().split('T')[0],
-          annualRate: '',
-          capitalizationMode: 'mensuelle',
-          startDate: new Date().toISOString().split('T')[0],
-        buyUnitPriceQuote: '',
-        fees: '',
-        fxPaidToQuote: '',
-        notes: '',
-        ticker: '',
-        exchange: '',
-        isin: '',
-        dividendsTracking: false,
-        quantityParts: '',
-        buyUnitPrice: '',
-        distributionType: '',
-        envelope: '',
-        benchmark: '',
-        currentBalance: '',
-        monthlyContribution: '',
-        ceiling: '',
-        interestMode: 'simple_annuel'
-      })
-      setCryptoMetrics({
-        currentPrice: null,
-        currentValue: null,
-        costBasisQuote: null,
-        plValue: null,
-        plPct: null,
-        loading: false
-      })
-      setEtfMetrics({
-        currentPrice: null,
-        currentValue: null,
-        costBasis: null,
-        plValue: null,
-        plPct: null,
-        loading: false
-      })
-      setSavingsProjection({
-        currentValue: null,
-        projection1y: null,
-        estimatedInterest1y: null,
-        loading: false
-      })
-      await fetchDashboard(true)
-      } catch (err: any) {
-        console.error('Error creating crypto investment:', err)
-        setError(err?.message || 'Erreur lors de la création')
-    } finally {
-      setFormLoading(false)
-    }
-      return
-    }
-
-    // Si c'est ETF, utiliser l'endpoint dédié
-    if (formData.category === 'ETF') {
-      setFormLoading(true)
-      setError(null)
-
-      try {
-        // Validation des champs obligatoires pour ETF
-        if (!formData.name || (!formData.isin && !formData.ticker) || !formData.platform || !formData.quantityParts || !formData.purchaseDate || !formData.buyUnitPrice) {
-          alert('Veuillez remplir tous les champs obligatoires pour un investissement ETF (Nom, ISIN ou Ticker, Plateforme, Nombre de parts, Date d\'achat, Prix unitaire)')
-          setFormLoading(false)
-      return
-    }
-
-        const payload = {
-          name: formData.name,
-          isin: formData.isin || null,
-          ticker: formData.ticker || null,
-          platform: formData.platform,
-          quantity_parts: Number(formData.quantityParts),
-          buy_date: formData.purchaseDate,
-          buy_unit_price: Number(formData.buyUnitPrice),
-          currency_quote: formData.quoteSymbol || 'EUR',
-          fees: formData.fees ? Number(formData.fees) : 0,
-          distribution_type: formData.distributionType || null,
-          envelope: formData.envelope || null,
-          benchmark: formData.benchmark || null,
-          notes: formData.notes || null
-        }
-
-        const response = await authFetch('/api/investments/etf', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-      })
-
-      if (!response.ok) {
+        if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: 'Erreur lors de la création' }))
           throw new Error(errorData.error || 'Erreur lors de la création')
         }
@@ -1068,15 +984,123 @@ export default function InvestmentsPage() {
           exchange: '',
           isin: '',
           dividendsTracking: false,
-        quantityParts: '',
-        buyUnitPrice: '',
-        distributionType: '',
-        envelope: '',
-        benchmark: '',
-        currentBalance: '',
-        monthlyContribution: '',
-        ceiling: '',
-        interestMode: 'simple_annuel'
+          quantityParts: '',
+          buyUnitPrice: '',
+          distributionType: '',
+          envelope: '',
+          benchmark: '',
+          currentBalance: '',
+          monthlyContribution: '',
+          ceiling: '',
+          interestMode: 'simple_annuel'
+        })
+        setCryptoMetrics({
+          currentPrice: null,
+          currentValue: null,
+          costBasisQuote: null,
+          plValue: null,
+          plPct: null,
+          loading: false
+        })
+        setEtfMetrics({
+          currentPrice: null,
+          currentValue: null,
+          costBasis: null,
+          plValue: null,
+          plPct: null,
+          loading: false
+        })
+        setSavingsProjection({
+          currentValue: null,
+          projection1y: null,
+          estimatedInterest1y: null,
+          loading: false
+        })
+        await fetchDashboard(true)
+      } catch (err: any) {
+        console.error('Error creating crypto investment:', err)
+        setError(err?.message || 'Erreur lors de la création')
+      } finally {
+        setFormLoading(false)
+      }
+      return
+    }
+
+    // Si c'est ETF, utiliser l'endpoint dédié
+    if (formData.category === 'ETF') {
+      setFormLoading(true)
+      setError(null)
+
+      try {
+        // Validation des champs obligatoires pour ETF
+        if (!formData.name || (!formData.isin && !formData.ticker) || !formData.platform || !formData.quantityParts || !formData.purchaseDate || !formData.buyUnitPrice) {
+          alert('Veuillez remplir tous les champs obligatoires pour un investissement ETF (Nom, ISIN ou Ticker, Plateforme, Nombre de parts, Date d\'achat, Prix unitaire)')
+          setFormLoading(false)
+          return
+        }
+
+        const payload = {
+          name: formData.name,
+          isin: formData.isin || null,
+          ticker: formData.ticker || null,
+          platform: formData.platform,
+          quantity_parts: Number(formData.quantityParts),
+          buy_date: formData.purchaseDate,
+          buy_unit_price: Number(formData.buyUnitPrice),
+          currency_quote: formData.quoteSymbol || 'EUR',
+          fees: formData.fees ? Number(formData.fees) : 0,
+          distribution_type: formData.distributionType || null,
+          envelope: formData.envelope || null,
+          benchmark: formData.benchmark || null,
+          notes: formData.notes || null
+        }
+
+        const response = await authFetch('/api/investments/etf', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Erreur lors de la création' }))
+          throw new Error(errorData.error || 'Erreur lors de la création')
+        }
+
+        setCreateModalOpen(false)
+        setInvestmentTypeSelected(false)
+        setFormData({
+          name: '',
+          symbol: '',
+          baseSymbol: '',
+          quoteSymbol: 'USD',
+          category: 'Crypto',
+          platform: '',
+          quantity: '',
+          paidAmount: '',
+          paidCurrency: 'EUR',
+          purchaseDate: new Date().toISOString().split('T')[0],
+          annualRate: '',
+          capitalizationMode: 'mensuelle',
+          startDate: new Date().toISOString().split('T')[0],
+          buyUnitPriceQuote: '',
+          fees: '',
+          fxPaidToQuote: '',
+          notes: '',
+          ticker: '',
+          exchange: '',
+          isin: '',
+          dividendsTracking: false,
+          quantityParts: '',
+          buyUnitPrice: '',
+          distributionType: '',
+          envelope: '',
+          benchmark: '',
+          currentBalance: '',
+          monthlyContribution: '',
+          ceiling: '',
+          interestMode: 'simple_annuel'
         })
         setEtfMetrics({
           currentPrice: null,
@@ -1112,8 +1136,8 @@ export default function InvestmentsPage() {
         if (!formData.name || !formData.platform || !formData.currentBalance || !formData.startDate) {
           alert('Veuillez remplir tous les champs obligatoires pour un Livret (Nom, Banque/Plateforme, Solde actuel, Date de début)')
           setFormLoading(false)
-      return
-    }
+          return
+        }
 
         const payload = {
           name: formData.name,
@@ -1216,7 +1240,11 @@ export default function InvestmentsPage() {
           annualRate: formData.annualRate ? Number(formData.annualRate) : null,
           capitalizationMode: formData.capitalizationMode || null,
           startDate: formData.startDate || formData.purchaseDate || null,
-          priceProvider: (formData.category === 'Crypto' || formData.category === 'Action' || formData.category === 'ETF') ? 'coingecko' : null
+          priceProvider: (formData.category === 'Crypto' || formData.category === 'Action' || formData.category === 'ETF') ? 'coingecko' : null,
+          // Transaction linking
+          createTransaction: formData.createTransaction,
+          sourceAccountId: formData.sourceAccountId,
+          transactionDate: formData.purchaseDate
         })
       })
 
@@ -1259,17 +1287,17 @@ export default function InvestmentsPage() {
       setCreateModalOpen(false)
       setInvestmentTypeSelected(false)
       setFormData({
-      name: '',
-      symbol: '',
+        name: '',
+        symbol: '',
         baseSymbol: '',
         quoteSymbol: 'USD',
         category: 'Crypto',
-      platform: '',
+        platform: '',
         quantity: '',
         paidAmount: '',
         paidCurrency: 'EUR',
         purchaseDate: new Date().toISOString().split('T')[0],
-      annualRate: '',
+        annualRate: '',
         capitalizationMode: 'mensuelle',
         startDate: new Date().toISOString().split('T')[0],
         buyUnitPriceQuote: '',
@@ -1288,7 +1316,10 @@ export default function InvestmentsPage() {
         currentBalance: '',
         monthlyContribution: '',
         ceiling: '',
-        interestMode: 'simple_annuel'
+        ceiling: '',
+        interestMode: 'simple_annuel',
+        createTransaction: false,
+        sourceAccountId: ''
       })
       setCryptoMetrics({
         currentPrice: null,
@@ -1324,7 +1355,7 @@ export default function InvestmentsPage() {
   const handleCreateRealEstate = async (e: React.FormEvent) => {
     e.preventDefault()
     console.log('handleCreateRealEstate called', realEstateFormData)
-    
+
     // Validation des champs requis
     if (!realEstateFormData.name || !realEstateFormData.purchasePrice || !realEstateFormData.downPayment || !realEstateFormData.rentMonthly) {
       alert('Veuillez remplir tous les champs obligatoires (Nom, Prix d\'achat, Apport initial, Loyer mensuel)')
@@ -1354,7 +1385,7 @@ export default function InvestmentsPage() {
         maintenanceReserveMonthly: realEstateFormData.maintenanceReserveMonthly ? Number(realEstateFormData.maintenanceReserveMonthly) : null,
         comment: realEstateFormData.comment || null
       }
-      
+
       console.log('Sending payload:', payload)
 
       const response = await authFetch('/api/real-estate', {
@@ -1424,12 +1455,12 @@ export default function InvestmentsPage() {
       <div className="min-h-screen bg-[#0D1117] flex items-center justify-center">
         <div className="text-center">
           <p className="text-[#E74C3C] mb-4">{error}</p>
-              <button
+          <button
             onClick={() => fetchDashboard()}
             className="px-4 py-2 bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] transition-colors"
-              >
-                Réessayer
-              </button>
+          >
+            Réessayer
+          </button>
         </div>
       </div>
     )
@@ -1450,7 +1481,7 @@ export default function InvestmentsPage() {
             <p className="text-sm text-[#8B949E] mt-1">Suivez vos performances en temps réel</p>
           </div>
           <div className="flex gap-2">
-          <button
+            <button
               onClick={() => fetchDashboard(true)}
               disabled={refreshing}
               className="px-4 py-2 bg-[#161B22] border border-[#30363D] text-[#E6EDF3] rounded-lg hover:bg-[#21262D] hover:border-[#58A6FF] transition-all flex items-center gap-2 disabled:opacity-50"
@@ -1458,16 +1489,16 @@ export default function InvestmentsPage() {
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Actualiser</span>
-          </button>
-          <button
+            </button>
+            <button
               onClick={() => setCreateModalOpen(true)}
               className="px-4 py-2 bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] transition-colors flex items-center gap-2 shadow-lg shadow-[#58A6FF]/20"
-          >
+            >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Ajouter</span>
-          </button>
+            </button>
+          </div>
         </div>
-      </div>
 
         {/* KPI Line */}
         <div className="bg-gradient-to-br from-[#161B22] to-[#0D1117] border border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
@@ -1490,9 +1521,9 @@ export default function InvestmentsPage() {
                   <span className="text-sm text-[#8B949E]">
                     ({PERIODS.find(p => p.value === selectedPeriod)?.label || '30j'})
                   </span>
-        </div>
-        </div>
-        </div>
+                </div>
+              </div>
+            </div>
             <div className="text-right">
               <p className="text-sm text-[#8B949E] mb-1">Dernière mise à jour</p>
               <div className="flex items-center gap-2">
@@ -1500,8 +1531,8 @@ export default function InvestmentsPage() {
                 <p className="text-sm text-[#E6EDF3] font-medium">{formatTimeAgo(data.updated_at)}</p>
               </div>
             </div>
+          </div>
         </div>
-      </div>
 
         {/* Tabs */}
         <div className="flex items-center gap-2 border-b border-[#30363D] overflow-x-auto pb-2">
@@ -1509,11 +1540,10 @@ export default function InvestmentsPage() {
             <button
               key={type}
               onClick={() => setSelectedType(type)}
-              className={`px-4 py-2 text-sm font-medium transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
-                selectedType === type
-                  ? 'border-[#58A6FF] text-[#58A6FF] bg-[#58A6FF]/10'
-                  : 'border-transparent text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#161B22]'
-              } rounded-t-lg`}
+              className={`px-4 py-2 text-sm font-medium transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${selectedType === type
+                ? 'border-[#58A6FF] text-[#58A6FF] bg-[#58A6FF]/10'
+                : 'border-transparent text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#161B22]'
+                } rounded-t-lg`}
             >
               {type !== 'all' && <span className="inline-flex">{getTypeIcon(type, 16)}</span>}
               {TYPE_LABELS[type]}
@@ -1533,11 +1563,10 @@ export default function InvestmentsPage() {
                 <button
                   key={period.value}
                   onClick={() => setSelectedPeriod(period.value)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
-                    selectedPeriod === period.value
-                      ? 'bg-[#58A6FF] text-white shadow-lg shadow-[#58A6FF]/30'
-                      : 'bg-[#21262D] text-[#8B949E] hover:bg-[#30363D] hover:text-[#E6EDF3]'
-                  }`}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-all ${selectedPeriod === period.value
+                    ? 'bg-[#58A6FF] text-white shadow-lg shadow-[#58A6FF]/30'
+                    : 'bg-[#21262D] text-[#8B949E] hover:bg-[#30363D] hover:text-[#E6EDF3]'
+                    }`}
                 >
                   {period.label}
                 </button>
@@ -1548,9 +1577,9 @@ export default function InvestmentsPage() {
             <AreaChart data={data.portfolio_series}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2ECC71" stopOpacity={0.4}/>
-                  <stop offset="50%" stopColor="#2ECC71" stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor="#2ECC71" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#2ECC71" stopOpacity={0.4} />
+                  <stop offset="50%" stopColor="#2ECC71" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#2ECC71" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis
@@ -1597,7 +1626,7 @@ export default function InvestmentsPage() {
                 activeDot={{ r: 4, fill: '#2ECC71' }}
               />
             </AreaChart>
-            </ResponsiveContainer>
+          </ResponsiveContainer>
         </div>
 
         {/* Three Blocks */}
@@ -1611,15 +1640,15 @@ export default function InvestmentsPage() {
             {data.allocation.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie
+                  <PieChart>
+                    <Pie
                       data={data.allocation}
-                  cx="50%"
-                  cy="50%"
+                      cx="50%"
+                      cy="50%"
                       innerRadius={65}
                       outerRadius={85}
                       paddingAngle={3}
-                  dataKey="value"
+                      dataKey="value"
                       animationBegin={0}
                       animationDuration={800}
                     >
@@ -1629,7 +1658,7 @@ export default function InvestmentsPage() {
                           <Cell key={`cell-${index}`} fill={COLORS[colorKey] || COLORS.autres} />
                         )
                       })}
-                </Pie>
+                    </Pie>
                     <Tooltip
                       contentStyle={{
                         backgroundColor: '#161B22',
@@ -1639,8 +1668,8 @@ export default function InvestmentsPage() {
                       }}
                       formatter={(value: number) => `${value}%`}
                     />
-              </PieChart>
-            </ResponsiveContainer>
+                  </PieChart>
+                </ResponsiveContainer>
                 <div className="mt-4 space-y-2.5">
                   {data.allocation.map((item) => {
                     const colorKey = item.label.toLowerCase() as keyof typeof COLORS
@@ -1664,7 +1693,7 @@ export default function InvestmentsPage() {
             ) : (
               <div className="text-center py-12 text-[#8B949E]">Aucune donnée</div>
             )}
-      </div>
+          </div>
 
           {/* Top Performances */}
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
@@ -1681,11 +1710,11 @@ export default function InvestmentsPage() {
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-[#21262D] rounded-lg group-hover:bg-[#30363D] transition-colors">
                           {getTypeIcon(investment?.type || 'autres', 18)}
-        </div>
+                        </div>
                         <div>
                           <p className="text-sm font-medium text-[#E6EDF3]">{item.label}</p>
                           <p className="text-xs text-[#8B949E]">{investment?.category || ''}</p>
-      </div>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-[#2ECC71]" />
@@ -1723,7 +1752,7 @@ export default function InvestmentsPage() {
                           <p className="text-xs text-[#8B949E]">{investment?.category || ''}</p>
                         </div>
                       </div>
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
                         <TrendingDown className="w-4 h-4 text-[#E74C3C]" />
                         <span className="text-sm font-semibold text-[#E74C3C]">
                           {item.pct.toFixed(1)}%
@@ -1794,13 +1823,13 @@ export default function InvestmentsPage() {
                             <p className={`text-lg font-bold ${item.pl_pct >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
                               {item.pl_pct >= 0 ? '+' : ''}{item.pl_pct.toFixed(1)}%
                             </p>
-                        </div>
+                          </div>
                           <p className={`text-sm ${item.pl_value >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
                             {item.pl_value >= 0 ? '+' : ''}{formatCurrency(item.pl_value, item.currency)}
                           </p>
                         </div>
                         {item.change_24h_pct !== 0 && (
-                        <div>
+                          <div>
                             <p className="text-xs text-[#8B949E] mb-1.5">24h</p>
                             <div className="flex items-center gap-1">
                               {item.change_24h_pct >= 0 ? (
@@ -1811,8 +1840,8 @@ export default function InvestmentsPage() {
                               <p className={`text-base font-semibold ${item.change_24h_pct >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
                                 {item.change_24h_pct >= 0 ? '+' : ''}{item.change_24h_pct.toFixed(2)}%
                               </p>
-                        </div>
-                        </div>
+                            </div>
+                          </div>
                         )}
                         <div>
                           <p className="text-xs text-[#8B949E] mb-1.5">Allocation</p>
@@ -1847,16 +1876,16 @@ export default function InvestmentsPage() {
               <p className="text-[#8B949E] mb-2">Aucun investissement trouvé</p>
               <p className="text-sm text-[#8B949E] opacity-75">Commencez par ajouter votre premier investissement</p>
             </div>
-                          )}
-                        </div>
+          )}
+        </div>
 
         {/* Modal Détails Investissement */}
         {selectedInvestment && (
-          <div 
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={closeDetailsModal}
           >
-            <div 
+            <div
               className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
@@ -1883,20 +1912,20 @@ export default function InvestmentsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                              <button
+                      <button
                         onClick={handleEditInvestment}
                         className="p-2 text-[#8B949E] hover:text-[#58A6FF] hover:bg-[#21262D] rounded-lg transition-colors"
                         title="Modifier"
-                              >
+                      >
                         <Edit className="w-5 h-5" />
-                              </button>
-                              <button
+                      </button>
+                      <button
                         onClick={handleDeleteInvestment}
                         className="p-2 text-[#8B949E] hover:text-[#E74C3C] hover:bg-[#21262D] rounded-lg transition-colors"
                         title="Supprimer"
-                              >
+                      >
                         <Trash2 className="w-5 h-5" />
-                              </button>
+                      </button>
                       <button
                         onClick={closeDetailsModal}
                         className="p-2 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#21262D] rounded-lg transition-colors"
@@ -1947,9 +1976,9 @@ export default function InvestmentsPage() {
                           <AreaChart data={realEstateMetrics.cumulativeSeries.filter((_: any, i: number) => i % 12 === 0 || i === 0 || i === realEstateMetrics.cumulativeSeries.length - 1)}>
                             <defs>
                               <linearGradient id="cashflowGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#2ECC71" stopOpacity={0.4}/>
-                                <stop offset="50%" stopColor="#2ECC71" stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor="#2ECC71" stopOpacity={0}/>
+                                <stop offset="5%" stopColor="#2ECC71" stopOpacity={0.4} />
+                                <stop offset="50%" stopColor="#2ECC71" stopOpacity={0.2} />
+                                <stop offset="95%" stopColor="#2ECC71" stopOpacity={0} />
                               </linearGradient>
                             </defs>
                             <XAxis
@@ -2084,35 +2113,35 @@ export default function InvestmentsPage() {
                       <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
                         <p className="text-xs text-[#8B949E] mb-2">Montant Investi</p>
                         <p className="text-2xl font-bold text-[#E6EDF3]">
-                          {investmentDetails.amountInvested 
+                          {investmentDetails.amountInvested
                             ? formatCurrency(investmentDetails.amountInvested, investmentDetails.currency)
                             : formatCurrency(investmentDetails.costBasis * investmentDetails.quantity, investmentDetails.currency)
                           }
                         </p>
-        </div>
-      </div>
+                      </div>
+                    </div>
 
                     {/* Graphique détaillé */}
                     {data && (
                       <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
                         <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Évolution</h3>
                         <ResponsiveContainer width="100%" height={200}>
-                          <AreaChart data={data.items.find(i => i.id === selectedInvestment)?.sparkline.map((v, i) => ({ 
-                            date: i, 
-                            value: v 
+                          <AreaChart data={data.items.find(i => i.id === selectedInvestment)?.sparkline.map((v, i) => ({
+                            date: i,
+                            value: v
                           })) || []}>
                             <defs>
                               <linearGradient id={`gradient-${selectedInvestment}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={investmentDetails.performance >= 0 ? '#2ECC71' : '#E74C3C'} stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor={investmentDetails.performance >= 0 ? '#2ECC71' : '#E74C3C'} stopOpacity={0}/>
+                                <stop offset="5%" stopColor={investmentDetails.performance >= 0 ? '#2ECC71' : '#E74C3C'} stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={investmentDetails.performance >= 0 ? '#2ECC71' : '#E74C3C'} stopOpacity={0} />
                               </linearGradient>
                             </defs>
-                            <XAxis 
-                              dataKey="date" 
+                            <XAxis
+                              dataKey="date"
                               tick={{ fill: '#8B949E', fontSize: 10 }}
                               axisLine={{ stroke: '#30363D' }}
                             />
-                            <YAxis 
+                            <YAxis
                               tick={{ fill: '#8B949E', fontSize: 10 }}
                               axisLine={{ stroke: '#30363D' }}
                               tickFormatter={(value) => formatCurrency(value, investmentDetails.currency)}
@@ -2153,7 +2182,7 @@ export default function InvestmentsPage() {
                           <div className="flex justify-between">
                             <span className="text-sm text-[#8B949E]">Prix Unitaire Actuel</span>
                             <span className="text-sm font-medium text-[#E6EDF3]">
-                              {investmentDetails.currentPrice 
+                              {investmentDetails.currentPrice
                                 ? formatCurrency(investmentDetails.currentPrice, investmentDetails.currency)
                                 : '-'
                               }
@@ -2292,14 +2321,14 @@ export default function InvestmentsPage() {
 
         {/* Modal Création Investissement */}
         {createModalOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => {
               setCreateModalOpen(false)
               setInvestmentTypeSelected(false)
             }}
           >
-            <div 
+            <div
               className={`bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full ${formData.category === 'Immobilier' ? 'max-w-4xl' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200`}
               onClick={(e) => e.stopPropagation()}
             >
@@ -2316,17 +2345,17 @@ export default function InvestmentsPage() {
                       Nouvel Investissement
                     </>
                   )}
-              </h2>
-              <button
-                onClick={() => {
+                </h2>
+                <button
+                  onClick={() => {
                     setCreateModalOpen(false)
                     setInvestmentTypeSelected(false)
-                }}
+                  }}
                   className="p-2 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#21262D] rounded-lg transition-colors"
-              >
+                >
                   <X className="w-5 h-5" />
-              </button>
-            </div>
+                </button>
+              </div>
 
               {!investmentTypeSelected ? (
                 <div className="p-6">
@@ -2363,11 +2392,11 @@ export default function InvestmentsPage() {
                         </div>
                         <p className="text-xs text-[#8B949E]">
                           {cat === 'Immobilier' ? 'Biens immobiliers locatifs' :
-                           cat === 'Crypto' ? 'Cryptomonnaies' :
-                           cat === 'Action' ? 'Actions en bourse' :
-                           cat === 'ETF' ? 'Fonds indiciels' :
-                           cat === 'Livret' ? 'Livrets d\'épargne' :
-                           'Autres investissements'}
+                            cat === 'Crypto' ? 'Cryptomonnaies' :
+                              cat === 'Action' ? 'Actions en bourse' :
+                                cat === 'ETF' ? 'Fonds indiciels' :
+                                  cat === 'Livret' ? 'Livrets d\'épargne' :
+                                    'Autres investissements'}
                         </p>
                       </button>
                     ))}
@@ -2440,977 +2469,1013 @@ export default function InvestmentsPage() {
                       />
                     </div>
 
-                  {formData.category === 'Immobilier' ? (
-                    <>
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Adresse
-                        </label>
-                        <input
-                          type="text"
-                          value={realEstateFormData.address}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, address: e.target.value })}
-                          placeholder="123 Rue de la République, 56100 Lorient"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                    {formData.category === 'Immobilier' ? (
+                      <>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Adresse
+                          </label>
+                          <input
+                            type="text"
+                            value={realEstateFormData.address}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, address: e.target.value })}
+                            placeholder="123 Rue de la République, 56100 Lorient"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                  <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Type de bien
-                        </label>
-                        <select
-                          value={realEstateFormData.propertyType}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyType: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        >
-                          <option value="">Sélectionner...</option>
-                          <option value="Appartement">Appartement</option>
-                          <option value="Maison">Maison</option>
-                          <option value="Studio">Studio</option>
-                          <option value="T2">T2</option>
-                          <option value="T3">T3</option>
-                          <option value="T4+">T4+</option>
-                          <option value="Local commercial">Local commercial</option>
-                        </select>
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Type de bien
+                          </label>
+                          <select
+                            value={realEstateFormData.propertyType}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyType: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          >
+                            <option value="">Sélectionner...</option>
+                            <option value="Appartement">Appartement</option>
+                            <option value="Maison">Maison</option>
+                            <option value="Studio">Studio</option>
+                            <option value="T2">T2</option>
+                            <option value="T3">T3</option>
+                            <option value="T4+">T4+</option>
+                            <option value="Local commercial">Local commercial</option>
+                          </select>
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Date d'achat
-                        </label>
-                        <input
-                          type="date"
-                          value={realEstateFormData.purchaseDate}
-                          onChange={(e) => {
-                            setRealEstateFormData({ ...realEstateFormData, purchaseDate: e.target.value })
-                            setFormData({ ...formData, purchaseDate: e.target.value })
-                          }}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Date d'achat
+                          </label>
+                          <input
+                            type="date"
+                            value={realEstateFormData.purchaseDate}
+                            onChange={(e) => {
+                              setRealEstateFormData({ ...realEstateFormData, purchaseDate: e.target.value })
+                              setFormData({ ...formData, purchaseDate: e.target.value })
+                            }}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                        <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Coûts d'acquisition</h3>
-                      </div>
+                        <div className="md:col-span-2 border-t border-[#30363D] pt-4">
+                          <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Coûts d'acquisition</h3>
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Prix d'achat (€) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.purchasePrice}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, purchasePrice: e.target.value })}
-                          placeholder="150000"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Prix d'achat (€) *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.purchasePrice}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, purchasePrice: e.target.value })}
+                            placeholder="150000"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Frais de notaire (€)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.notaryFees}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, notaryFees: e.target.value })}
-                          placeholder="12000"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Frais de notaire (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.notaryFees}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, notaryFees: e.target.value })}
+                            placeholder="12000"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Travaux initiaux (€)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.initialWorks}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, initialWorks: e.target.value })}
-                          placeholder="5000"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Travaux initiaux (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.initialWorks}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, initialWorks: e.target.value })}
+                            placeholder="5000"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Apport initial (€) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.downPayment}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, downPayment: e.target.value })}
-                          placeholder="30000"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Apport initial (€) *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.downPayment}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, downPayment: e.target.value })}
+                            placeholder="30000"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
 
-                      <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                        <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Prêt</h3>
-                      </div>
+                        <div className="md:col-span-2 border-t border-[#30363D] pt-4">
+                          <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Prêt</h3>
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Mensualité de crédit (€)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.loanMonthlyPayment}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, loanMonthlyPayment: e.target.value })}
-                          placeholder="450"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Mensualité de crédit (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.loanMonthlyPayment}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, loanMonthlyPayment: e.target.value })}
+                            placeholder="450"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Assurance emprunteur mensuelle (€)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.loanInsuranceMonthly}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, loanInsuranceMonthly: e.target.value })}
-                          placeholder="50"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Assurance emprunteur mensuelle (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.loanInsuranceMonthly}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, loanInsuranceMonthly: e.target.value })}
+                            placeholder="50"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                        <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Revenus</h3>
-                      </div>
+                        <div className="md:col-span-2 border-t border-[#30363D] pt-4">
+                          <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Revenus</h3>
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Loyer mensuel (€) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.rentMonthly}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, rentMonthly: e.target.value })}
-                          placeholder="650"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Loyer mensuel (€) *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.rentMonthly}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, rentMonthly: e.target.value })}
+                            placeholder="650"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Taux de vacance (%)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={realEstateFormData.vacancyRatePct}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, vacancyRatePct: e.target.value })}
-                          placeholder="5"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Taux de vacance (%)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={realEstateFormData.vacancyRatePct}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, vacancyRatePct: e.target.value })}
+                            placeholder="5"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                        <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Charges</h3>
-                      </div>
+                        <div className="md:col-span-2 border-t border-[#30363D] pt-4">
+                          <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Charges</h3>
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Charges non récupérables mensuelles (€)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.nonRecoverableChargesMonthly}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, nonRecoverableChargesMonthly: e.target.value })}
-                          placeholder="50"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Charges non récupérables mensuelles (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.nonRecoverableChargesMonthly}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, nonRecoverableChargesMonthly: e.target.value })}
+                            placeholder="50"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Taxe foncière annuelle (€)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.propertyTaxYearly}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyTaxYearly: e.target.value })}
-                          placeholder="1200"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Taxe foncière annuelle (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.propertyTaxYearly}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyTaxYearly: e.target.value })}
+                            placeholder="1200"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Assurance PNO annuelle (€)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.insuranceYearly}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, insuranceYearly: e.target.value })}
-                          placeholder="300"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Assurance PNO annuelle (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.insuranceYearly}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, insuranceYearly: e.target.value })}
+                            placeholder="300"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Réserve maintenance mensuelle (€)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={realEstateFormData.maintenanceReserveMonthly}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, maintenanceReserveMonthly: e.target.value })}
-                          placeholder="100"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Réserve maintenance mensuelle (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={realEstateFormData.maintenanceReserveMonthly}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, maintenanceReserveMonthly: e.target.value })}
+                            placeholder="100"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Commentaire
-                        </label>
-                        <textarea
-                          value={realEstateFormData.comment}
-                          onChange={(e) => setRealEstateFormData({ ...realEstateFormData, comment: e.target.value })}
-                          placeholder="Notes supplémentaires..."
-                          rows={3}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
-                    </>
-                  ) : formData.category === 'Livret' ? (
-                    <>
-                      {/* Formulaire spécifique Livret */}
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Nom du Livret *
-                        </label>
-                    <input
-                      type="text"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="Ex: Livret A, LDDS, LEP..."
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                      required
-                    />
-                  </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Commentaire
+                          </label>
+                          <textarea
+                            value={realEstateFormData.comment}
+                            onChange={(e) => setRealEstateFormData({ ...realEstateFormData, comment: e.target.value })}
+                            placeholder="Notes supplémentaires..."
+                            rows={3}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
+                      </>
+                    ) : formData.category === 'Livret' ? (
+                      <>
+                        {/* Formulaire spécifique Livret */}
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Nom du Livret *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="Ex: Livret A, LDDS, LEP..."
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
 
-                  <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Banque/Plateforme *
-                        </label>
-                    <input
-                      type="text"
-                          value={formData.platform}
-                          onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-                          placeholder="Ex: Crédit Mutuel, BNP Paribas..."
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                    />
-                  </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Banque/Plateforme *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.platform}
+                            onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
+                            placeholder="Ex: Crédit Mutuel, BNP Paribas..."
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
 
-                  <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Devise *
-                        </label>
-                    <select
-                          value={formData.paidCurrency}
-                          onChange={(e) => setFormData({ ...formData, paidCurrency: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                      required
-                    >
-                          <option value="EUR">EUR</option>
-                          <option value="USD">USD</option>
-                          <option value="GBP">GBP</option>
-                    </select>
-                  </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Devise *
+                          </label>
+                          <select
+                            value={formData.paidCurrency}
+                            onChange={(e) => setFormData({ ...formData, paidCurrency: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          >
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                            <option value="GBP">GBP</option>
+                          </select>
+                        </div>
 
-                  <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Date de début *
-                        </label>
-                    <input
-                          type="date"
-                          value={formData.startDate}
-                          onChange={(e) => setFormData({ ...formData, startDate: e.target.value, purchaseDate: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                    />
-                  </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Date de début *
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.startDate}
+                            onChange={(e) => setFormData({ ...formData, startDate: e.target.value, purchaseDate: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
 
-                  <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Solde actuel ({formData.paidCurrency || 'EUR'}) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.currentBalance}
-                          onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
-                          placeholder="5000.00"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Solde actuel ({formData.paidCurrency || 'EUR'}) *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.currentBalance}
+                            onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
+                            placeholder="5000.00"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Taux d'intérêt annuel (%) <span className="text-[#8B949E] text-xs">(recommandé)</span>
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.annualRate}
-                          onChange={(e) => setFormData({ ...formData, annualRate: e.target.value })}
-                          placeholder="3.0"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Taux d'intérêt annuel (%) <span className="text-[#8B949E] text-xs">(recommandé)</span>
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.annualRate}
+                            onChange={(e) => setFormData({ ...formData, annualRate: e.target.value })}
+                            placeholder="3.0"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Contribution mensuelle ({formData.paidCurrency || 'EUR'}) <span className="text-[#8B949E] text-xs">(prévision)</span>
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.monthlyContribution}
-                          onChange={(e) => setFormData({ ...formData, monthlyContribution: e.target.value })}
-                          placeholder="100.00"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Contribution mensuelle ({formData.paidCurrency || 'EUR'}) <span className="text-[#8B949E] text-xs">(prévision)</span>
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.monthlyContribution}
+                            onChange={(e) => setFormData({ ...formData, monthlyContribution: e.target.value })}
+                            placeholder="100.00"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Plafond ({formData.paidCurrency || 'EUR'})
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.ceiling}
-                          onChange={(e) => setFormData({ ...formData, ceiling: e.target.value })}
-                          placeholder="22950.00"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Plafond ({formData.paidCurrency || 'EUR'})
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.ceiling}
+                            onChange={(e) => setFormData({ ...formData, ceiling: e.target.value })}
+                            placeholder="22950.00"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Mode de calcul des intérêts
-                        </label>
-                    <select
-                          value={formData.interestMode}
-                          onChange={(e) => setFormData({ ...formData, interestMode: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        >
-                          <option value="simple_annuel">Simple annuel (par défaut)</option>
-                          <option value="capitalisation_mensuelle">Capitalisation mensuelle</option>
-                          <option value="capitalisation_trimestrielle">Capitalisation trimestrielle</option>
-                    </select>
-                  </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Mode de calcul des intérêts
+                          </label>
+                          <select
+                            value={formData.interestMode}
+                            onChange={(e) => setFormData({ ...formData, interestMode: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          >
+                            <option value="simple_annuel">Simple annuel (par défaut)</option>
+                            <option value="capitalisation_mensuelle">Capitalisation mensuelle</option>
+                            <option value="capitalisation_trimestrielle">Capitalisation trimestrielle</option>
+                          </select>
+                        </div>
 
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Notes
-                        </label>
-                        <textarea
-                          value={formData.notes}
-                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                          placeholder="Notes supplémentaires..."
-                          rows={3}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Notes
+                          </label>
+                          <textarea
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            placeholder="Notes supplémentaires..."
+                            rows={3}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      {/* Aperçu des projections */}
-                      {savingsProjection.currentValue !== null ? (
-                        <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg space-y-2">
-                          <h4 className="text-sm font-semibold text-[#E6EDF3] mb-3">Projections</h4>
-                          <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                              <span className="text-[#8B949E]">Valeur actuelle:</span>
-                              <span className="ml-2 text-[#E6EDF3] font-medium">{savingsProjection.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
-                            </div>
-                            {savingsProjection.projection1y !== null && (
+                        {/* Aperçu des projections */}
+                        {savingsProjection.currentValue !== null ? (
+                          <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg space-y-2">
+                            <h4 className="text-sm font-semibold text-[#E6EDF3] mb-3">Projections</h4>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
                               <div>
-                                <span className="text-[#8B949E]">Projection 1 an:</span>
-                                <span className="ml-2 text-[#E6EDF3] font-medium">{savingsProjection.projection1y?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
+                                <span className="text-[#8B949E]">Valeur actuelle:</span>
+                                <span className="ml-2 text-[#E6EDF3] font-medium">{savingsProjection.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
                               </div>
-                            )}
-                            {savingsProjection.estimatedInterest1y !== null && savingsProjection.estimatedInterest1y > 0 && (
-                              <div className="md:col-span-2">
-                                <span className="text-[#8B949E]">Intérêts estimés sur 1 an:</span>
-                                <span className="ml-2 text-[#2ECC71] font-medium">+{savingsProjection.estimatedInterest1y?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
+                              {savingsProjection.projection1y !== null && (
+                                <div>
+                                  <span className="text-[#8B949E]">Projection 1 an:</span>
+                                  <span className="ml-2 text-[#E6EDF3] font-medium">{savingsProjection.projection1y?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
+                                </div>
+                              )}
+                              {savingsProjection.estimatedInterest1y !== null && savingsProjection.estimatedInterest1y > 0 && (
+                                <div className="md:col-span-2">
+                                  <span className="text-[#8B949E]">Intérêts estimés sur 1 an:</span>
+                                  <span className="ml-2 text-[#2ECC71] font-medium">+{savingsProjection.estimatedInterest1y?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : formData.category === 'Crypto' ? (
+                      <>
+                        {/* Formulaire spécifique Crypto */}
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Nom de l'investissement *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="Ex: Bitcoin, Ethereum"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Symbole de base (ex: BTC, ETH) *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.baseSymbol}
+                            onChange={(e) => setFormData({ ...formData, baseSymbol: e.target.value.toUpperCase() })}
+                            placeholder="BTC"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Devise de cotation *
+                          </label>
+                          <select
+                            value={formData.quoteSymbol}
+                            onChange={(e) => setFormData({ ...formData, quoteSymbol: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          >
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="GBP">GBP</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Plateforme *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.platform}
+                            onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
+                            placeholder="Binance, Kraken, Ledger..."
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Quantité (base) *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.00000001"
+                            value={formData.quantity}
+                            onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                            placeholder="0.15"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Date d'achat *
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.purchaseDate}
+                            onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Prix unitaire d'achat ({formData.quoteSymbol}) *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.buyUnitPriceQuote}
+                            onChange={(e) => setFormData({ ...formData, buyUnitPriceQuote: e.target.value })}
+                            placeholder="50000.00"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Frais ({formData.quoteSymbol})
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.fees}
+                            onChange={(e) => setFormData({ ...formData, fees: e.target.value })}
+                            placeholder="0.00"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Montant payé (optionnel)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.paidAmount}
+                            onChange={(e) => setFormData({ ...formData, paidAmount: e.target.value })}
+                            placeholder="500.00"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Devise payée
+                          </label>
+                          <select
+                            value={formData.paidCurrency}
+                            onChange={(e) => setFormData({ ...formData, paidCurrency: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          >
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                            <option value="GBP">GBP</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Taux de change ({formData.paidCurrency} → {formData.quoteSymbol})
+                          </label>
+                          <input
+                            type="number"
+                            step="0.0001"
+                            value={formData.fxPaidToQuote}
+                            onChange={(e) => setFormData({ ...formData, fxPaidToQuote: e.target.value })}
+                            placeholder="1.10"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Notes
+                          </label>
+                          <textarea
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            placeholder="Notes supplémentaires..."
+                            rows={3}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
+
+                        {/* Aperçu des métriques en temps réel */}
+                        {cryptoMetrics.loading ? (
+                          <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg">
+                            <p className="text-sm text-[#8B949E]">Calcul des métriques...</p>
+                          </div>
+                        ) : cryptoMetrics.currentPrice !== null ? (
+                          <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg space-y-2">
+                            <h4 className="text-sm font-semibold text-[#E6EDF3] mb-3">Aperçu des métriques</h4>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <span className="text-[#8B949E]">Prix actuel:</span>
+                                <span className="ml-2 text-[#E6EDF3] font-medium">{cryptoMetrics.currentPrice?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} {formData.quoteSymbol}</span>
                               </div>
-                            )}
-                          </div>
-                        </div>
-                      ) : null}
-                    </>
-                  ) : formData.category === 'Crypto' ? (
-                    <>
-                      {/* Formulaire spécifique Crypto */}
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Nom de l'investissement *
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="Ex: Bitcoin, Ethereum"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Symbole de base (ex: BTC, ETH) *
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.baseSymbol}
-                          onChange={(e) => setFormData({ ...formData, baseSymbol: e.target.value.toUpperCase() })}
-                          placeholder="BTC"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Devise de cotation *
-                        </label>
-                    <select
-                          value={formData.quoteSymbol}
-                          onChange={(e) => setFormData({ ...formData, quoteSymbol: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                      required
-                        >
-                          <option value="USD">USD</option>
-                          <option value="EUR">EUR</option>
-                          <option value="GBP">GBP</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Plateforme *
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.platform}
-                          onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-                          placeholder="Binance, Kraken, Ledger..."
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Quantité (base) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.00000001"
-                          value={formData.quantity}
-                          onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                          placeholder="0.15"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Date d'achat *
-                        </label>
-                        <input
-                          type="date"
-                          value={formData.purchaseDate}
-                          onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Prix unitaire d'achat ({formData.quoteSymbol}) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.buyUnitPriceQuote}
-                          onChange={(e) => setFormData({ ...formData, buyUnitPriceQuote: e.target.value })}
-                          placeholder="50000.00"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Frais ({formData.quoteSymbol})
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.fees}
-                          onChange={(e) => setFormData({ ...formData, fees: e.target.value })}
-                          placeholder="0.00"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Montant payé (optionnel)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.paidAmount}
-                          onChange={(e) => setFormData({ ...formData, paidAmount: e.target.value })}
-                          placeholder="500.00"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Devise payée
-                        </label>
-                        <select
-                          value={formData.paidCurrency}
-                          onChange={(e) => setFormData({ ...formData, paidCurrency: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                    >
-                      <option value="EUR">EUR</option>
-                      <option value="USD">USD</option>
-                      <option value="GBP">GBP</option>
-                    </select>
-                  </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Taux de change ({formData.paidCurrency} → {formData.quoteSymbol})
-                        </label>
-                        <input
-                          type="number"
-                          step="0.0001"
-                          value={formData.fxPaidToQuote}
-                          onChange={(e) => setFormData({ ...formData, fxPaidToQuote: e.target.value })}
-                          placeholder="1.10"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Notes
-                        </label>
-                    <textarea
-                          value={formData.notes}
-                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                          placeholder="Notes supplémentaires..."
-                          rows={3}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                    />
-                  </div>
-
-                      {/* Aperçu des métriques en temps réel */}
-                      {cryptoMetrics.loading ? (
-                        <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg">
-                          <p className="text-sm text-[#8B949E]">Calcul des métriques...</p>
-                </div>
-                      ) : cryptoMetrics.currentPrice !== null ? (
-                        <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg space-y-2">
-                          <h4 className="text-sm font-semibold text-[#E6EDF3] mb-3">Aperçu des métriques</h4>
-                          <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div>
-                              <span className="text-[#8B949E]">Prix actuel:</span>
-                              <span className="ml-2 text-[#E6EDF3] font-medium">{cryptoMetrics.currentPrice?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} {formData.quoteSymbol}</span>
-                            </div>
-                            <div>
-                              <span className="text-[#8B949E]">Valeur actuelle:</span>
-                              <span className="ml-2 text-[#E6EDF3] font-medium">{cryptoMetrics.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol}</span>
-                            </div>
-                            <div>
-                              <span className="text-[#8B949E]">Coût total:</span>
-                              <span className="ml-2 text-[#E6EDF3] font-medium">{cryptoMetrics.costBasisQuote?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol}</span>
-                            </div>
-                            <div>
-                              <span className="text-[#8B949E]">P/L:</span>
-                              <span className={`ml-2 font-medium ${(cryptoMetrics.plValue || 0) >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
-                                {cryptoMetrics.plValue !== null ? `${cryptoMetrics.plValue >= 0 ? '+' : ''}${cryptoMetrics.plValue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${formData.quoteSymbol}` : '-'}
-                                {cryptoMetrics.plPct !== null && ` (${cryptoMetrics.plPct >= 0 ? '+' : ''}${cryptoMetrics.plPct.toFixed(2)}%)`}
-                              </span>
+                              <div>
+                                <span className="text-[#8B949E]">Valeur actuelle:</span>
+                                <span className="ml-2 text-[#E6EDF3] font-medium">{cryptoMetrics.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol}</span>
+                              </div>
+                              <div>
+                                <span className="text-[#8B949E]">Coût total:</span>
+                                <span className="ml-2 text-[#E6EDF3] font-medium">{cryptoMetrics.costBasisQuote?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol}</span>
+                              </div>
+                              <div>
+                                <span className="text-[#8B949E]">P/L:</span>
+                                <span className={`ml-2 font-medium ${(cryptoMetrics.plValue || 0) >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                                  {cryptoMetrics.plValue !== null ? `${cryptoMetrics.plValue >= 0 ? '+' : ''}${cryptoMetrics.plValue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${formData.quoteSymbol}` : '-'}
+                                  {cryptoMetrics.plPct !== null && ` (${cryptoMetrics.plPct >= 0 ? '+' : ''}${cryptoMetrics.plPct.toFixed(2)}%)`}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                        ) : null}
+                      </>
+                    ) : formData.category === 'ETF' ? (
+                      <>
+                        {/* Formulaire spécifique ETF */}
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Nom de l'ETF *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="Ex: Amundi MSCI World"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
                         </div>
-                      ) : null}
-                    </>
-                  ) : formData.category === 'ETF' ? (
-                    <>
-                      {/* Formulaire spécifique ETF */}
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Nom de l'ETF *
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="Ex: Amundi MSCI World"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-              </div>
 
-                <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          ISIN (prioritaire) *
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.isin}
-                          onChange={(e) => setFormData({ ...formData, isin: e.target.value.toUpperCase() })}
-                          placeholder="FR0010315770"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Ticker (si pas d'ISIN)
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.ticker}
-                          onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
-                          placeholder="CW8"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Plateforme/Broker *
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.platform}
-                          onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-                          placeholder="BoursoBank, Degiro..."
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Nombre de parts *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.quantityParts}
-                          onChange={(e) => setFormData({ ...formData, quantityParts: e.target.value })}
-                          placeholder="10.5"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Date d'achat *
-                        </label>
-                        <input
-                          type="date"
-                          value={formData.purchaseDate}
-                          onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Prix unitaire d'achat ({formData.quoteSymbol || 'EUR'}) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.buyUnitPrice}
-                          onChange={(e) => setFormData({ ...formData, buyUnitPrice: e.target.value })}
-                          placeholder="50.00"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Devise de cotation *
-                        </label>
-                  <select
-                          value={formData.quoteSymbol}
-                          onChange={(e) => setFormData({ ...formData, quoteSymbol: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                    required
-                        >
-                          <option value="EUR">EUR</option>
-                          <option value="USD">USD</option>
-                          <option value="GBP">GBP</option>
-                  </select>
-                </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Frais ({formData.quoteSymbol || 'EUR'})
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.fees}
-                          onChange={(e) => setFormData({ ...formData, fees: e.target.value })}
-                          placeholder="0.00"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Type de distribution
-                        </label>
-                        <select
-                          value={formData.distributionType}
-                          onChange={(e) => setFormData({ ...formData, distributionType: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        >
-                          <option value="">Sélectionner...</option>
-                          <option value="ACC">ACC (Capitalisation)</option>
-                          <option value="DIST">DIST (Distribution)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Enveloppe
-                        </label>
-                        <select
-                          value={formData.envelope}
-                          onChange={(e) => setFormData({ ...formData, envelope: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        >
-                          <option value="">Sélectionner...</option>
-                          <option value="PEA">PEA</option>
-                          <option value="CTO">CTO</option>
-                          <option value="AV">AV (Assurance Vie)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Benchmark
-                        </label>
-                      <input
-                        type="text"
-                          value={formData.benchmark}
-                          onChange={(e) => setFormData({ ...formData, benchmark: e.target.value })}
-                          placeholder="MSCI World, S&P 500..."
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                      />
-                    </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Notes
-                        </label>
-                        <textarea
-                          value={formData.notes}
-                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                          placeholder="Notes supplémentaires..."
-                          rows={3}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
-
-                      {/* Aperçu des métriques en temps réel */}
-                      {etfMetrics.loading ? (
-                        <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg">
-                          <p className="text-sm text-[#8B949E]">Calcul des métriques...</p>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            ISIN (prioritaire) *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.isin}
+                            onChange={(e) => setFormData({ ...formData, isin: e.target.value.toUpperCase() })}
+                            placeholder="FR0010315770"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
                         </div>
-                      ) : etfMetrics.currentPrice !== null ? (
-                        <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg space-y-2">
-                          <h4 className="text-sm font-semibold text-[#E6EDF3] mb-3">Aperçu des métriques</h4>
-                          <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                              <span className="text-[#8B949E]">Prix actuel:</span>
-                              <span className="ml-2 text-[#E6EDF3] font-medium">{etfMetrics.currentPrice?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
-                            </div>
-                            <div>
-                              <span className="text-[#8B949E]">Valeur actuelle:</span>
-                              <span className="ml-2 text-[#E6EDF3] font-medium">{etfMetrics.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
-                            </div>
-                            <div>
-                              <span className="text-[#8B949E]">Coût total:</span>
-                              <span className="ml-2 text-[#E6EDF3] font-medium">{etfMetrics.costBasis?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
-                            </div>
-                            <div>
-                              <span className="text-[#8B949E]">P/L:</span>
-                              <span className={`ml-2 font-medium ${(etfMetrics.plValue || 0) >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
-                                {etfMetrics.plValue !== null ? `${etfMetrics.plValue >= 0 ? '+' : ''}${etfMetrics.plValue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${formData.quoteSymbol || 'EUR'}` : '-'}
-                                {etfMetrics.plPct !== null && ` (${etfMetrics.plPct >= 0 ? '+' : ''}${etfMetrics.plPct.toFixed(2)}%)`}
-                              </span>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Ticker (si pas d'ISIN)
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.ticker}
+                            onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
+                            placeholder="CW8"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Plateforme/Broker *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.platform}
+                            onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
+                            placeholder="BoursoBank, Degiro..."
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Nombre de parts *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.quantityParts}
+                            onChange={(e) => setFormData({ ...formData, quantityParts: e.target.value })}
+                            placeholder="10.5"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Date d'achat *
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.purchaseDate}
+                            onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Prix unitaire d'achat ({formData.quoteSymbol || 'EUR'}) *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.buyUnitPrice}
+                            onChange={(e) => setFormData({ ...formData, buyUnitPrice: e.target.value })}
+                            placeholder="50.00"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Devise de cotation *
+                          </label>
+                          <select
+                            value={formData.quoteSymbol}
+                            onChange={(e) => setFormData({ ...formData, quoteSymbol: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          >
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                            <option value="GBP">GBP</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Frais ({formData.quoteSymbol || 'EUR'})
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.fees}
+                            onChange={(e) => setFormData({ ...formData, fees: e.target.value })}
+                            placeholder="0.00"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Type de distribution
+                          </label>
+                          <select
+                            value={formData.distributionType}
+                            onChange={(e) => setFormData({ ...formData, distributionType: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          >
+                            <option value="">Sélectionner...</option>
+                            <option value="ACC">ACC (Capitalisation)</option>
+                            <option value="DIST">DIST (Distribution)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Enveloppe
+                          </label>
+                          <select
+                            value={formData.envelope}
+                            onChange={(e) => setFormData({ ...formData, envelope: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          >
+                            <option value="">Sélectionner...</option>
+                            <option value="PEA">PEA</option>
+                            <option value="CTO">CTO</option>
+                            <option value="AV">AV (Assurance Vie)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Benchmark
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.benchmark}
+                            onChange={(e) => setFormData({ ...formData, benchmark: e.target.value })}
+                            placeholder="MSCI World, S&P 500..."
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Notes
+                          </label>
+                          <textarea
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            placeholder="Notes supplémentaires..."
+                            rows={3}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
+
+                        {/* Aperçu des métriques en temps réel */}
+                        {etfMetrics.loading ? (
+                          <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg">
+                            <p className="text-sm text-[#8B949E]">Calcul des métriques...</p>
+                          </div>
+                        ) : etfMetrics.currentPrice !== null ? (
+                          <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg space-y-2">
+                            <h4 className="text-sm font-semibold text-[#E6EDF3] mb-3">Aperçu des métriques</h4>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <span className="text-[#8B949E]">Prix actuel:</span>
+                                <span className="ml-2 text-[#E6EDF3] font-medium">{etfMetrics.currentPrice?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
+                              </div>
+                              <div>
+                                <span className="text-[#8B949E]">Valeur actuelle:</span>
+                                <span className="ml-2 text-[#E6EDF3] font-medium">{etfMetrics.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
+                              </div>
+                              <div>
+                                <span className="text-[#8B949E]">Coût total:</span>
+                                <span className="ml-2 text-[#E6EDF3] font-medium">{etfMetrics.costBasis?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
+                              </div>
+                              <div>
+                                <span className="text-[#8B949E]">P/L:</span>
+                                <span className={`ml-2 font-medium ${(etfMetrics.plValue || 0) >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                                  {etfMetrics.plValue !== null ? `${etfMetrics.plValue >= 0 ? '+' : ''}${etfMetrics.plValue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${formData.quoteSymbol || 'EUR'}` : '-'}
+                                  {etfMetrics.plPct !== null && ` (${etfMetrics.plPct >= 0 ? '+' : ''}${etfMetrics.plPct.toFixed(2)}%)`}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        {/* Action, ETF */}
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Symbole (ex: BTCUSD, AAPL) *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.symbol}
+                            onChange={(e) => {
+                              const symbol = e.target.value.toUpperCase()
+                              const baseSymbol = symbol.split(/[\/\-]/)[0] || symbol.replace(/USD|EUR|GBP$/, '')
+                              setFormData({
+                                ...formData,
+                                symbol,
+                                baseSymbol: baseSymbol || formData.baseSymbol
+                              })
+                            }}
+                            placeholder="BTCUSD, AAPL"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
                         </div>
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      {/* Action, ETF */}
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Symbole (ex: BTCUSD, AAPL) *
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.symbol}
-                          onChange={(e) => {
-                            const symbol = e.target.value.toUpperCase()
-                            const baseSymbol = symbol.split(/[\/\-]/)[0] || symbol.replace(/USD|EUR|GBP$/, '')
-                            setFormData({ 
-                              ...formData, 
-                              symbol,
-                              baseSymbol: baseSymbol || formData.baseSymbol
-                            })
-                          }}
-                          placeholder="BTCUSD, AAPL"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Symbole de base (ex: BTC, ETH)
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.baseSymbol}
-                          onChange={(e) => setFormData({ ...formData, baseSymbol: e.target.value.toUpperCase() })}
-                          placeholder="BTC"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Symbole de base (ex: BTC, ETH)
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.baseSymbol}
+                            onChange={(e) => setFormData({ ...formData, baseSymbol: e.target.value.toUpperCase() })}
+                            placeholder="BTC"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Devise de cotation *
-                        </label>
-                      <select
-                          value={formData.quoteSymbol}
-                          onChange={(e) => setFormData({ ...formData, quoteSymbol: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        >
-                          <option value="USD">USD</option>
-                          <option value="EUR">EUR</option>
-                          <option value="GBP">GBP</option>
-                      </select>
-                    </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Devise de cotation *
+                          </label>
+                          <select
+                            value={formData.quoteSymbol}
+                            onChange={(e) => setFormData({ ...formData, quoteSymbol: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          >
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="GBP">GBP</option>
+                          </select>
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Plateforme
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.platform}
-                          onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-                          placeholder="Binance, Degiro, etc."
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        />
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Plateforme
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.platform}
+                            onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
+                            placeholder="Binance, Degiro, etc."
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Quantité *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.0001"
+                            value={formData.quantity}
+                            onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                            placeholder="2.0"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Montant payé *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={formData.paidAmount}
+                            onChange={(e) => setFormData({ ...formData, paidAmount: e.target.value })}
+                            placeholder="500.00"
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Devise payée *
+                          </label>
+                          <select
+                            value={formData.paidCurrency}
+                            onChange={(e) => setFormData({ ...formData, paidCurrency: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                          >
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                            <option value="GBP">GBP</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                            Date d'achat *
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.purchaseDate}
+                            onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            required
+                          />
+                        </div>
+
+                        {/* Transaction Toggle */}
+                        <div className="md:col-span-2 border-t border-[#30363D] pt-4 mt-4">
+                          <label className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={formData.createTransaction}
+                              onChange={(e) => setFormData({ ...formData, createTransaction: e.target.checked })}
+                              className="h-4 w-4 text-[#58A6FF] bg-[#0D1117] border-[#30363D] rounded focus:ring-[#58A6FF]"
+                            />
+                            <span className="text-[#E6EDF3] font-medium">Créer une transaction associée</span>
+                          </label>
+                        </div>
+
+                        {formData.createTransaction && (
+                          <div className="md:col-span-2 space-y-4 animate-in slide-in-from-top-2">
+                            <div>
+                              <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                                Compte source (dépense) *
+                              </label>
+                              <select
+                                value={formData.sourceAccountId}
+                                onChange={(e) => setFormData({ ...formData, sourceAccountId: e.target.value })}
+                                className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                                required={formData.createTransaction}
+                              >
+                                <option value="">Sélectionner un compte...</option>
+                                {accounts.map((acc: Account) => (
+                                  <option key={acc.id} value={acc.id}>
+                                    {acc.name} ({acc.balance.toFixed(2)} €)
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Quantité *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.0001"
-                          value={formData.quantity}
-                          onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                          placeholder="2.0"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Montant payé *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.paidAmount}
-                          onChange={(e) => setFormData({ ...formData, paidAmount: e.target.value })}
-                          placeholder="500.00"
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Devise payée *
-                        </label>
-                        <select
-                          value={formData.paidCurrency}
-                          onChange={(e) => setFormData({ ...formData, paidCurrency: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                        >
-                          <option value="EUR">EUR</option>
-                          <option value="USD">USD</option>
-                          <option value="GBP">GBP</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                          Date d'achat *
-                        </label>
-                        <input
-                          type="date"
-                          value={formData.purchaseDate}
-                          onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                          className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-                    </div>
 
                   <div className="flex gap-3 pt-4 border-t border-[#30363D]">
                     <button
@@ -3507,12 +3572,12 @@ export default function InvestmentsPage() {
                 </form>
               )}
             </div>
-                  </div>
-                )}
+          </div>
+        )}
 
         {/* Modal Création Immobilier - Supprimé, maintenant intégré dans le modal principal */}
         {false && createRealEstateModalOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -3520,7 +3585,7 @@ export default function InvestmentsPage() {
               }
             }}
           >
-            <div 
+            <div
               className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
@@ -3663,11 +3728,11 @@ export default function InvestmentsPage() {
                       className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                       required
                     />
-                </div>
+                  </div>
 
                   <div className="md:col-span-2 border-t border-[#30363D] pt-4">
                     <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Prêt</h3>
-              </div>
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
@@ -3805,8 +3870,8 @@ export default function InvestmentsPage() {
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-[#30363D]">
-                <button
-                  type="button"
+                  <button
+                    type="button"
                     onClick={() => setCreateRealEstateModalOpen(false)}
                     className="flex-1 px-4 py-2.5 border border-[#30363D] text-[#E6EDF3] rounded-lg hover:bg-[#21262D] transition-colors font-medium"
                   >
@@ -3827,11 +3892,11 @@ export default function InvestmentsPage() {
 
         {/* Modal Édition Investissement */}
         {editModalOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setEditModalOpen(false)}
           >
-            <div 
+            <div
               className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
@@ -3879,8 +3944,8 @@ export default function InvestmentsPage() {
                       onChange={(e) => {
                         const symbol = e.target.value.toUpperCase()
                         const baseSymbol = symbol.split(/[\/\-]/)[0] || symbol.replace(/USD|EUR|GBP$/, '')
-                        setFormData({ 
-                          ...formData, 
+                        setFormData({
+                          ...formData,
                           symbol,
                           baseSymbol: baseSymbol || formData.baseSymbol
                         })
@@ -3953,25 +4018,25 @@ export default function InvestmentsPage() {
                     type="button"
                     onClick={() => setEditModalOpen(false)}
                     className="flex-1 px-4 py-2.5 border border-[#30363D] text-[#E6EDF3] rounded-lg hover:bg-[#21262D] transition-colors font-medium"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={formLoading}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={formLoading}
                     className="flex-1 px-4 py-2.5 bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] disabled:opacity-60 transition-colors font-medium"
-                >
+                  >
                     {formLoading ? 'Modification...' : 'Modifier'}
-                </button>
-              </div>
-            </form>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
         {/* Modal Édition Immobilier */}
         {editRealEstateModalOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -3979,7 +4044,7 @@ export default function InvestmentsPage() {
               }
             }}
           >
-            <div 
+            <div
               className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
@@ -3993,8 +4058,8 @@ export default function InvestmentsPage() {
                   className="p-2 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#21262D] rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
-              </button>
-            </div>
+                </button>
+              </div>
 
               <form onSubmit={handleUpdateRealEstate} className="p-6 space-y-6">
                 {error && (
@@ -4030,11 +4095,11 @@ export default function InvestmentsPage() {
                     />
                   </div>
 
-              <div>
+                  <div>
                     <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
                       Type de bien
                     </label>
-                <select
+                    <select
                       value={realEstateFormData.propertyType}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyType: e.target.value })}
                       className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
@@ -4047,14 +4112,14 @@ export default function InvestmentsPage() {
                       <option value="T3">T3</option>
                       <option value="T4+">T4+</option>
                       <option value="Local commercial">Local commercial</option>
-                </select>
-              </div>
+                    </select>
+                  </div>
 
-              <div>
+                  <div>
                     <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
                       Date d'achat
                     </label>
-                <input
+                    <input
                       type="date"
                       value={realEstateFormData.purchaseDate}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, purchaseDate: e.target.value })}
@@ -4077,9 +4142,9 @@ export default function InvestmentsPage() {
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, purchasePrice: e.target.value })}
                       placeholder="150000"
                       className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
-                  required
-                />
-              </div>
+                      required
+                    />
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
@@ -4264,25 +4329,25 @@ export default function InvestmentsPage() {
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-[#30363D]">
-                <button
-                  type="button"
+                  <button
+                    type="button"
                     onClick={() => setEditRealEstateModalOpen(false)}
                     className="flex-1 px-4 py-2.5 border border-[#30363D] text-[#E6EDF3] rounded-lg hover:bg-[#21262D] transition-colors font-medium"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
                     disabled={realEstateFormLoading}
                     className="flex-1 px-4 py-2.5 bg-[#E67E22] text-white rounded-lg hover:bg-[#D35400] disabled:opacity-60 transition-colors font-medium"
-                >
+                  >
                     {realEstateFormLoading ? 'Modification...' : 'Modifier'}
-                </button>
-              </div>
-            </form>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </div>
   )

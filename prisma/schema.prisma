@@ -215,8 +215,6 @@ model Position {
   paidAmount    Decimal? // Montant payé dans la devise d'origine
   paidCurrency  String? // Devise d'origine (ex: EUR)
   purchaseDate  DateTime? // Date d'achat (par défaut createdAt)
-  fxRateToQuote Decimal? // Taux de change au moment de l'achat (paidCurrency -> quoteSymbol)
-
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 }

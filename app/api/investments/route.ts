@@ -35,28 +35,28 @@ export async function GET(req: Request) {
       return valuationMode === 'marché' && !readOnly
     })
     const currentPrices: Record<string, number> = {}
-    
+
     // Fonction pour récupérer le prix d'un actif depuis Yahoo Finance
     const fetchPrice = async (symbol: string, category: string, tradingViewSymbol?: string | null) => {
       try {
         const marketSymbol = getMarketSymbol(symbol, category, tradingViewSymbol)
         if (!marketSymbol) return null
 
-        const yahooSymbol = marketSymbol.kind === 'crypto' 
+        const yahooSymbol = marketSymbol.kind === 'crypto'
           ? `${marketSymbol.symbol}-USD`
           : marketSymbol.symbol
-        
+
         const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`
         const response = await fetch(url, {
           headers: { 'User-Agent': 'Mozilla/5.0' }
         })
-        
+
         if (response.ok) {
           const data = await response.json()
           if (data.chart?.result?.[0]?.meta) {
-            return data.chart.result[0].meta.regularMarketPrice || 
-                   data.chart.result[0].meta.previousClose || 
-                   null
+            return data.chart.result[0].meta.regularMarketPrice ||
+              data.chart.result[0].meta.previousClose ||
+              null
           }
         }
       } catch (error) {
@@ -88,11 +88,11 @@ export async function GET(req: Request) {
       const assetAny = asset as any
       const valuationMode = assetAny.valuationMode || (assetAny.manualPriceEnabled ? 'manuel' : 'marché')
       const category = assetAny.category || (assetAny.kind === 'stock' ? 'Action' : assetAny.kind === 'etf' ? 'ETF' : assetAny.kind === 'crypto' ? 'Crypto' : 'Action')
-      
+
       // Calculer la quantité totale et le coût moyen depuis les positions
       let totalQuantity = Number(assetAny.quantity) || 1
       let totalCostBasis = 0
-      
+
       if (assetAny.positions && assetAny.positions.length > 0) {
         totalQuantity = 0
         for (const position of assetAny.positions) {
@@ -116,14 +116,14 @@ export async function GET(req: Request) {
         case 'marché':
           // Récupérer le prix depuis l'API ou utiliser le prix stocké
           currentPrice = currentPrices[assetAny.id] || (assetAny.currentPrice ? Number(assetAny.currentPrice) : null)
-          
+
           if (!currentPrice && assetAny.currentPrice) {
             currentPrice = Number(assetAny.currentPrice)
           } else if (!currentPrice) {
             // Estimation basée sur le coût moyen
             currentPrice = averageCostBasis * 1.05
           }
-          
+
           currentValue = totalQuantity * currentPrice
           if (currentPrices[assetAny.id]) {
             lastValuationDate = new Date()
@@ -185,7 +185,7 @@ export async function GET(req: Request) {
       // Mettre à jour la valeur actuelle dans la base si nécessaire (sauf pour import_externe en lecture seule)
       const readOnly = assetAny.readOnly || false
       if (!readOnly && valuationMode !== 'import_externe') {
-        const needsUpdate = 
+        const needsUpdate =
           Math.abs(Number(assetAny.currentValue || 0) - currentValue) > 0.01 ||
           (assetAny.lastValuationDate === null && lastValuationDate !== null)
 
@@ -305,7 +305,7 @@ export async function POST(req: Request) {
   try {
     const userId = await getCurrentUserId()
     const body = await req.json()
-    const { 
+    const {
       name, symbol, category, subCategory, platform, currency, comment,
       valuationMode, quantity, amountInvested,
       // Mode marché
@@ -352,7 +352,7 @@ export async function POST(req: Request) {
     if (!asset) {
       // Déterminer kind pour compatibilité avec l'ancien schéma
       const kind = category === 'Crypto' ? 'crypto' : category === 'ETF' ? 'etf' : 'stock'
-      
+
       const assetData: any = {
         userId,
         name,
@@ -446,6 +446,86 @@ export async function POST(req: Request) {
           }
         })
       }
+
+      // --- LOGIQUE AJOUTÉE POUR TRANSACTION ---
+      // Si l'option 'créer une transaction' est cochée
+      const { createTransaction, sourceAccountId, transactionDate } = body
+      if (createTransaction && sourceAccountId && amountInvested) {
+        try {
+          // 1. Déterminer la catégorie de transaction
+          // MAPPING
+          // Crypto -> Investissement / Crypto
+          // Action -> Investissement / Bourse
+          // ETF -> Investissement / Bourse
+          // Immobilier -> Investissement / Immobilier
+          // Livret -> Epargne / Livrets
+
+          let categoryName = 'Investissement'
+          let subCategoryName = 'Autres placements'
+
+          if (category === 'Crypto') subCategoryName = 'Crypto'
+          else if (category === 'Action' || category === 'ETF') subCategoryName = 'Bourse'
+          else if (category === 'Immobilier') subCategoryName = 'Immobilier'
+          else if (category === 'Livret') {
+            categoryName = 'Épargne'
+            subCategoryName = 'Livrets'
+          }
+
+          // Trouver les IDs de catégories
+          const cat = await prisma.category.findFirst({
+            where: {
+              name: categoryName,
+              userId: null // Catégorie système ou globale si on ne filtre pas par userId (mais attention aux doublons user)
+            }
+          }) || await prisma.category.findFirst({
+            where: { name: categoryName } // Un peu large mais fallback
+          })
+
+          let categoryId = cat?.id
+          let subCategoryId = null
+
+          if (cat) {
+            const sub = await prisma.category.findFirst({
+              where: {
+                name: subCategoryName,
+                parentId: cat.id
+              }
+            })
+            if (sub) {
+              // Pour la transaction, on met l'ID de la sous-catégorie si le modèle le demande, ou la catégorie principale + sous-cat
+              // Le modèle transaction stocke categoryId. Notre API attend le bon ID.
+              subCategoryId = sub.id
+            }
+          }
+
+          // 2. Créer la transaction
+          const numericAmount = Number(amountInvested)
+          const txDate = transactionDate ? new Date(transactionDate) : new Date()
+
+          await prisma.transaction.create({
+            data: {
+              accountId: sourceAccountId,
+              amount: -Math.abs(numericAmount), // Dépense donc négatif
+              type: 'expense',
+              date: txDate,
+              description: `Achat ${name}`,
+              categoryId: subCategoryId || categoryId, // On essaie de mettre la sous-catégorie directement si c'est ce que l'app attend
+            }
+          })
+
+          // 3. Mettre à jour le solde du compte
+          await prisma.account.update({
+            where: { id: sourceAccountId },
+            data: {
+              balance: { decrement: Math.abs(numericAmount) }
+            }
+          })
+
+        } catch (txError) {
+          console.error('Error auto-creating transaction from investment:', txError)
+        }
+      }
+      // ----------------------------------------
     } else {
       // Mettre à jour l'actif existant
       const updateData: any = {
@@ -525,7 +605,7 @@ export async function PATCH(req: Request) {
   try {
     const userId = await getCurrentUserId()
     const body = await req.json()
-    const { 
+    const {
       id, name, symbol, category, subCategory, platform, currency, comment,
       valuationMode, quantity, amountInvested, readOnly,
       tradingViewSymbol, priceProvider,
@@ -648,4 +728,4 @@ export async function DELETE(req: Request) {
   }
 }
 
-}
+

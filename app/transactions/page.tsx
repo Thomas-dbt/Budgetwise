@@ -140,6 +140,13 @@ export default function TransactionsPage() {
     attachmentName: string
     transferAccountId: string
     transferGroupId: string | null
+    // Investment fields
+    addToPortfolio?: boolean
+    investmentName?: string
+    investmentSymbol?: string
+    investmentQuantity?: string
+    investmentCategory?: string
+    investmentPlatform?: string
   }
 
   const [manualForm, setManualForm] = useState<ManualFormState>({
@@ -697,11 +704,24 @@ export default function TransactionsPage() {
       let matchesFilter = true
       if (filterOption === 'income') matchesFilter = tx.type === 'income'
       else if (filterOption === 'expense') matchesFilter = tx.type === 'expense'
-      else if (filterOption === 'transfer') matchesFilter = tx.type === 'transfer'
+      if (filterOption === 'transfer') matchesFilter = tx.type === 'transfer'
       else if (filterOption === 'pending') matchesFilter = tx.pending === true
       else if (typeof filterOption === 'string' && filterOption.startsWith('category:')) {
         const categoryId = filterOption.split(':')[1]
         matchesFilter = tx.category?.id === categoryId
+      }
+
+      // Special handling for account filtering vs transfer display
+      // If we are filtering by a specific account, we want to ensure we keep transfers 
+      // where this account is either source or destination.
+      // But filtering logic generally happens on the API side for 'accountId'.
+      // Here we filter locally on the loaded 'transactions' array.
+      if (filterAccountId && filterAccountId !== 'all') {
+        if (tx.type === 'transfer') {
+          if (tx.account.id !== filterAccountId && tx.toAccount?.id !== filterAccountId) return false
+        } else {
+          if (tx.account.id !== filterAccountId) return false
+        }
       }
 
       if (filterMinAmount) {
@@ -715,7 +735,7 @@ export default function TransactionsPage() {
 
       return matchesFilter
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [transactions, searchQuery, filterOption, filterStartDate, filterEndDate, filterMinAmount, filterMaxAmount])
+  }, [transactions, searchQuery, filterOption, filterStartDate, filterEndDate, filterMinAmount, filterMaxAmount, filterAccountId])
 
   const groupedTransactions = useMemo(() => {
     return filteredTransactions.reduce((groups, tx) => {
@@ -847,7 +867,14 @@ export default function TransactionsPage() {
             categoryId: manualForm.categoryId || null,
             subCategoryId: manualForm.subCategoryId || null,
             pending: manualForm.pending,
-            attachment: manualForm.attachment || null
+            attachment: manualForm.attachment || null,
+            investmentData: manualForm.addToPortfolio ? {
+              name: manualForm.investmentName,
+              symbol: manualForm.investmentSymbol,
+              category: manualForm.investmentCategory,
+              quantity: manualForm.investmentQuantity ? Number(manualForm.investmentQuantity) : 0,
+              platform: manualForm.investmentPlatform,
+            } : undefined
           })
         })
 
@@ -1705,8 +1732,27 @@ export default function TransactionsPage() {
                   const isTransfer = tx.type === 'transfer'
                   const isExpense = tx.type === 'expense'
                   const isIncome = tx.type === 'income'
+
+                  // Determine effective direction for transfers
+                  let isIncomingTransfer = false
+
+                  // DEBUG: Check values
+                  if (isTransfer) {
+                    console.log('Transfer Debug:', {
+                      txId: tx.id,
+                      filterAccountId,
+                      toAccountId: tx.toAccount?.id,
+                      fromAccountId: tx.account.id,
+                      isMatch: tx.toAccount?.id === filterAccountId
+                    })
+                  }
+
+                  if (isTransfer && filterAccountId !== 'all' && tx.toAccount?.id === filterAccountId) {
+                    isIncomingTransfer = true
+                  }
+
                   const amountColor = isTransfer
-                    ? 'text-blue-600 dark:text-blue-400'
+                    ? (isIncomingTransfer ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400')
                     : isExpense
                       ? 'text-red-600 dark:text-red-400'
                       : isIncome
@@ -1714,14 +1760,17 @@ export default function TransactionsPage() {
                         : 'text-gray-600 dark:text-gray-400'
 
                   const title = isTransfer
-                    ? tx.description || `Transfert depuis ${tx.account.name} vers ${tx.toAccount?.name ?? ''}`
+                    ? isIncomingTransfer
+                      ? `Transfert reçu de ${tx.account.name}`
+                      : `Transfert vers ${tx.toAccount?.name ?? 'Compte inconnu'}`
                     : tx.description || 'Transaction'
 
+                  // Simplified subtitle for transfers to avoid redundancy
                   const subtitle = isTransfer
-                    ? `${tx.account.name} → ${tx.toAccount?.name ?? ''}`
+                    ? `${tx.account.name} → ${tx.toAccount?.name ?? 'Compte inconnu'} [Debug: ${isIncomingTransfer ? 'IN' : 'OUT'} | Filter: ${filterAccountId.slice(0, 4)}... | To: ${tx.toAccount?.id?.slice(0, 4)}...]`
                     : tx.account.name
 
-                  const iconSymbol = isTransfer ? '↔' : isExpense ? '↑' : '↓'
+                  const iconSymbol = isTransfer ? (isIncomingTransfer ? '↓' : '↔') : isExpense ? '↑' : '↓'
                   const iconBg = isTransfer
                     ? 'bg-blue-100 dark:bg-blue-900/30'
                     : isExpense
@@ -1824,7 +1873,7 @@ export default function TransactionsPage() {
 
                         <div className="text-right space-y-2 flex-shrink-0">
                           <p className={`text-xl font-bold ${amountColor} tracking-tight`}>
-                            {(isExpense || isTransfer) ? '-' : '+'}{formatCurrency(Math.abs(tx.amount))}
+                            {(isExpense || (isTransfer && !isIncomingTransfer)) ? '-' : '+'}{formatCurrency(Math.abs(tx.amount))}
                           </p>
                           {tx.attachment && (
                             <button
@@ -1936,7 +1985,7 @@ export default function TransactionsPage() {
                   ✕
                 </button>
               </div>
-              <form onSubmit={submitManualForm} className="space-y-4">
+              <form onSubmit={handleManualSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Compte *</label>
@@ -2188,6 +2237,84 @@ export default function TransactionsPage() {
                 </div>
 
 
+                {/* Investment Toggle */}
+                {(manualForm.categoryId && categories.find(c => c.id === manualForm.categoryId)?.name === 'Investissement') && (
+                  <div className="border border-indigo-100 dark:border-indigo-900/50 rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 space-y-4">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={manualForm.addToPortfolio}
+                        onChange={(e) => setManualForm(prev => ({ ...prev, addToPortfolio: e.target.checked }))}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <span className="font-medium text-gray-900 dark:text-gray-100">Ajouter au portefeuille</span>
+                    </label>
+
+                    {manualForm.addToPortfolio && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nom de l'actif</label>
+                          <input
+                            type="text"
+                            value={manualForm.investmentName}
+                            onChange={(e) => setManualForm(prev => ({ ...prev, investmentName: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Ex: Bitcoin, Apple, ETF World..."
+                            required={manualForm.addToPortfolio}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Symbole (Optionnel)</label>
+                          <input
+                            type="text"
+                            value={manualForm.investmentSymbol}
+                            onChange={(e) => setManualForm(prev => ({ ...prev, investmentSymbol: e.target.value.toUpperCase() }))}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="BTC, AAPL..."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Quantité</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={manualForm.investmentQuantity}
+                            onChange={(e) => setManualForm(prev => ({ ...prev, investmentQuantity: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="0.00"
+                            required={manualForm.addToPortfolio}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Catégorie d'actif</label>
+                          <select
+                            value={manualForm.investmentCategory}
+                            onChange={(e) => setManualForm(prev => ({ ...prev, investmentCategory: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="Crypto">Crypto</option>
+                            <option value="Action">Action</option>
+                            <option value="ETF">ETF</option>
+                            <option value="Immobilier">Immobilier</option>
+                            <option value="Autre">Autre</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Plateforme (Opt.)</label>
+                          <input
+                            type="text"
+                            value={manualForm.investmentPlatform}
+                            onChange={(e) => setManualForm(prev => ({ ...prev, investmentPlatform: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Binance, Boursorama..."
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+
 
                 <div>
                   <label className="flex items-center gap-3 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">
@@ -2284,7 +2411,7 @@ export default function TransactionsPage() {
                 </div>
               </form>
             </div>
-          </div>
+          </div >
         )
       }
 
@@ -3188,6 +3315,7 @@ export default function TransactionsPage() {
           </div>
         )
       }
-    </div >
+    </div>
   )
 }
+

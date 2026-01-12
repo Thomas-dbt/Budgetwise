@@ -113,6 +113,7 @@ export const defaultCategories = [
             { name: 'Assurance vie', keywords: ['Assurance Vie', 'Generali', 'Linxea', 'Suravenir', 'Spirica'] },
             { name: 'Bourse', keywords: ['PEA', 'CTO', 'ETF', 'Actions', 'Amundi', 'Lyxor', 'Trade Republic', 'Degiro', 'Bourse Direct', 'Fortuneo', 'Saxo'] },
             { name: 'Crypto', keywords: ['Crypto', 'Bitcoin', 'BTC', 'Ethereum', 'Binance', 'Coinbase', 'Kraken', 'Ledger'] },
+            { name: 'Forex / Métaux', keywords: ['Forex', 'Trading', 'CFD', 'Or', 'Argent', 'Gold', 'Silver', 'XAU', 'XAG', 'Metaux', 'Metal', 'Bullion'] },
             { name: 'Immobilier', keywords: ['Notaire', 'Apport', 'Agence immobilière', 'Achat immo'] },
             { name: 'Autres placements', keywords: ['Crowdfunding', 'Anaxago', 'Homunity', 'Wiseed', 'October', 'Royaltiz', 'SCPI'] }
         ]

@@ -17,7 +17,12 @@ export async function GET(req: Request) {
     const search = searchParams.get('search') || searchParams.get('q')
 
     const where: any = accountId
-      ? { accountId, account: { ownerId: userId } }
+      ? {
+        OR: [
+          { accountId, account: { ownerId: userId } },
+          { toAccountId: accountId, toAccount: { ownerId: userId } }
+        ]
+      }
       : { account: { ownerId: userId } }
 
     if (startDate || endDate) {
@@ -122,7 +127,7 @@ export async function POST(req: Request) {
   try {
     const userId = await getCurrentUserId()
     const body = await req.json()
-    const { accountId, amount, type, date, description, categoryId, subCategoryId, pending, attachment, transferGroupId, toAccountId } = body
+    const { accountId, amount, type, date, description, categoryId, subCategoryId, pending, attachment, transferGroupId, toAccountId, investmentData } = body
 
     if (!accountId || amount === undefined || amount === null || !type || !date) {
       return NextResponse.json({ error: 'Champs requis manquants' }, { status: 400 })
@@ -282,6 +287,80 @@ export async function POST(req: Request) {
           throw error
         }
       }
+
+      // --- LOGIQUE AJOUTÉE POUR INVESTISSEMENT ---
+      if (investmentData && (normalizedType === 'expense' || normalizedType === 'transfer')) {
+        const { name, symbol, category, quantity, platform, currentPrice } = investmentData
+
+        if (name && category && quantity) {
+          try {
+            // 1. Chercher ou créer l'actif
+            let asset = await txClient.investmentAsset.findFirst({
+              where: {
+                userId,
+                name: name
+              }
+            } as any)
+
+            if (!asset && symbol) {
+              asset = await txClient.investmentAsset.findFirst({
+                where: {
+                  userId,
+                  symbol: symbol.toUpperCase()
+                }
+              } as any)
+            }
+
+            if (!asset) {
+              // Création
+              const kind = category === 'Crypto' ? 'crypto' : category === 'ETF' ? 'etf' : 'stock'
+              asset = await txClient.investmentAsset.create({
+                data: {
+                  userId,
+                  name,
+                  symbol: symbol ? symbol.toUpperCase() : null,
+                  category: category,
+                  kind, // Compatibilité
+                  platform: platform || null,
+                  valuationMode: 'marché', // Par défaut
+                  quantity: 0, // Sera mis à jour par la position ou increment
+                  // On initialise sans position, on l'ajoute juste après
+                } as any
+              })
+            }
+
+            // 2. Créer la position ou mettre à jour la quantité
+            const invAmount = Math.abs(numericAmount)
+            const qty = Number(quantity)
+
+            // Créer une position
+            await txClient.position.create({
+              data: {
+                assetId: asset.id,
+                quantity: qty,
+                costBasis: qty > 0 ? invAmount / qty : 0,
+                purchaseDate: parsedDate,
+              }
+            })
+
+            // Mettre à jour l'actif (quantité totale et coût moyen sont recalculés à la lecture, 
+            // mais on incrémente la quantité pour le cache rapide si utilisé)
+            await txClient.investmentAsset.update({
+              where: { id: asset.id },
+              data: {
+                quantity: { increment: qty },
+                amountInvested: { increment: invAmount }
+              } as any
+            })
+
+          } catch (invError) {
+            console.error('Error auto-creating investment:', invError)
+            // On ne bloque pas la transaction si l'investissement échoue, 
+            // mais idéalement on devrait. Pour l'instant on log.
+          }
+        }
+      }
+      // -------------------------------------------
 
       return { created, updatedFromAccount, updatedToAccount }
     })

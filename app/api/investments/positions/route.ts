@@ -6,9 +6,9 @@ export async function POST(req: Request) {
   try {
     const userId = await getCurrentUserId()
     const body = await req.json()
-    const { 
-      assetId, 
-      quantity, 
+    const {
+      assetId,
+      quantity,
       costBasis,
       paidAmount,
       paidCurrency,
@@ -111,33 +111,7 @@ export async function DELETE(req: Request) {
 
 
 
-      return NextResponse.json({ error: 'ID manquant' }, { status: 400 })
-    }
 
-    // Vérifier que la position appartient à un actif de l'utilisateur
-    const position = await prisma.position.findUnique({
-      where: { id },
-      include: { asset: true }
-    })
-
-    if (!position || position.asset.userId !== userId) {
-      return NextResponse.json({ error: 'Position introuvable' }, { status: 404 })
-    }
-
-    await prisma.position.delete({
-      where: { id }
-    })
-
-    return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('Positions DELETE error:', error)
-    const status = error?.message === 'UNAUTHORIZED' ? 401 : 500
-    return NextResponse.json(
-      { error: 'Impossible de supprimer la position' },
-      { status }
-    )
-  }
-}
 
 
 
