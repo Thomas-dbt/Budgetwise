@@ -115,8 +115,7 @@ export async function POST(req: Request) {
         costBasis: buyPrice,
         paidAmount: paid_amount ? Number(paid_amount) : null,
         paidCurrency: paid_currency || null,
-        purchaseDate,
-        fxRateToQuote: fx_paid_to_quote ? Number(fx_paid_to_quote) : null
+        purchaseDate
       }
     })
 

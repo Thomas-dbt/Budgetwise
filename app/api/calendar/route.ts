@@ -6,7 +6,8 @@ import { getCurrentUserId } from '@/lib/server-auth'
 function generateRecurringOccurrences(
   baseEvent: any,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  exceptions: any[] = []
 ): any[] {
   if (!baseEvent.recurring) return []
 
@@ -49,12 +50,22 @@ function generateRecurringOccurrences(
   // Générer les occurrences jusqu'à la date de fin
   let maxIterations = 1000 // Sécurité pour éviter les boucles infinies
   while (currentDate <= endDate && maxIterations > 0) {
-    occurrences.push({
-      ...baseEvent,
-      id: `${baseEvent.id}-${currentDate.toISOString()}`,
-      dueDate: new Date(currentDate),
-      confirmed: false // Le statut confirmé sera déterminé plus tard en vérifiant les transactions
+    // Vérifier si cette date est une exception
+    const isException = exceptions.some(ex => {
+      const exDate = new Date(ex.date)
+      return exDate.getDate() === currentDate.getDate() &&
+        exDate.getMonth() === currentDate.getMonth() &&
+        exDate.getFullYear() === currentDate.getFullYear()
     })
+
+    if (!isException) {
+      occurrences.push({
+        ...baseEvent,
+        id: `${baseEvent.id}-${currentDate.toISOString()}`,
+        dueDate: new Date(currentDate),
+        confirmed: false // Le statut confirmé sera déterminé plus tard en vérifiant les transactions
+      })
+    }
 
     switch (baseEvent.recurring) {
       case 'weekly':
@@ -106,10 +117,33 @@ export async function GET(req: Request) {
       }
     })
 
+    // Fetch exceptions using raw query to bypass stale Prisma Client
+    let allExceptions: any[] = []
+    try {
+      allExceptions = await prisma.$queryRaw`
+        SELECT ex.id, ex.eventId, ex.date
+        FROM CalendarEventException ex
+        JOIN CalendarEvent ev ON ex.eventId = ev.id
+        WHERE ev.userId = ${userId}
+      `
+    } catch (e) {
+      console.warn('Could not fetch exceptions (table might not exist yet):', e)
+    }
+
+    // Attach exceptions to events
+    const eventsWithExceptions = events.map(e => ({
+      ...e,
+      exceptions: allExceptions.filter((ex: any) => ex.eventId === e.id).map((ex: any) => ({
+        ...ex,
+        date: new Date(ex.date) // Ensure date is a Date object
+      }))
+    }))
+
+    // Use eventsWithExceptions instead of events for processing
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
     // Prélèvements à confirmer (non confirmés et date passée ou proche)
-    const pendingConfirmations = events.filter(e =>
+    const pendingConfirmations = eventsWithExceptions.filter(e =>
       !e.confirmed &&
       e.type === 'debit' &&
       new Date(e.dueDate) <= sevenDaysFromNow
@@ -119,7 +153,7 @@ export async function GET(req: Request) {
     const upcomingNext7Days: any[] = []
 
     // Ajouter les événements non récurrents
-    events.forEach(e => {
+    eventsWithExceptions.forEach(e => {
       if (!e.recurring &&
         e.type === 'debit' &&
         new Date(e.dueDate) > now &&
@@ -129,9 +163,10 @@ export async function GET(req: Request) {
     })
 
     // Ajouter les occurrences récurrentes pour les 7 prochains jours
-    events.forEach(e => {
+    eventsWithExceptions.forEach(e => {
       if (e.recurring) {
-        const occurrences = generateRecurringOccurrences(e, now, sevenDaysFromNow)
+        // @ts-ignore
+        const occurrences = generateRecurringOccurrences(e, now, sevenDaysFromNow, e.exceptions || [])
         occurrences.forEach(occ => {
           if (occ.type === 'debit') {
             upcomingNext7Days.push(occ)
@@ -144,7 +179,7 @@ export async function GET(req: Request) {
     upcomingNext7Days.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
 
     // Échéances récurrentes actives
-    const recurringEvents = events.filter(e => e.recurring)
+    const recurringEvents = eventsWithExceptions.filter(e => e.recurring)
 
     // Calculer les dates de début et fin du mois cible
     const monthStart = new Date(targetYear, targetMonth, 1)
@@ -154,7 +189,7 @@ export async function GET(req: Request) {
     const monthEvents: any[] = []
 
     // Ajouter les événements non récurrents du mois
-    events.forEach(e => {
+    eventsWithExceptions.forEach(e => {
       if (!e.recurring) {
         const eventDate = new Date(e.dueDate)
         if (eventDate.getMonth() === targetMonth &&
@@ -202,7 +237,9 @@ export async function GET(req: Request) {
         // Générer les occurrences pour une période plus large (3 mois avant et après)
         const extendedStart = new Date(targetYear, targetMonth - 3, 1)
         const extendedEnd = new Date(targetYear, targetMonth + 4, 0, 23, 59, 59, 999)
-        const occurrences = generateRecurringOccurrences(e, extendedStart, extendedEnd)
+        const occurrences = generateRecurringOccurrences(e, extendedStart, extendedEnd, e.exceptions || [])
+
+        // Filtrer pour garder seulement celles du mois cible et vérifier si elles sont confirmées
 
         // Filtrer pour garder seulement celles du mois cible et vérifier si elles sont confirmées
         occurrences.forEach(occ => {

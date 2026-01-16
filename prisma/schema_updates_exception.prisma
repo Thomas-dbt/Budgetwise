@@ -1,0 +1,10 @@
+
+model CalendarEventException {
+  id        String        @id @default(cuid())
+  eventId   String
+  event     CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  date      DateTime      // La date originale de l'occurrence supprimée
+  createdAt DateTime      @default(now())
+
+  @@unique([eventId, date])
+}

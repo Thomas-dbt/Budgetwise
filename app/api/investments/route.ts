@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     // Fonction pour récupérer le prix d'un actif depuis Yahoo Finance
     const fetchPrice = async (symbol: string, category: string, tradingViewSymbol?: string | null) => {
       try {
-        const marketSymbol = getMarketSymbol(symbol, category, tradingViewSymbol)
+        const marketSymbol = getMarketSymbol(symbol, category, tradingViewSymbol || null)
         if (!marketSymbol) return null
 
         const yahooSymbol = marketSymbol.kind === 'crypto'

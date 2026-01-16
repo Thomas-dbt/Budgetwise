@@ -918,7 +918,9 @@ export default function TransactionsPage() {
   const handleManualUpdate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!editingTransactionId) {
-      return handleManualSubmit(event)
+      console.error('Abort update: editingTransactionId is missing')
+      setFeedback({ type: 'error', message: 'Erreur interne: ID de transaction manquant.' })
+      return
     }
 
     const normalizedAmount = Number(manualForm.amount.toString().replace(',', '.'))
@@ -1001,7 +1003,7 @@ export default function TransactionsPage() {
       setShowNewSubCategoryInput(false)
       setNewSubCategoryName('')
       setEditingTransactionId(null)
-      setFeedback({ type: 'success', message: 'Transaction mise à jour.' })
+      // Suppression du message pour modification unique: setFeedback({ type: 'success', message: 'Transaction mise à jour.' })
       fetchTransactions()
       // Déclencher un événement pour actualiser les comptes
       if (typeof window !== 'undefined') {
@@ -1016,9 +1018,11 @@ export default function TransactionsPage() {
   }
 
   const submitManualForm = (event: FormEvent<HTMLFormElement>) => {
+    console.log('submitManualForm called', { editingTransactionId })
     if (editingTransactionId) {
       handleManualUpdate(event)
     } else {
+      console.log('Calling handleManualSubmit (creation)')
       handleManualSubmit(event)
     }
   }
@@ -1985,7 +1989,7 @@ export default function TransactionsPage() {
                   ✕
                 </button>
               </div>
-              <form onSubmit={handleManualSubmit} className="space-y-4">
+              <form onSubmit={submitManualForm} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Compte *</label>

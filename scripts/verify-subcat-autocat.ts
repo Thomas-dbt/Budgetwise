@@ -52,7 +52,8 @@ async function verify() {
     const keyword = await prisma.categoryKeyword.create({
         data: {
             categoryId: subCategory!.id,
-            keyword: keywordText
+            keyword: keywordText,
+            userId: user.id
         }
     })
 

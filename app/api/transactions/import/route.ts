@@ -63,17 +63,13 @@ export async function POST(request: Request) {
       // 1. Try provided ID
       let categoryId: string | undefined = row.categoryId
 
-      // 2. Try provided Name
-      if (!categoryId && row.categoryName) {
-        const key = row.categoryName.trim().toLowerCase()
-        if (categoryMap.has(key)) {
-          categoryId = categoryMap.get(key)
-        }
-      }
-
-      // 3. Try Auto-Categorize (User Keywords)
-      if (!categoryId && row.description) {
-        const match = await autoCategorize(row.description, userId)
+      // 2. Try Auto-Categorize (Enhanced with Imported Category)
+      if (!categoryId) {
+        // La fonction autoCategorize gère maintenant la priorité :
+        // 1. Match exact sur categoryName
+        // 2. Mots-clés dans categoryName
+        // 3. Mots-clés dans description
+        const match = await autoCategorize(row.description || '', userId, row.categoryName)
         if (match) {
           categoryId = match.id
         }

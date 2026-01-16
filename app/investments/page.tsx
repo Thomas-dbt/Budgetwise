@@ -168,7 +168,9 @@ export default function InvestmentsPage() {
     currentBalance: '',
     monthlyContribution: '',
     ceiling: '',
-    interestMode: 'simple_annuel'
+    interestMode: 'simple_annuel',
+    createTransaction: false,
+    sourceAccountId: ''
   })
 
   // État pour les métriques calculées en temps réel (Crypto)
@@ -317,7 +319,8 @@ export default function InvestmentsPage() {
         const data = await response.json()
         const investment = data.investments?.find((inv: any) => inv.id === id)
         if (investment) {
-          setFormData({
+          setFormData(prev => ({
+            ...prev,
             name: investment.name || '',
             symbol: investment.symbol || '',
             baseSymbol: investment.baseSymbol || '',
@@ -328,7 +331,7 @@ export default function InvestmentsPage() {
             paidAmount: investment.amountInvested?.toString() || '',
             paidCurrency: investment.currency || 'EUR',
             purchaseDate: investment.purchaseDate || new Date().toISOString().split('T')[0]
-          })
+          }))
           setEditModalOpen(true)
           closeDetailsModal()
         }
@@ -887,7 +890,26 @@ export default function InvestmentsPage() {
           purchaseDate: new Date().toISOString().split('T')[0],
           annualRate: '',
           capitalizationMode: 'mensuelle',
-          startDate: new Date().toISOString().split('T')[0]
+          startDate: new Date().toISOString().split('T')[0],
+          buyUnitPriceQuote: '',
+          fees: '',
+          fxPaidToQuote: '',
+          notes: '',
+          ticker: '',
+          exchange: '',
+          isin: '',
+          dividendsTracking: false,
+          quantityParts: '',
+          buyUnitPrice: '',
+          distributionType: '',
+          envelope: '',
+          benchmark: '',
+          currentBalance: '',
+          monthlyContribution: '',
+          ceiling: '',
+          createTransaction: false,
+          sourceAccountId: '',
+          interestMode: 'simple_annuel'
         })
         setRealEstateFormData({
           name: '',
@@ -991,7 +1013,10 @@ export default function InvestmentsPage() {
           benchmark: '',
           currentBalance: '',
           monthlyContribution: '',
+
           ceiling: '',
+          createTransaction: false,
+          sourceAccountId: '',
           interestMode: 'simple_annuel'
         })
         setCryptoMetrics({
@@ -1100,6 +1125,8 @@ export default function InvestmentsPage() {
           currentBalance: '',
           monthlyContribution: '',
           ceiling: '',
+          createTransaction: false,
+          sourceAccountId: '',
           interestMode: 'simple_annuel'
         })
         setEtfMetrics({
@@ -1197,6 +1224,8 @@ export default function InvestmentsPage() {
           currentBalance: '',
           monthlyContribution: '',
           ceiling: '',
+          createTransaction: false,
+          sourceAccountId: '',
           interestMode: 'simple_annuel'
         })
         setSavingsProjection({
@@ -1315,7 +1344,6 @@ export default function InvestmentsPage() {
         benchmark: '',
         currentBalance: '',
         monthlyContribution: '',
-        ceiling: '',
         ceiling: '',
         interestMode: 'simple_annuel',
         createTransaction: false,
@@ -3513,6 +3541,8 @@ export default function InvestmentsPage() {
                           currentBalance: '',
                           monthlyContribution: '',
                           ceiling: '',
+                          createTransaction: false,
+                          sourceAccountId: '',
                           interestMode: 'simple_annuel'
                         })
                         setCryptoMetrics({

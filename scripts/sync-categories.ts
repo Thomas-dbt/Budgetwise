@@ -86,15 +86,16 @@ async function main() {
                         try {
                             await prisma.categoryKeyword.upsert({
                                 where: {
-                                    categoryId_keyword: {
-                                        categoryId: sub.id,
+                                    userId_keyword: {
+                                        userId: user.id,
                                         keyword: keyword
                                     }
                                 },
                                 update: {}, // Do nothing if exists
                                 create: {
                                     categoryId: sub.id,
-                                    keyword: keyword
+                                    keyword: keyword,
+                                    userId: user.id
                                 }
                             })
                         } catch (e) {

@@ -163,6 +163,8 @@ export default function CalendarPage() {
     accountId: '',
     toAccountId: ''
   })
+  const [deleteChoiceModalOpen, setDeleteChoiceModalOpen] = useState(false)
+  const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null)
 
   useEffect(() => {
     fetchCalendarData()
@@ -822,12 +824,61 @@ export default function CalendarPage() {
     }
   }
 
+  const handleDeleteEvent = async (event: CalendarEvent) => {
+    if (!event) return
+
+    const isRecurring = !!event.recurring || event.id.includes('-')
+
+    if (isRecurring) {
+      setEventToDelete(event)
+      setDeleteChoiceModalOpen(true)
+      return
+    }
+
+    if (!window.confirm("Voulez-vous vraiment supprimer cette échéance ?")) return
+
+    await performDelete(event, 'series')
+  }
+
+  const performDelete = async (event: CalendarEvent, scope: 'occurrence' | 'series') => {
+    try {
+      const eventIdToDelete = event.id.includes('-')
+        ? event.id.split('-')[0]
+        : event.id
+
+      let url = `/api/calendar/${eventIdToDelete}?scope=${scope}`
+      if (scope === 'occurrence') {
+        const dateValue = event.dueDate
+        url += `&date=${encodeURIComponent(dateValue)}`
+      }
+
+      const response = await authFetch(url, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error("Impossible de supprimer l'échéance")
+      }
+
+      setNewEventSuccess('Échéance supprimée avec succès.')
+      setSelectedEvent(null)
+      setEditModalOpen(false)
+      setDeleteChoiceModalOpen(false)
+      setEventToDelete(null)
+      await fetchCalendarData()
+    } catch (error: any) {
+      console.error('Delete event error:', error)
+      window.alert(error.message || "Impossible de supprimer l'échéance")
+    }
+  }
+
   // Calendrier mensuel
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear()
     const month = date.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
+    // Use noon to avoid timezone/DST issues shifting to previous day
+    const firstDay = new Date(year, month, 1, 12, 0, 0)
+    const lastDay = new Date(year, month + 1, 0, 12, 0, 0)
     const daysInMonth = lastDay.getDate()
     const startingDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1
 
@@ -994,9 +1045,16 @@ export default function CalendarPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedEvent(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all font-medium"
                 >
                   Fermer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteEvent(selectedEvent)}
+                  className="flex-1 px-4 py-2 border border-red-300 text-red-600 dark:border-red-800 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-all font-medium"
+                >
+                  Supprimer
                 </button>
                 <button
                   type="button"
@@ -1578,6 +1636,43 @@ export default function CalendarPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {deleteChoiceModalOpen && eventToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteChoiceModalOpen(false)}></div>
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
+            <h3 className="text-xl font-bold mb-4">Supprimer l'échéance</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Il s'agit d'une échéance récurrente. Que souhaitez-vous supprimer ?
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => performDelete(eventToDelete, 'occurrence')}
+                className="w-full flex items-center justify-center px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all font-medium"
+              >
+                Cette occurrence seulement
+                <span className="ml-2 text-xs text-gray-500">(Le mois courant)</span>
+              </button>
+
+              <button
+                onClick={() => performDelete(eventToDelete, 'series')}
+                className="w-full flex items-center justify-center px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-all font-medium"
+              >
+                Toute la série
+                <span className="ml-2 text-xs text-red-500/80">(Passé non validé et futur)</span>
+              </button>
+
+              <button
+                onClick={() => setDeleteChoiceModalOpen(false)}
+                className="w-full px-4 py-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium mt-2"
+              >
+                Annuler
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -144,6 +144,17 @@ model CalendarEvent {
   toAccountId             String?
   toAccount               Account?     @relation("CalendarEventToAccount", fields: [toAccountId], references: [id])
   createdAt               DateTime     @default(now())
+  exceptions              CalendarEventException[]
+}
+
+model CalendarEventException {
+  id        String        @id @default(cuid())
+  eventId   String
+  event     CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  date      DateTime
+  createdAt DateTime      @default(now())
+
+  @@unique([eventId, date])
 }
 
 model InvestmentAsset {

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { authFetch } from '@/lib/auth-fetch'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { useToast } from '@/components/toast'
+import { useRef } from 'react'
+import { Send, User, Bot, Sparkles } from 'lucide-react'
 
 interface AnalysisData {
   summary: string
@@ -35,6 +37,11 @@ interface StatisticsData {
   totalBalance: number
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 const COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#14b8a6', '#6366f1']
 
 const PERIODS = [
@@ -53,6 +60,49 @@ export default function SavingsPage() {
   const [period, setPeriod] = useState('3months')
   const { toast } = useToast()
 
+  // Chat State
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([{ role: 'assistant', content: 'Bonjour ! Je suis votre assistant financier. Posez-moi une question sur vos dépenses, votre épargne ou demandez-moi un conseil.' }])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chatMessages])
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (!chatInput.trim() || chatLoading) return
+
+    const userMsg: ChatMessage = { role: 'user', content: chatInput }
+    setChatMessages(prev => [...prev, userMsg])
+    setChatInput('')
+    setChatLoading(true)
+
+    try {
+      const response = await authFetch('/api/savings/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [...chatMessages, userMsg] })
+      })
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || 'Erreur de réponse')
+      }
+
+      const data = await response.json()
+      setChatMessages(prev => [...prev, { role: 'assistant', content: data.content }])
+    } catch (err: any) {
+      console.error(err)
+      const errorMessage = err.message || "Impossible de contacter l'assistant"
+      toast(errorMessage, 'error')
+      setChatMessages(prev => [...prev, { role: 'assistant', content: `⚠️ ${errorMessage}` }])
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
   useEffect(() => {
     analyzeSavings()
   }, [period])
@@ -70,12 +120,12 @@ export default function SavingsPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }))
-        
+
         // Stocker les détails du quota si disponibles
         if (errorData.quotaDetails) {
           setQuotaDetails(errorData.quotaDetails)
         }
-        
+
         // Utiliser directement le code d'erreur de l'API si disponible
         const apiError = errorData.error || `Erreur ${response.status}`
         throw new Error(apiError)
@@ -86,10 +136,10 @@ export default function SavingsPage() {
       setStatistics(data.statistics)
     } catch (err: any) {
       console.error('Error analyzing savings:', err)
-      
+
       // Nettoyer le message d'erreur pour l'affichage utilisateur
       let errorMessage = err.message || 'Impossible d\'effectuer l\'analyse'
-      
+
       // Détecter et simplifier les erreurs de quota Gemini
       if (errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
         errorMessage = 'QUOTA_EXCEEDED'
@@ -112,16 +162,16 @@ export default function SavingsPage() {
         // Tronquer les messages trop longs
         errorMessage = errorMessage.substring(0, 200) + '...'
       }
-      
+
       setError(errorMessage)
-      
+
       // Toast avec message simplifié
-      const toastMessage = errorMessage === 'QUOTA_EXCEEDED' 
+      const toastMessage = errorMessage === 'QUOTA_EXCEEDED'
         ? 'Quota API dépassé. Réessayez plus tard.'
         : errorMessage === 'API_KEY_MISSING'
-        ? 'Clé API non configurée'
-        : errorMessage
-      
+          ? 'Clé API non configurée'
+          : errorMessage
+
       toast(toastMessage, 'error')
     } finally {
       setLoading(false)
@@ -210,7 +260,7 @@ export default function SavingsPage() {
                   <p className="text-red-700 dark:text-red-300">
                     Le quota de l'API Gemini a été dépassé. L'analyse IA n'est temporairement pas disponible.
                   </p>
-                  
+
                   {/* Afficher les détails du quota si disponibles */}
                   {quotaDetails && (
                     <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded text-sm">
@@ -233,15 +283,15 @@ export default function SavingsPage() {
                         </div>
                       )}
                       <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                        💡 <strong>Explication :</strong> Vous avez atteint la limite d'utilisation gratuite de l'API Gemini. 
-                        {quotaDetails.retryDelay 
+                        💡 <strong>Explication :</strong> Vous avez atteint la limite d'utilisation gratuite de l'API Gemini.
+                        {quotaDetails.retryDelay
                           ? ` Une tentative automatique après ${Math.ceil(parseFloat(quotaDetails.retryDelay))} secondes a également échoué.`
                           : ' Le quota gratuit est épuisé.'}
                         {' '}Le quota gratuit est très limité. Réessayez dans quelques heures ou passez à un plan payant pour des limites plus élevées.
                       </p>
                     </div>
                   )}
-                  
+
                   <p className="text-sm text-red-600 dark:text-red-400">
                     Vous pouvez toujours consulter vos statistiques ci-dessous. Réessayez plus tard pour obtenir l'analyse complète.
                   </p>
@@ -311,40 +361,40 @@ export default function SavingsPage() {
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={statistics.monthlyEvolution}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                <XAxis 
-                  dataKey="month" 
+                <XAxis
+                  dataKey="month"
                   tickFormatter={formatMonth}
                   stroke="#6b7280"
                   className="dark:stroke-gray-400"
                 />
-                <YAxis 
+                <YAxis
                   stroke="#6b7280"
                   className="dark:stroke-gray-400"
                   tickFormatter={(value) => `${value}€`}
                 />
-                <Tooltip 
+                <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   labelFormatter={formatMonth}
-                  contentStyle={{ 
+                  contentStyle={{
                     backgroundColor: 'white',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px'
                   }}
                 />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="income" 
-                  name="Revenus" 
-                  stroke="#10b981" 
+                <Line
+                  type="monotone"
+                  dataKey="income"
+                  name="Revenus"
+                  stroke="#10b981"
                   strokeWidth={2}
                   dot={{ r: 4 }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="expenses" 
-                  name="Dépenses" 
-                  stroke="#ef4444" 
+                <Line
+                  type="monotone"
+                  dataKey="expenses"
+                  name="Dépenses"
+                  stroke="#ef4444"
                   strokeWidth={2}
                   dot={{ r: 4 }}
                 />
@@ -370,9 +420,9 @@ export default function SavingsPage() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip 
+                <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ 
+                  contentStyle={{
                     backgroundColor: 'white',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px'
@@ -526,6 +576,76 @@ export default function SavingsPage() {
           </div>
         </div>
       )}
+
+      {/* Assistant IA Chat */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-800/50 flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-lg">Assistant Budgetwise</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Posez vos questions librement à votre IA personnelle</p>
+          </div>
+        </div>
+
+        <div className="h-[400px] overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-gray-950/50">
+          {chatMessages.map((msg, idx) => (
+            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`flex gap-3 max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user'
+                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                  }`}>
+                  {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                </div>
+                <div className={`p-3 rounded-2xl text-sm ${msg.role === 'user'
+                  ? 'bg-blue-600 text-white rounded-tr-none'
+                  : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-none shadow-sm'
+                  }`}>
+                  <div className="prose dark:prose-invert max-w-none text-sm whitespace-pre-line">
+                    {msg.content}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {chatLoading && (
+            <div className="flex justify-start">
+              <div className="flex gap-3 max-w-[80%]">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce delay-75"></div>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce delay-150"></div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={chatEndRef} />
+        </div>
+
+        <form onSubmit={handleSendMessage} className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex gap-2">
+          <input
+            type="text"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Ex: Combien ai-je dépensé en courses le mois dernier ?"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            disabled={chatLoading}
+          />
+          <button
+            type="submit"
+            disabled={!chatInput.trim() || chatLoading}
+            className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </form>
+      </div>
+
     </div>
   )
 }
