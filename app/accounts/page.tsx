@@ -548,18 +548,19 @@ export default function AccountsPage() {
         </div>
       ) : (
         <>
-          {['checking', 'savings', 'investment'].map(groupType => {
+          {['checking', 'savings', 'investment', 'other'].map(groupType => {
             const groupAccounts = accounts.filter(a => {
               if (groupType === 'checking') return ['checking', 'credit', 'cash'].includes(a.type)
               if (groupType === 'savings') return a.type === 'savings'
               if (groupType === 'investment') return a.type === 'investment'
+              if (groupType === 'other') return !['checking', 'credit', 'cash', 'savings', 'investment'].includes(a.type)
               return false
             })
 
             if (groupAccounts.length === 0) return null
 
             const groupTotal = groupAccounts.reduce((sum, a) => sum + Number(a.balance), 0)
-            let title = 'Autres'
+            let title = 'Autres Comptes'
             if (groupType === 'checking') title = 'Comptes Courants'
             if (groupType === 'savings') title = 'Épargne'
             if (groupType === 'investment') title = 'Investissements'
@@ -571,6 +572,7 @@ export default function AccountsPage() {
                     {groupType === 'checking' && <CreditCard className="w-5 h-5" />}
                     {groupType === 'savings' && <Wallet className="w-5 h-5" />}
                     {groupType === 'investment' && <CircleDollarSign className="w-5 h-5" />}
+                    {groupType === 'other' && <CreditCard className="w-5 h-5" />}
                     {title}
                   </h2>
                   <span className="text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">

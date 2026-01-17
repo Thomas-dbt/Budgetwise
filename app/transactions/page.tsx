@@ -1,6 +1,6 @@
 'use client'
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react'
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState, useRef } from 'react'
 import { authFetch } from '@/lib/auth-fetch'
 import { useToast } from '@/components/toast'
 
@@ -202,6 +202,67 @@ export default function TransactionsPage() {
 
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set())
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isScanning, setIsScanning] = useState(false)
+
+  const handleScanReceipt = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setIsScanning(true)
+    setFeedback(null)
+
+    try {
+      const base64 = await readFileAsDataUrl(file)
+
+      const response = await authFetch('/api/scan-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: base64,
+          categories: categories.map(c => c.name)
+        })
+      })
+
+      if (!response.ok) {
+        const errText = await response.text()
+        console.error('Scan failed:', errText)
+        throw new Error(`Erreur ${response.status}: Impossible d'analyser le ticket`)
+      }
+
+      const data = await response.json()
+
+      // Attempt to find category
+      let foundCategoryId = ''
+      if (data.category) {
+        const lowerCat = data.category.toLowerCase()
+        const cat = categories.find(c => c.name.toLowerCase().includes(lowerCat) || lowerCat.includes(c.name.toLowerCase()))
+        if (cat) foundCategoryId = cat.id
+      }
+
+      setManualForm(prev => ({
+        ...prev,
+        amount: data.amount ? String(data.amount) : prev.amount,
+        date: data.date || prev.date,
+        description: data.merchant ? (data.description ? `${data.merchant} - ${data.description}` : data.merchant) : (data.description || prev.description),
+        categoryId: foundCategoryId || prev.categoryId,
+        attachment: base64,
+        attachmentName: file.name
+      }))
+
+      // Open modal
+      setManualModalOpen(true)
+      // Feedback removed as per request
+
+    } catch (error) {
+      console.error('Scan error:', error)
+      setFeedback({ type: 'error', message: 'Impossible d\'analyser le ticket.' })
+    } finally {
+      setIsScanning(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   const readFileAsDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -1506,14 +1567,23 @@ export default function TransactionsPage() {
               <span className="text-lg">📄</span>
               <span>Importer relevé</span>
             </button>
+            {/* Button removed */}
             <button
-              className="px-5 py-2.5 border border-red-300 text-red-600 dark:border-red-800 dark:text-red-300 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center gap-2 transition-all shadow-sm hover:shadow-md font-medium"
-              onClick={handleClearTransactions}
-              disabled={clearingTransactions}
+              className="px-5 py-2.5 border border-purple-300 text-purple-600 dark:border-purple-800 dark:text-purple-300 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/30 flex items-center gap-2 transition-all shadow-sm hover:shadow-md font-medium"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isScanning}
             >
-              <span className="text-lg">🧹</span>
-              <span>{clearingTransactions ? 'Nettoyage...' : 'Tout supprimer (tests)'}</span>
+              <span className="text-lg">{isScanning ? '⏳' : '📸'}</span>
+              <span>{isScanning ? 'Analyse...' : 'Scanner ticket'}</span>
             </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              capture="environment"
+              onChange={handleScanReceipt}
+            />
             <button
               className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 flex items-center gap-2 transition-all shadow-md hover:shadow-lg font-medium"
               onClick={openManualModal}
