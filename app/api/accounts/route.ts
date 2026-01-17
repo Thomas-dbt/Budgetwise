@@ -10,7 +10,7 @@ export async function GET() {
       include: {
         transactions: { take: 5, orderBy: { date: 'desc' } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { displayOrder: 'asc' },
     })
     return NextResponse.json(accounts)
   } catch (error: any) {
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   try {
     const userId = await getCurrentUserId()
     const body = await req.json()
-    const { name, bank, type, balance } = body
+    const { name, bank, type, balance, last4Digits } = body
     const isJoint = !!body.isJoint
     const jointAccessCode = body.jointAccessCode ? String(body.jointAccessCode).trim() : null
 
@@ -61,6 +61,13 @@ export async function POST(req: Request) {
       )
     }
 
+    // Get max display order
+    const maxOrderAgg = await prisma.account.aggregate({
+      where: { ownerId: userId },
+      _max: { displayOrder: true }
+    })
+    const nextOrder = (maxOrderAgg._max.displayOrder ?? 0) + 1
+
     const account = await prisma.account.create({
       data: {
         name: trimmedName,
@@ -70,6 +77,8 @@ export async function POST(req: Request) {
         ownerId: userId,
         isJoint,
         jointAccessCode: isJoint ? jointAccessCode : null,
+        displayOrder: nextOrder,
+        last4Digits: last4Digits ? String(last4Digits).slice(0, 4) : null,
       },
     })
     return NextResponse.json(account, { status: 201 })

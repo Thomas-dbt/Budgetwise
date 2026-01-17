@@ -7,6 +7,7 @@ interface RequestBody {
   bank?: string | null
   type?: string
   balance?: number
+  last4Digits?: string | null
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -32,6 +33,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       body.jointAccessCode !== undefined
         ? (body.jointAccessCode && body.jointAccessCode.trim().length ? body.jointAccessCode.trim() : null)
         : account.jointAccessCode
+    const updatedLast4Digits = body.last4Digits !== undefined ? body.last4Digits : account.last4Digits
 
     if (updatedIsJoint && (!updatedJointCode || updatedJointCode.length < 4)) {
       return NextResponse.json({
@@ -63,7 +65,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         type: updatedType,
         balance: updatedBalance,
         isJoint: updatedIsJoint,
-        jointAccessCode: updatedIsJoint ? updatedJointCode : null
+        jointAccessCode: updatedIsJoint ? updatedJointCode : null,
+        last4Digits: updatedLast4Digits
       }
     })
 

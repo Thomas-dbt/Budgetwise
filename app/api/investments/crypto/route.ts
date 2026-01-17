@@ -41,7 +41,6 @@ export async function POST(req: Request) {
       fees = 0,
       paid_amount,
       paid_currency,
-      fx_paid_to_quote,
       price_source = 'coingecko',
       notes
     } = body
@@ -83,28 +82,58 @@ export async function POST(req: Request) {
     // Créer le symbole de trading (ex: BTCUSD)
     const tradingSymbol = `${base_symbol.toUpperCase()}${finalQuoteCurrency}`
 
-    // Créer l'investissement
-    const asset = await prisma.investmentAsset.create({
-      data: {
+    // Vérifier si l'actif existe déjà (même symbole ou nom + plateforme)
+    let asset = await prisma.investmentAsset.findFirst({
+      where: {
         userId,
-        name,
-        symbol: tradingSymbol,
-        category: 'Crypto',
-        platform,
-        currency: finalQuoteCurrency,
-        comment: notes || null,
-        valuationMode: 'marché',
-        priceProvider: price_source,
-        baseSymbol: base_symbol.toUpperCase(),
-        quoteSymbol: finalQuoteCurrency,
-        tradingViewSymbol: tradingSymbol,
-        quantity,
-        currentPrice,
-        currentValue,
-        amountInvested: costBasisQuote,
-        lastValuationDate: new Date()
+        OR: [
+          { symbol: tradingSymbol },
+          { name, platform }
+        ]
       }
     })
+
+    if (asset) {
+      // Mettre à jour l'actif existant
+      const newQuantity = Number(asset.quantity) + quantity
+      const newAmountInvested = (Number(asset.amountInvested) || 0) + costBasisQuote
+      const newCurrentValue = newQuantity * currentPrice
+
+      asset = await prisma.investmentAsset.update({
+        where: { id: asset.id },
+        data: {
+          quantity: newQuantity,
+          amountInvested: newAmountInvested,
+          currentPrice,
+          currentValue: newCurrentValue,
+          lastValuationDate: new Date(),
+          platform: platform || asset.platform // Mettre à jour la plateforme si renseignée
+        }
+      })
+    } else {
+      // Créer le nouvel investissement
+      asset = await prisma.investmentAsset.create({
+        data: {
+          userId,
+          name,
+          symbol: tradingSymbol,
+          category: 'Crypto',
+          platform,
+          currency: finalQuoteCurrency,
+          comment: notes || null,
+          valuationMode: 'marché',
+          priceProvider: price_source,
+          baseSymbol: base_symbol.toUpperCase(),
+          quoteSymbol: finalQuoteCurrency,
+          tradingViewSymbol: tradingSymbol,
+          quantity,
+          currentPrice,
+          currentValue,
+          amountInvested: costBasisQuote,
+          lastValuationDate: new Date()
+        }
+      })
+    }
 
     // Créer la position avec les détails de transaction
     const purchaseDate = new Date(buy_date)

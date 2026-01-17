@@ -3,6 +3,40 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUserId } from '@/lib/server-auth'
 import { calculateRateBasedValue, getMarketSymbol } from '@/lib/investment-valuation'
 
+interface Investment {
+  id: string
+  name: string
+  symbol: string | null
+  category: string
+  subCategory: string | null
+  platform: string | null
+  currency: string
+  comment: string | null
+  valuationMode: string
+  readOnly: boolean
+  source: string | null
+  quantity: number
+  currentPrice: number | null
+  currentValue: number
+  amountInvested: number
+  lastValuationDate: string | null
+  tradingViewSymbol: string | null
+  priceProvider: string | null
+  baseAmount: number | null
+  annualRate: number | null
+  capitalizationMode: string | null
+  startDate: string | null
+  manualPrice: number | null
+  externalId: string | null
+  importBatchId: string | null
+  costBasis: number
+  totalValue: number
+  gainLoss: number
+  performance: number
+  kind: string | null
+  manualPriceEnabled: boolean
+}
+
 export async function GET(req: Request) {
   try {
     const userId = await getCurrentUserId()
@@ -25,7 +59,7 @@ export async function GET(req: Request) {
     // Calculer les statistiques du portefeuille
     let totalValue = 0
     let totalPortfolioCostBasis = 0
-    const investments: any[] = []
+    const investments: Investment[] = []
 
     // Récupérer les prix de marché pour les investissements en mode "marché"
     // Utiliser des accès sécurisés pour gérer l'ancien schéma
