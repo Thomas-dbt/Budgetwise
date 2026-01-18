@@ -16,18 +16,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/app-shell.tsx:17',message:'AppShell useEffect: pathname changed',data:{pathname,loading,hasUser:!!user,isPublic},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'components/app-shell.tsx:17', message: 'AppShell useEffect: pathname changed', data: { pathname, loading, hasUser: !!user, isPublic }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
     // #endregion
     if (loading) return
 
     if (!user && !isPublic) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/app-shell.tsx:22',message:'Redirecting to login',data:{pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'components/app-shell.tsx:22', message: 'Redirecting to login', data: { pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
       // #endregion
       router.replace("/login")
     } else if (user && isPublic) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/app-shell.tsx:25',message:'Redirecting to home',data:{pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'components/app-shell.tsx:25', message: 'Redirecting to home', data: { pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
       // #endregion
       router.replace("/")
     }
@@ -35,17 +35,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/app-shell.tsx:32',message:'AppShell: Error boundary setup',data:{pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'components/app-shell.tsx:32', message: 'AppShell: Error boundary setup', data: { pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
     // #endregion
     const handleError = (event: ErrorEvent) => {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/app-shell.tsx:35',message:'Global error caught',data:{message:event.message,filename:event.filename,lineno:event.lineno,colno:event.colno,error:event.error?.toString(),pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'components/app-shell.tsx:35', message: 'Global error caught', data: { message: event.message, filename: event.filename, lineno: event.lineno, colno: event.colno, error: event.error?.toString(), pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       console.error('Global error:', event.error)
     }
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/app-shell.tsx:40',message:'Unhandled promise rejection',data:{reason:event.reason?.toString(),pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'components/app-shell.tsx:40', message: 'Unhandled promise rejection', data: { reason: event.reason?.toString(), pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       console.error('Unhandled promise rejection:', event.reason)
     }
@@ -80,22 +80,26 @@ export function AppShell({ children }: { children: ReactNode }) {
   )
 }
 
+import { BottomNav } from "@/components/bottom-nav"
+
 function AppShellContent({ children }: { children: ReactNode }) {
   const { collapsed } = useSidebar()
   const pathname = usePathname()
 
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/app-shell.tsx:66',message:'AppShellContent: Page mounted',data:{pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'components/app-shell.tsx:66', message: 'AppShellContent: Page mounted', data: { pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
     // #endregion
   }, [pathname])
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50 dark:bg-gray-950">
       <Sidebar />
-      <main className={`flex-1 min-h-screen transition-all duration-300 ${
-        collapsed ? 'ml-20' : 'ml-64'
-      }`}>{children}</main>
+      <main className={`flex-1 transition-all duration-300 w-full ${collapsed ? 'md:ml-20' : 'md:ml-64'
+        } pb-20 md:pb-0`}>
+        {children}
+      </main>
+      <BottomNav />
     </div>
   )
 }

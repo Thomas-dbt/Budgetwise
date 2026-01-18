@@ -129,92 +129,92 @@ export default function DashboardPage() {
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir'
 
   return (
-    <div className="p-6 h-[calc(100vh-2rem)] overflow-hidden flex flex-col space-y-6 bg-gray-50/50 dark:bg-black/20">
+    <div className="p-4 md:p-6 h-[calc(100vh-4rem)] md:h-[calc(100vh-2rem)] overflow-y-auto md:overflow-hidden flex flex-col space-y-4 md:space-y-6 bg-gray-50/50 dark:bg-black/20 pb-20 md:pb-0 safe-area-bottom">
 
       {/* Header Section */}
-      <div className="flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
         <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             {greeting} ! 👋
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">
             Voici votre situation financière pour <span className="font-medium capitalize">{currentMonthName}</span>
           </p>
         </div>
       </div>
 
-      {/* Main Grid - Fixed Height */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 grid-rows-[auto_1fr] lg:grid-rows-[auto_1fr] gap-4 lg:gap-6">
+      {/* Main Grid - Fixed Height on Desktop, Scroll on Mobile */}
+      <div className="flex-1 md:min-h-0 grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 md:grid-rows-[auto_1fr] gap-3 md:gap-6">
 
         {/* Reste à Vivre Card (Top Left, 2 cols) - Compacted */}
-        <div className="lg:col-span-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden flex flex-col justify-between min-h-[160px]">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
 
-          <div className="relative z-10 flex flex-row items-start justify-between gap-4">
+          <div className="relative z-10 flex flex-wrap items-start justify-between gap-2 md:gap-4">
             <div>
-              <h2 className="text-indigo-100 font-medium mb-1 text-sm">Flux du mois (Reste à vivre)</h2>
-              <div className="text-3xl lg:text-4xl font-bold tracking-tight">
+              <h2 className="text-indigo-100 font-medium mb-1 text-xs md:text-sm">Flux du mois (Reste à vivre)</h2>
+              <div className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight">
                 {netBalance > 0 ? '+' : ''}{formatCurrency(netBalance)}
               </div>
             </div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs">
-              {netBalance >= 0 ? <TrendingUp className="w-3 h-3 lg:w-4 lg:h-4" /> : <TrendingDown className="w-3 h-3 lg:w-4 lg:h-4" />}
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/20 backdrop-blur-sm rounded-full text-[10px] md:text-xs whitespace-nowrap">
+              {netBalance >= 0 ? <TrendingUp className="w-3 h-3 md:w-4 md:h-4" /> : <TrendingDown className="w-3 h-3 md:w-4 md:h-4" />}
               <span>{netBalance >= 0 ? "Épargne" : "Dépassement"}</span>
             </div>
           </div>
 
           <div className="relative z-10 grid grid-cols-3 gap-2 pt-3 border-t border-white/20 mt-2">
             <div>
-              <div className="text-indigo-100 text-xs mb-0.5 flex items-center gap-1"><ArrowRight className="w-3 h-3 rotate-45" /> Revenus</div>
-              <div className="text-sm lg:text-lg font-semibold truncate">{formatCurrency(safeData.monthlyIncome)}</div>
+              <div className="text-indigo-100 text-[10px] md:text-xs mb-0.5 flex items-center gap-1"><ArrowRight className="w-2.5 h-2.5 rotate-45" /> Revenus</div>
+              <div className="text-xs md:text-sm lg:text-lg font-semibold truncate">{formatCurrency(safeData.monthlyIncome)}</div>
             </div>
             <div className="text-center">
-              <div className="text-indigo-100 text-xs mb-0.5 flex items-center justify-center gap-1"><ArrowRight className="w-3 h-3 -rotate-45" /> Dépenses</div>
-              <div className="text-sm lg:text-lg font-semibold truncate">{formatCurrency(safeData.monthlyExpenses)}</div>
+              <div className="text-indigo-100 text-[10px] md:text-xs mb-0.5 flex items-center justify-center gap-1"><ArrowRight className="w-2.5 h-2.5 -rotate-45" /> Dépenses</div>
+              <div className="text-xs md:text-sm lg:text-lg font-semibold truncate">{formatCurrency(safeData.monthlyExpenses)}</div>
             </div>
             <div className="text-right">
-              <div className="text-indigo-100 text-xs mb-0.5 flex items-center justify-end gap-1"><ArrowRight className="w-3 h-3" /> Transferts</div>
-              <div className="text-sm lg:text-lg font-semibold truncate">{formatCurrency(safeData.investedViaTransfer)}</div>
+              <div className="text-indigo-100 text-[10px] md:text-xs mb-0.5 flex items-center justify-end gap-1"><ArrowRight className="w-2.5 h-2.5" /> Transferts</div>
+              <div className="text-xs md:text-sm lg:text-lg font-semibold truncate">{formatCurrency(safeData.investedViaTransfer)}</div>
             </div>
           </div>
         </div>
 
         {/* Total Balance Card (Top Mid) - Compacted */}
-        <Link href="/accounts" className="block bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+        <Link href="/accounts" className="block bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer min-h-[100px]">
           <div className="flex items-center gap-3 mb-1">
             <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
               <Wallet className="w-4 h-4" />
             </div>
-            <h3 className="font-semibold text-gray-700 dark:text-gray-300 text-sm">Solde Total</h3>
+            <h3 className="font-semibold text-gray-700 dark:text-gray-300 text-xs md:text-sm">Solde Total</h3>
           </div>
-          <div className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">
+          <div className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">
             {formatCurrency(safeData.totalBalance)}
           </div>
-          <p className="text-xs text-gray-400 mt-1">Tous comptes confondus</p>
+          <p className="text-[10px] md:text-xs text-gray-400 mt-1">Tous comptes confondus</p>
         </Link>
 
         {/* Savings Rate Card (Top Right) - Compacted */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col justify-center">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col justify-center min-h-[100px]">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <div className="p-1.5 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-600 dark:text-green-400">
                 <PiggyBank className="w-4 h-4" />
               </div>
-              <h3 className="font-semibold text-gray-700 dark:text-gray-300 text-sm">Taux d'Épargne</h3>
+              <h3 className="font-semibold text-gray-700 dark:text-gray-300 text-xs md:text-sm">Taux d'Épargne</h3>
             </div>
-            <span className="text-lg font-bold text-gray-900 dark:text-white">
+            <span className="text-base md:text-lg font-bold text-gray-900 dark:text-white">
               {safeData.savingsRate.toFixed(1)}%
             </span>
           </div>
 
-          <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 mt-1 overflow-hidden">
+          <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 md:h-2 mt-1 overflow-hidden">
             <div className="bg-green-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(safeData.savingsRate, 100)}%` }}></div>
           </div>
         </div>
 
         {/* Charts Section (Bottom Left, 3 cols) */}
-        <div className="lg:col-span-2 xl:col-span-3 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col min-h-0">
-          <h3 className="text-base font-semibold mb-4 flex-shrink-0">Évolution Budgetaire (6 mois)</h3>
+        <div className="lg:col-span-2 xl:col-span-3 bg-white dark:bg-gray-900 rounded-2xl p-4 md:p-5 border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col min-h-[250px] md:min-h-0">
+          <h3 className="text-sm md:text-base font-semibold mb-4 flex-shrink-0">Évolution Budgetaire (6 mois)</h3>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={safeData.monthlyEvolution} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
@@ -229,10 +229,10 @@ export default function DashboardPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-800" />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} dy={10} fontSize={11} stroke="#6b7280" />
-                <YAxis axisLine={false} tickLine={false} fontSize={11} stroke="#6b7280" tickFormatter={(val) => `${val / 1000}k`} />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} dy={10} fontSize={10} stroke="#6b7280" />
+                <YAxis axisLine={false} tickLine={false} fontSize={10} stroke="#6b7280" tickFormatter={(val) => `${val / 1000}k`} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }}
+                  contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
                   labelStyle={{ color: '#e5e7eb', marginBottom: '0.25rem', fontWeight: 600 }}
                   formatter={(val: number) => formatCurrency(val)}
                 />
@@ -245,9 +245,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Transactions List (Bottom Right, 1 col) - Fixed 7 items, no scroll */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col justify-between">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 md:p-5 border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col justify-between min-h-[300px]">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold">Récent</h3>
+            <h3 className="text-sm md:text-base font-semibold">Récent</h3>
             <Link href="/transactions" className="text-xs text-blue-600 hover:text-blue-700">Voir tout</Link>
           </div>
 

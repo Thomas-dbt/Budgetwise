@@ -135,6 +135,7 @@ export default function TransactionsPage() {
   const [splitModalOpen, setSplitModalOpen] = useState(false)
   const [transactionToSplit, setTransactionToSplit] = useState<Transaction | null>(null)
   const [showSplitUI, setShowSplitUI] = useState(false)
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
 
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [importAccountId, setImportAccountId] = useState('')
@@ -1585,22 +1586,55 @@ export default function TransactionsPage() {
   return (
     <div className="p-8 max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-6">
           <div>
-            <div className="flex items-center gap-4">
-              <a href="/" className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                ←
-              </a>
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Transactions</h1>
-                <p className="text-gray-500 dark:text-gray-400 mt-2 text-lg">Gérez vos revenus et dépenses</p>
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="min-w-0">
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent truncate">
+                  Transactions
+                </h1>
+                <p className="text-sm md:text-base lg:text-lg text-gray-500 dark:text-gray-400 mt-1 truncate">
+                  Gérez vos revenus et dépenses
+                </p>
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-3">
+          {/* Mobile Selection Toggle - Visible only on mobile */}
+          <div className="md:hidden flex items-center mb-2">
             <button
-              className="px-5 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-all shadow-sm hover:shadow-md font-medium"
+              disabled={isScanning}
+              className={`px-3 py-2 border rounded-xl flex items-center justify-center gap-2 transition-all font-medium mr-2 ${isSelectionMode
+                ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700'
+                : 'bg-white dark:bg-gray-800 border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-300'
+                }`}
+              onClick={() => {
+                setIsSelectionMode(!isSelectionMode)
+                if (isSelectionMode) {
+                  setSelectedTransactions(new Set())
+                }
+              }}
+            >
+              <span className="text-lg">{isSelectionMode ? '✕' : '☑️'}</span>
+            </button>
+            <button
+              className="flex-1 px-3 md:px-5 py-2 border border-purple-300 text-purple-600 dark:border-purple-800 dark:text-purple-300 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/30 flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md font-medium bg-white dark:bg-gray-800"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isScanning}
+            >
+              <span>{isScanning ? 'Analyse...' : '📷 Scanner'}</span>
+            </button>
+            <button
+              className="flex-1 ml-2 px-3 md:px-5 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl font-medium"
+              onClick={openManualModal}
+            >
+              <span>+ Ajouter</span>
+            </button>
+          </div>
+
+          <div className="flex flex-row flex-wrap gap-2 md:gap-3 hidden md:flex">
+            <button
+              className="hidden md:flex px-5 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 items-center gap-2 transition-all shadow-sm hover:shadow-md font-medium"
               onClick={() => {
                 setExportOpen(true)
                 setExportError(null)
@@ -1610,7 +1644,7 @@ export default function TransactionsPage() {
               <span>Exporter</span>
             </button>
             <button
-              className="px-5 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-all shadow-sm hover:shadow-md font-medium"
+              className="hidden md:flex px-5 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 items-center gap-2 transition-all shadow-sm hover:shadow-md font-medium"
               onClick={() => {
                 setImportModalOpen(true)
                 setImportRows([])
@@ -1622,13 +1656,12 @@ export default function TransactionsPage() {
               <span className="text-lg">📄</span>
               <span>Importer relevé</span>
             </button>
-            {/* Button removed */}
             <button
-              className="px-5 py-2.5 border border-purple-300 text-purple-600 dark:border-purple-800 dark:text-purple-300 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/30 flex items-center gap-2 transition-all shadow-sm hover:shadow-md font-medium"
+              className="flex-1 md:flex-none px-3 md:px-5 py-1.5 md:py-2.5 border border-purple-300 text-purple-600 dark:border-purple-800 dark:text-purple-300 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/30 flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md font-medium"
               onClick={() => fileInputRef.current?.click()}
               disabled={isScanning}
             >
-              <span className="text-lg">{isScanning ? '⏳' : '📸'}</span>
+              <span className="text-base md:text-lg">{isScanning ? '⏳' : '📸'}</span>
               <span>{isScanning ? 'Analyse...' : 'Scanner ticket'}</span>
             </button>
             <input
@@ -1640,11 +1673,11 @@ export default function TransactionsPage() {
               onChange={handleScanReceipt}
             />
             <button
-              className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 flex items-center gap-2 transition-all shadow-md hover:shadow-lg font-medium"
+              className="flex-1 md:flex-none px-3 md:px-5 py-1.5 md:py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg font-medium"
               onClick={openManualModal}
             >
-              <span className="text-lg font-bold">+</span>
-              <span>Ajouter manuellement</span>
+              <span className="text-base md:text-lg font-bold">+</span>
+              <span className="whitespace-nowrap">Ajouter</span>
             </button>
           </div>
         </div>
@@ -1662,9 +1695,9 @@ export default function TransactionsPage() {
           />
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">🔍</span>
         </div>
-        <div className="w-full flex flex-col xl:flex-row xl:items-center gap-4 justify-between">
+        <div className="w-full flex flex-col xl:flex-row xl:items-center gap-4">
           {/* Onglets de filtres - Retour au style "bulle" unifié */}
-          <div className="inline-flex items-center flex-shrink-0 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner h-[46px]">
+          <div className="inline-flex items-center flex-shrink-0 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner h-[46px] overflow-x-auto custom-scrollbar max-w-full">
             <button
               onClick={() => setFilterOption('all')}
               className={`px-3 h-[38px] rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center ${filterOption === 'all'
@@ -1712,10 +1745,10 @@ export default function TransactionsPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 flex-1 xl:justify-end pb-1 xl:pb-0">
+          <div className="flex items-center gap-2 xl:justify-end pb-1 xl:pb-0 overflow-x-auto custom-scrollbar w-full xl:w-auto xl:flex-1">
             {/* Account Selector */}
             {accounts.length > 0 && (
-              <div className="relative flex-1 min-w-[150px]">
+              <div className="relative flex-none xl:flex-1 min-w-[150px] xl:min-w-[240px]">
                 <select
                   value={filterAccountId}
                   onChange={(e) => setFilterAccountId(e.target.value)}
@@ -1734,7 +1767,7 @@ export default function TransactionsPage() {
 
             {/* Sélecteur de catégorie amélioré */}
             {categories.length > 0 && (
-              <div className="relative flex-1 min-w-[150px]">
+              <div className="relative flex-none xl:flex-1 min-w-[150px] xl:min-w-[240px]">
                 <select
                   value={filterOption.startsWith('category:') ? filterOption : ''}
                   onChange={(e) => {
@@ -1754,7 +1787,7 @@ export default function TransactionsPage() {
               </div>
             )}
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-none">
               <input
                 type="number"
                 placeholder="Min €"
@@ -1772,7 +1805,7 @@ export default function TransactionsPage() {
               />
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-none">
               <input
                 type="date"
                 value={filterStartDate || ''}
@@ -1919,129 +1952,201 @@ export default function TransactionsPage() {
                         : 'border-gray-200 dark:border-gray-800 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-lg'
                         }`}
                       onClick={(e) => {
-                        // If user is selecting text or clicking buttons, don't trigger row click
-                        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return
-
-                        // If selection mode is active or shift key pressed
-                        if (e.shiftKey && lastSelectedId) {
-                          e.preventDefault()
-                          // Logic to select range could be complex with grouped dates. 
-                          // For now just toggle. Improving range selection would require flattening the list.
-                          // Supporting simple toggle for now.
+                        // If clicking specifically on the card body
+                        if (isSelectionMode) {
+                          // Toggle selection in selection mode
+                          e.stopPropagation()
+                          setSelectedTransactions(prev => {
+                            const next = new Set(prev)
+                            if (next.has(tx.id)) next.delete(tx.id)
+                            else next.add(tx.id)
+                            return next
+                          })
+                          setLastSelectedId(tx.id)
+                        } else {
+                          // Open edit modal otherwise
+                          openEditModal(tx)
                         }
-
-                        // If clicking specifically on the card body while selection mode (chkbox) is not strictly required but UX friendly?
-                        // Actually, let's keep click for "Edit" unless clicking the checkbox area.
-                        // But user wants "bulk edit".
-                        openEditModal(tx)
                       }}
                     >
-                      <div className="flex items-start gap-4">
-                        <div className="flex items-center justify-center pt-2">
-                          <input
-                            type="checkbox"
-                            className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                            checked={selectedTransactions.has(tx.id)}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => {
-                              setSelectedTransactions(prev => {
-                                const next = new Set(prev)
-                                if (next.has(tx.id)) next.delete(tx.id)
-                                else next.add(tx.id)
-                                return next
-                              })
-                              setLastSelectedId(tx.id)
-                            }}
-                          />
-                        </div>
-                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-sm ${iconBg} transition-transform group-hover:scale-110`}>
-                          <span className={`text-2xl font-semibold ${iconColor}`}>
-                            {iconSymbol}
-                          </span>
-                        </div>
+                      <div className="relative">
+                        {/* --- MOBILE LAYOUT (< md) --- */}
+                        <div className="flex md:hidden gap-3 relative">
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-baseline gap-2 mb-2">
-                            <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 truncate max-w-xs sm:max-w-md">
-                              {title}
-                            </h3>
-                            {!isTransfer && (
-                              <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                                • {subtitle}
-                              </span>
-                            )}
+                          {/* Icon */}
+                          <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm ${iconBg} mt-1`}>
+                            <span className={`text-xl font-semibold ${iconColor}`}>
+                              {iconSymbol}
+                            </span>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <span className="text-xs px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium border border-gray-200 dark:border-gray-700">
-                              {isTransfer ? 'Transfert' : TYPE_LABELS[tx.type]}
-                            </span>
+                          {/* Mobile Content */}
+                          <div className="flex-1 min-w-0 flex flex-col gap-1">
+                            {/* Row 1: Title & Amount */}
+                            <div className="flex justify-between items-start gap-2">
+                              <h3 className="font-semibold text-base text-gray-900 dark:text-gray-100 truncate flex-1">
+                                {title}
+                              </h3>
+                              <p className={`text-base font-bold ${amountColor} tracking-tight whitespace-nowrap`}>
+                                {(isExpense || (isTransfer && !isIncomingTransfer)) ? '-' : '+'}{formatCurrency(Math.abs(tx.amount))}
+                              </p>
+                            </div>
 
-                            {tx.pending && (
-                              <span className="text-xs px-2.5 py-1 rounded-md bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800 font-medium">
-                                ⏳ En attente
-                              </span>
-                            )}
-                            {(tx.hasSplits || (tx.splits && tx.splits.length > 0)) && (
-                              <span className="text-xs px-2.5 py-1 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-medium">
-                                ✂️ Multi-catégories
-                              </span>
-                            )}
-                            {(tx.category && !tx.hasSplits && (!tx.splits || tx.splits.length === 0)) && (
-                              <span className={`text-xs px-3 py-1 rounded-md font-medium border ${categoryColors[tx.category.name] || categoryColors['Autres']
-                                }`}>
-                                {tx.category.emoji ? `${tx.category.emoji} ` : ''}{tx.category.name}
-                                {tx.subCategory && (
-                                  <span className="ml-1.5 opacity-75">• {tx.subCategory.name}</span>
+                            {/* Row 2: Subtitle */}
+                            <div className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
+                              {isTransfer ? (
+                                <span className="flex items-center gap-1">
+                                  <span>🏦</span> {subtitle}
+                                </span>
+                              ) : subtitle}
+                            </div>
+
+                            {/* Row 3: Tags & Actions */}
+                            <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-2 mt-1.5 ">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {tx.pending && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800 font-medium">
+                                    ⏳
+                                  </span>
                                 )}
-                              </span>
-                            )}
+                                {(tx.hasSplits || (tx.splits && tx.splits.length > 0)) && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-medium">
+                                    ✂️ Multi
+                                  </span>
+                                )}
+                                {(tx.category && !tx.hasSplits && (!tx.splits || tx.splits.length === 0)) && (
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium border ${categoryColors[tx.category.name] || categoryColors['Autres']
+                                    }`}>
+                                    {tx.category.emoji ? `${tx.category.emoji} ` : ''}<span className="inline-block max-w-[80px] truncate align-bottom">{tx.category.name}</span>
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); openEditModal(tx) }}
+                                  className="p-1.5 text-xs border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded-lg"
+                                >✏️</button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setTransactionToDelete(tx) }}
+                                  className="p-1.5 text-xs border border-red-200 text-red-600 dark:border-red-800 dark:text-red-300 rounded-lg"
+                                >🗑️</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* --- DESKTOP LAYOUT (>= md) --- */}
+                        <div className="hidden md:flex items-start gap-4">
+                          {/* Desktop Checkbox */}
+                          <div className="flex-shrink-0 flex items-center h-14">
+                            <input
+                              type="checkbox"
+                              className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer transition-opacity"
+                              checked={selectedTransactions.has(tx.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                setSelectedTransactions(prev => {
+                                  const next = new Set(prev)
+                                  if (next.has(tx.id)) next.delete(tx.id)
+                                  else next.add(tx.id)
+                                  return next
+                                })
+                                setLastSelectedId(tx.id)
+                              }}
+                            />
                           </div>
 
-                          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                            <span className="flex items-center gap-1">
-                              <span>🏦</span>
-                              {isTransfer ? subtitle : tx.account.name}
+                          {/* Icon */}
+                          <div className={`w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm ${iconBg} transition-transform group-hover:scale-110`}>
+                            <span className={`text-2xl font-semibold ${iconColor}`}>
+                              {iconSymbol}
                             </span>
                           </div>
-                        </div>
 
-                        <div className="text-right space-y-2 flex-shrink-0">
-                          <p className={`text-xl font-bold ${amountColor} tracking-tight`}>
-                            {(isExpense || (isTransfer && !isIncomingTransfer)) ? '-' : '+'}{formatCurrency(Math.abs(tx.amount))}
-                          </p>
-                          {tx.attachment && (
-                            <button
-                              onClick={() =>
-                                setAttachmentPreview({
-                                  url: tx.attachment as string,
-                                  title: tx.description || 'Justificatif',
-                                })
-                              }
-                              className="text-xs px-3 py-1.5 border border-purple-200 text-purple-600 dark:border-purple-800 dark:text-purple-300 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors font-medium"
-                            >
-                              📎 Justificatif
-                            </button>
-                          )}
-                          <div className="flex gap-2 justify-end mt-3">
-                            <button
-                              onClick={() => openEditModal(tx)}
-                              className="px-4 py-2 text-sm border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors font-medium shadow-sm hover:shadow"
-                            >
-                              ✏️ Modifier
-                            </button>
+                          {/* Middle: Title & Tags */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-baseline gap-2 mb-2">
+                              <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 truncate max-w-md">
+                                {title}
+                              </h3>
+                              {!isTransfer && (
+                                <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                                  • {subtitle}
+                                </span>
+                              )}
+                            </div>
 
-                            <button
-                              onClick={() => {
-                                setTransactionToDelete(tx)
-                                setDeleteModalOpen(true)
-                              }}
-                              className="px-4 py-2 text-sm border border-red-200 text-red-600 dark:border-red-800 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors font-medium shadow-sm hover:shadow"
-                            >
-                              🗑️ Supprimer
-                            </button>
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <span className="text-xs px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium border border-gray-200 dark:border-gray-700">
+                                {isTransfer ? 'Transfert' : TYPE_LABELS[tx.type]}
+                              </span>
+
+                              {tx.pending && (
+                                <span className="text-xs px-2.5 py-1 rounded-md bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800 font-medium">
+                                  ⏳ En attente
+                                </span>
+                              )}
+                              {(tx.hasSplits || (tx.splits && tx.splits.length > 0)) && (
+                                <span className="text-xs px-2.5 py-1 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-medium">
+                                  ✂️ Multi-catégories
+                                </span>
+                              )}
+                              {(tx.category && !tx.hasSplits && (!tx.splits || tx.splits.length === 0)) && (
+                                <span className={`text-xs px-3 py-1 rounded-md font-medium border ${categoryColors[tx.category.name] || categoryColors['Autres']
+                                  }`}>
+                                  {tx.category.emoji ? `${tx.category.emoji} ` : ''}{tx.category.name}
+                                  {tx.subCategory && (
+                                    <span className="ml-1.5 opacity-75">• {tx.subCategory.name}</span>
+                                  )}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                              <span className="flex items-center gap-1">
+                                <span>🏦</span>
+                                {isTransfer ? subtitle : tx.account.name}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Right: Amount & Actions */}
+                          <div className="text-right space-y-2 flex-shrink-0">
+                            <p className={`text-xl font-bold ${amountColor} tracking-tight`}>
+                              {(isExpense || (isTransfer && !isIncomingTransfer)) ? '-' : '+'}{formatCurrency(Math.abs(tx.amount))}
+                            </p>
+                            <div className="flex gap-2 justify-end mt-3">
+                              {tx.attachment && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAttachmentPreview({
+                                      url: tx.attachment as string,
+                                      title: tx.description || 'Justificatif',
+                                    })
+                                  }}
+                                  className="text-xs px-3 py-1.5 border border-purple-200 text-purple-600 dark:border-purple-800 dark:text-purple-300 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors font-medium"
+                                >
+                                  📎 Justif.
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openEditModal(tx) }}
+                                className="px-4 py-2 text-sm border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors font-medium shadow-sm hover:shadow"
+                              >
+                                ✏️ Modifier
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setTransactionToDelete(tx) }}
+                                className="px-4 py-2 text-sm border border-red-200 text-red-600 dark:border-red-800 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors font-medium shadow-sm hover:shadow"
+                              >
+                                🗑️ Supprimer
+                              </button>
+                            </div>
                           </div>
                         </div>
+
                       </div>
                     </div>
                   )
@@ -2547,11 +2652,11 @@ export default function TransactionsPage() {
                     )}
                   </div>
 
-                  <div className="flex gap-3 pt-4">
+                  <div className="flex gap-2 md:gap-3 pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
                     <button
                       type="button"
                       onClick={() => setManualModalOpen(false)}
-                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                      className="px-3 py-2 md:px-4 text-xs md:text-sm border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                       Annuler
                     </button>
@@ -2560,18 +2665,26 @@ export default function TransactionsPage() {
                         type="button"
                         onClick={handleSaveAndSplit}
                         disabled={manualLoading}
-                        className="px-4 py-2 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors font-medium border border-transparent flex items-center gap-2"
+                        className="px-3 py-2 md:px-4 text-xs md:text-sm bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors font-medium border border-transparent flex items-center justify-center gap-1.5"
                       >
-                        <span className="text-lg">✂️</span>
-                        {editingTransaction?.hasSplits ? 'Modifier la division' : 'Diviser'}
+                        <span className="text-sm md:text-lg">✂️</span>
+                        <span className="md:hidden">{editingTransaction?.hasSplits ? 'Division' : 'Diviser'}</span>
+                        <span className="hidden md:inline whitespace-nowrap">{editingTransaction?.hasSplits ? 'Modifier la division' : 'Diviser'}</span>
                       </button>
                     )}
                     <button
                       type="submit"
                       disabled={manualLoading}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                      className="flex-1 px-3 py-2 md:px-4 text-xs md:text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors shadow-sm font-medium"
                     >
-                      {manualLoading ? 'Enregistrement...' : editingTransactionId ? 'Enregistrer les modifications' : 'Enregistrer la transaction'}
+                      {manualLoading ? '...' : (
+                        <>
+                          <span className="md:hidden">Enregistrer</span>
+                          <span className="hidden md:inline">
+                            {editingTransactionId ? 'Enregistrer les modifications' : 'Enregistrer la transaction'}
+                          </span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
@@ -3493,25 +3606,27 @@ export default function TransactionsPage() {
       }
 
       {/* Split Modal */}
-      {splitModalOpen && transactionToSplit && (
-        <SplitModal
-          transaction={transactionToSplit}
-          categories={categories}
-          subCategories={subCategories}
-          onClose={() => {
-            setSplitModalOpen(false)
-            setTransactionToSplit(null)
-          }}
-          onSuccess={() => {
-            setSplitModalOpen(false)
-            setTransactionToSplit(null)
-            fetchTransactions() // Refresh list
-            setFeedback({ type: 'success', message: 'Transaction divisée avec succès' })
-          }}
-        />
-      )}
+      {
+        splitModalOpen && transactionToSplit && (
+          <SplitModal
+            transaction={transactionToSplit}
+            categories={categories}
+            subCategories={subCategories}
+            onClose={() => {
+              setSplitModalOpen(false)
+              setTransactionToSplit(null)
+            }}
+            onSuccess={() => {
+              setSplitModalOpen(false)
+              setTransactionToSplit(null)
+              fetchTransactions() // Refresh list
+              setFeedback({ type: 'success', message: 'Transaction divisée avec succès' })
+            }}
+          />
+        )
+      }
 
-    </div>
+    </div >
   )
 }
 
