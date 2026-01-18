@@ -104,8 +104,8 @@ export default function StatisticsPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', { 
-      style: 'currency', 
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
       currency: 'EUR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
@@ -119,9 +119,9 @@ export default function StatisticsPage() {
 
   const formatDateFull = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('fr-FR', { 
+    return date.toLocaleDateString('fr-FR', {
       weekday: 'long',
-      day: 'numeric', 
+      day: 'numeric',
       month: 'long',
       year: 'numeric'
     })
@@ -145,30 +145,30 @@ export default function StatisticsPage() {
 
   const prepareDailyData = (transactions: Transaction[]) => {
     const dailyData: Record<string, { revenus: number; depenses: number; solde: number; date: Date }> = {}
-    
+
     transactions.forEach(tx => {
       const txDate = new Date(tx.date)
       const dateKey = txDate.toLocaleDateString('fr-FR', {
         day: 'numeric',
         month: 'short'
       })
-      
+
       if (!dailyData[dateKey]) {
         dailyData[dateKey] = { revenus: 0, depenses: 0, solde: 0, date: new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()) }
       }
-      
+
       if (tx.type === 'income') {
         dailyData[dateKey].revenus += Number(tx.amount)
       } else if (tx.type === 'expense') {
         dailyData[dateKey].depenses += Math.abs(Number(tx.amount))
       }
     })
-    
+
     // Calculer le solde pour chaque jour
     Object.keys(dailyData).forEach(day => {
       dailyData[day].solde = dailyData[day].revenus - dailyData[day].depenses
     })
-    
+
     // Convertir en tableau et trier par date
     const sortedDays = Object.entries(dailyData)
       .map(([day, data]) => ({
@@ -179,40 +179,40 @@ export default function StatisticsPage() {
         date: data.date
       }))
       .sort((a, b) => a.date.getTime() - b.date.getTime())
-    
+
     return sortedDays
   }
 
   const prepareYearlyData = async () => {
     try {
-      const response = await authFetch('/api/transactions?take=10000')
+      const response = await authFetch('/api/transactions?take=10000&flatten=true')
       if (!response.ok) {
         throw new Error('Erreur lors du chargement des transactions')
       }
       const transactions: Transaction[] = await response.json()
-      
+
       const yearlyData: Record<number, { revenus: number; depenses: number; solde: number }> = {}
-      
+
       transactions.forEach(tx => {
         const txDate = new Date(tx.date)
         const year = txDate.getFullYear()
-        
+
         if (!yearlyData[year]) {
           yearlyData[year] = { revenus: 0, depenses: 0, solde: 0 }
         }
-        
+
         if (tx.type === 'income') {
           yearlyData[year].revenus += Number(tx.amount)
         } else if (tx.type === 'expense') {
           yearlyData[year].depenses += Math.abs(Number(tx.amount))
         }
       })
-      
+
       // Calculer le solde pour chaque année
       Object.keys(yearlyData).forEach(year => {
         yearlyData[parseInt(year)].solde = yearlyData[parseInt(year)].revenus - yearlyData[parseInt(year)].depenses
       })
-      
+
       // Convertir en tableau et trier par année
       const sortedYears = Object.entries(yearlyData)
         .map(([year, data]) => ({
@@ -222,7 +222,7 @@ export default function StatisticsPage() {
           solde: data.solde
         }))
         .sort((a, b) => a.year - b.year)
-      
+
       return sortedYears
     } catch (error) {
       console.error('Error preparing yearly data:', error)
@@ -233,7 +233,7 @@ export default function StatisticsPage() {
   const prepareMonthlyDataForYear = (transactions: Transaction[], year: number) => {
     const monthlyData: Record<number, { month: string; revenus: number; depenses: number; solde: number }> = {}
     const monthNames = ['janv.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
-    
+
     // Initialiser tous les mois de l'année
     for (let i = 0; i < 12; i++) {
       monthlyData[i] = {
@@ -243,12 +243,12 @@ export default function StatisticsPage() {
         solde: 0
       }
     }
-    
+
     transactions.forEach(tx => {
       const txDate = new Date(tx.date)
       if (txDate.getFullYear() === year) {
         const monthIndex = txDate.getMonth()
-        
+
         if (tx.type === 'income') {
           monthlyData[monthIndex].revenus += Number(tx.amount)
         } else if (tx.type === 'expense') {
@@ -256,13 +256,13 @@ export default function StatisticsPage() {
         }
       }
     })
-    
+
     // Calculer le solde pour chaque mois
     Object.keys(monthlyData).forEach(monthIndex => {
       const idx = parseInt(monthIndex)
       monthlyData[idx].solde = monthlyData[idx].revenus - monthlyData[idx].depenses
     })
-    
+
     // Convertir en tableau trié
     return Object.values(monthlyData)
   }
@@ -272,7 +272,7 @@ export default function StatisticsPage() {
     if (selectedMonth && monthTransactions.length > 0) {
       return monthTransactions
     }
-    
+
     // Si on a les transactions de l'année chargées, les filtrer pour le mois
     if (selectedMonth && yearTransactions.length > 0) {
       const { year, monthIndex } = selectedMonth
@@ -283,19 +283,19 @@ export default function StatisticsPage() {
         return txDate >= monthStart && txDate <= monthEnd
       })
     }
-    
+
     // Si on a une année sélectionnée mais pas de mois, utiliser les transactions de l'année
     if (selectedYear && !selectedMonth && yearTransactions.length > 0) {
       return yearTransactions
     }
-    
+
     // Sinon, charger toutes les transactions
-    const response = await authFetch('/api/transactions?take=10000')
+    const response = await authFetch('/api/transactions?take=10000&flatten=true')
     if (!response.ok) {
       throw new Error('Erreur lors du chargement des transactions')
     }
     const transactions: Transaction[] = await response.json()
-    
+
     // Filtrer selon la période sélectionnée
     if (selectedMonth) {
       const { year, monthIndex } = selectedMonth
@@ -306,7 +306,7 @@ export default function StatisticsPage() {
         return txDate >= monthStart && txDate <= monthEnd
       })
     }
-    
+
     if (selectedYear) {
       const yearStart = new Date(selectedYear, 0, 1)
       const yearEnd = new Date(selectedYear, 11, 31, 23, 59, 59)
@@ -315,7 +315,7 @@ export default function StatisticsPage() {
         return txDate >= yearStart && txDate <= yearEnd
       })
     }
-    
+
     // Par défaut, 6 derniers mois
     const now = new Date()
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
@@ -329,22 +329,22 @@ export default function StatisticsPage() {
     setLoadingCategoryData(true)
     try {
       const transactions = await getFilteredTransactions()
-      
+
       // Grouper par catégorie
       const categoryExpenses: Record<string, number> = {}
-      
+
       transactions
         .filter(tx => tx.type === 'expense')
         .forEach(tx => {
           const categoryName = tx.category?.name || 'Sans catégorie'
           categoryExpenses[categoryName] = (categoryExpenses[categoryName] || 0) + Math.abs(Number(tx.amount))
         })
-      
+
       // Convertir en tableau et trier par montant décroissant
       const sorted = Object.entries(categoryExpenses)
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount)
-      
+
       setFilteredCategoryData(sorted)
     } catch (error) {
       console.error('Error preparing category data:', error)
@@ -358,22 +358,22 @@ export default function StatisticsPage() {
     setLoadingAccountData(true)
     try {
       const transactions = await getFilteredTransactions()
-      
+
       // Grouper par compte
       const accountExpenses: Record<string, number> = {}
-      
+
       transactions
         .filter(tx => tx.type === 'expense')
         .forEach(tx => {
           const accountName = tx.account?.name || 'Sans compte'
           accountExpenses[accountName] = (accountExpenses[accountName] || 0) + Math.abs(Number(tx.amount))
         })
-      
+
       // Convertir en tableau et trier par montant décroissant
       const sorted = Object.entries(accountExpenses)
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount)
-      
+
       setFilteredAccountData(sorted)
     } catch (error) {
       console.error('Error preparing account data:', error)
@@ -387,7 +387,7 @@ export default function StatisticsPage() {
     setLoadingTopExpenses(true)
     try {
       const transactions = await getFilteredTransactions()
-      
+
       // Filtrer les dépenses et trier par montant décroissant
       const expenses = transactions
         .filter(tx => tx.type === 'expense')
@@ -400,7 +400,7 @@ export default function StatisticsPage() {
         }))
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5) // Top 5
-      
+
       setFilteredTopExpenses(expenses)
     } catch (error) {
       console.error('Error preparing top expenses:', error)
@@ -414,25 +414,25 @@ export default function StatisticsPage() {
     setLoadingSubCategories(true)
     try {
       const transactions = await getFilteredTransactions()
-      
+
       // Filtrer les transactions de la catégorie sélectionnée
       const categoryTransactions = transactions.filter(tx => {
         return tx.type === 'expense' && tx.category?.id === categoryId
       })
-      
+
       // Grouper par sous-catégorie
       const subCategoryExpenses: Record<string, number> = {}
-      
+
       categoryTransactions.forEach(tx => {
         const subCategoryName = tx.subCategory?.name || 'Sans sous-catégorie'
         subCategoryExpenses[subCategoryName] = (subCategoryExpenses[subCategoryName] || 0) + Math.abs(Number(tx.amount))
       })
-      
+
       // Convertir en tableau et trier par montant décroissant
       const sorted = Object.entries(subCategoryExpenses)
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount)
-      
+
       setSubCategoryData(sorted)
     } catch (error) {
       console.error('Error preparing subcategory data:', error)
@@ -482,23 +482,23 @@ export default function StatisticsPage() {
     setSubCategoryData([])
     setViewMode('monthly')
     setLoadingMonthDetails(true)
-    
+
     try {
-      const response = await authFetch('/api/transactions?take=10000')
+      const response = await authFetch('/api/transactions?take=10000&flatten=true')
       if (!response.ok) {
         throw new Error('Erreur lors du chargement des transactions')
       }
       const transactions: Transaction[] = await response.json()
-      
+
       // Filtrer les transactions de l'année sélectionnée
       const yearStart = new Date(year, 0, 1)
       const yearEnd = new Date(year, 11, 31, 23, 59, 59)
-      
+
       const filtered = transactions.filter(tx => {
         const txDate = new Date(tx.date)
         return txDate >= yearStart && txDate <= yearEnd
       })
-      
+
       setYearTransactions(filtered)
     } catch (error) {
       console.error('Error loading year details:', error)
@@ -547,36 +547,36 @@ export default function StatisticsPage() {
   const handleMonthClick = async (monthIndex: number, year: number) => {
     const monthNames = ['janv.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
     const monthName = monthNames[monthIndex]
-    
+
     setSelectedMonth({ month: monthName, year, monthIndex })
     setSelectedCategory(null)
     setSubCategoryData([])
     setViewMode('daily')
     setLoadingMonthDetails(true)
-    
+
     try {
       // Utiliser les transactions de l'année déjà chargées ou les charger
       let transactions = yearTransactions
       if (transactions.length === 0) {
-        const response = await authFetch('/api/transactions?take=10000')
+        const response = await authFetch('/api/transactions?take=10000&flatten=true')
         if (!response.ok) {
           throw new Error('Erreur lors du chargement des transactions')
         }
         transactions = await response.json()
       }
-      
+
       // Filtrer les transactions du mois sélectionné
       const monthStart = new Date(year, monthIndex, 1)
       const monthEnd = new Date(year, monthIndex + 1, 0, 23, 59, 59)
-      
+
       const filtered = transactions.filter(tx => {
         const txDate = new Date(tx.date)
         return txDate >= monthStart && txDate <= monthEnd
       })
-      
+
       // Trier par date décroissante
       filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      
+
       setMonthTransactions(filtered)
     } catch (error) {
       console.error('Error loading month details:', error)
@@ -589,7 +589,7 @@ export default function StatisticsPage() {
   // Tooltip personnalisé
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload || !payload.length) return null
-    
+
     return (
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-lg">
         <p className="font-semibold mb-2 text-gray-900 dark:text-gray-100">{label}</p>
@@ -606,9 +606,9 @@ export default function StatisticsPage() {
   const createClickableDot = (fill: string, isActive = false) => {
     return (props: any) => {
       const { cx, cy } = props
-      
+
       if (cx === null || cy === null || cx === undefined || cy === undefined) return null
-      
+
       return (
         <circle
           cx={cx}
@@ -666,11 +666,10 @@ export default function StatisticsPage() {
                   setSelectedCategory(null)
                   setSubCategoryData([])
                 }}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                  viewMode === 'yearly' 
-                    ? 'bg-blue-600 text-white' 
+                className={`px-3 py-1 text-sm rounded-lg transition-colors ${viewMode === 'yearly'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
+                  }`}
               >
                 Années
               </button>
@@ -684,11 +683,10 @@ export default function StatisticsPage() {
                     setSelectedYear(null)
                   }
                 }}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                  viewMode === 'monthly' 
-                    ? 'bg-blue-600 text-white' 
+                className={`px-3 py-1 text-sm rounded-lg transition-colors ${viewMode === 'monthly'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
+                  }`}
               >
                 Mois
               </button>
@@ -698,10 +696,10 @@ export default function StatisticsPage() {
                     // Si aucun mois n'est sélectionné, utiliser le mois actuel
                     const now = new Date()
                     const monthNames = ['janv.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
-                    setSelectedMonth({ 
-                      month: monthNames[now.getMonth()], 
-                      year: now.getFullYear(), 
-                      monthIndex: now.getMonth() 
+                    setSelectedMonth({
+                      month: monthNames[now.getMonth()],
+                      year: now.getFullYear(),
+                      monthIndex: now.getMonth()
                     })
                     setSelectedYear(now.getFullYear())
                     // Charger les transactions du mois actuel
@@ -710,11 +708,10 @@ export default function StatisticsPage() {
                     setViewMode('daily')
                   }
                 }}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                  viewMode === 'daily' 
-                    ? 'bg-blue-600 text-white' 
+                className={`px-3 py-1 text-sm rounded-lg transition-colors ${viewMode === 'daily'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
+                  }`}
               >
                 Journalier
               </button>
@@ -741,7 +738,7 @@ export default function StatisticsPage() {
             </button>
           ) : null}
         </div>
-        
+
         {viewMode === 'yearly' && (
           <>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Cliquez sur un point du graphique pour voir les mois de l'année</p>
@@ -752,7 +749,7 @@ export default function StatisticsPage() {
               </div>
             ) : yearlyData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart 
+                <LineChart
                   data={yearlyData}
                   onClick={(e: any) => {
                     if (e && e.activePayload && e.activePayload.length > 0) {
@@ -764,40 +761,40 @@ export default function StatisticsPage() {
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                  <XAxis 
-                    dataKey="year" 
+                  <XAxis
+                    dataKey="year"
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                     tickFormatter={(value) => `${value}€`}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenus" 
-                    stroke="#10b981" 
+                  <Line
+                    type="monotone"
+                    dataKey="revenus"
+                    stroke="#10b981"
                     strokeWidth={2}
                     name="Revenus"
                     dot={createClickableDot('#10b981', false)}
                     activeDot={createClickableDot('#10b981', true)}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="depenses" 
-                    stroke="#ef4444" 
+                  <Line
+                    type="monotone"
+                    dataKey="depenses"
+                    stroke="#ef4444"
                     strokeWidth={2}
                     name="Dépenses"
                     dot={createClickableDot('#ef4444', false)}
                     activeDot={createClickableDot('#ef4444', true)}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="solde" 
-                    stroke="#3b82f6" 
+                  <Line
+                    type="monotone"
+                    dataKey="solde"
+                    stroke="#3b82f6"
                     strokeWidth={2}
                     name="Solde"
                     dot={createClickableDot('#3b82f6', false)}
@@ -828,7 +825,7 @@ export default function StatisticsPage() {
               </div>
             ) : selectedYear && yearTransactions.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart 
+                <LineChart
                   data={prepareMonthlyDataForYear(yearTransactions, selectedYear)}
                   onClick={(e: any) => {
                     if (e && e.activePayload && e.activePayload.length > 0) {
@@ -844,40 +841,40 @@ export default function StatisticsPage() {
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                  <XAxis 
-                    dataKey="month" 
+                  <XAxis
+                    dataKey="month"
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                     tickFormatter={(value) => `${value}€`}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenus" 
-                    stroke="#10b981" 
+                  <Line
+                    type="monotone"
+                    dataKey="revenus"
+                    stroke="#10b981"
                     strokeWidth={2}
                     name="Revenus"
                     dot={createClickableDot('#10b981', false)}
                     activeDot={createClickableDot('#10b981', true)}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="depenses" 
-                    stroke="#ef4444" 
+                  <Line
+                    type="monotone"
+                    dataKey="depenses"
+                    stroke="#ef4444"
                     strokeWidth={2}
                     name="Dépenses"
                     dot={createClickableDot('#ef4444', false)}
                     activeDot={createClickableDot('#ef4444', true)}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="solde" 
-                    stroke="#3b82f6" 
+                  <Line
+                    type="monotone"
+                    dataKey="solde"
+                    stroke="#3b82f6"
                     strokeWidth={2}
                     name="Solde"
                     dot={createClickableDot('#3b82f6', false)}
@@ -887,7 +884,7 @@ export default function StatisticsPage() {
               </ResponsiveContainer>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart 
+                <LineChart
                   data={safeData.monthlyEvolution}
                   onClick={(e: any) => {
                     if (e && e.activePayload && e.activePayload.length > 0) {
@@ -911,40 +908,40 @@ export default function StatisticsPage() {
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                  <XAxis 
-                    dataKey="month" 
+                  <XAxis
+                    dataKey="month"
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                     tickFormatter={(value) => `${value}€`}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenus" 
-                    stroke="#10b981" 
+                  <Line
+                    type="monotone"
+                    dataKey="revenus"
+                    stroke="#10b981"
                     strokeWidth={2}
                     name="Revenus"
                     dot={createClickableDot('#10b981', false)}
                     activeDot={createClickableDot('#10b981', true)}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="depenses" 
-                    stroke="#ef4444" 
+                  <Line
+                    type="monotone"
+                    dataKey="depenses"
+                    stroke="#ef4444"
                     strokeWidth={2}
                     name="Dépenses"
                     dot={createClickableDot('#ef4444', false)}
                     activeDot={createClickableDot('#ef4444', true)}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="solde" 
-                    stroke="#3b82f6" 
+                  <Line
+                    type="monotone"
+                    dataKey="solde"
+                    stroke="#3b82f6"
                     strokeWidth={2}
                     name="Solde"
                     dot={createClickableDot('#3b82f6', false)}
@@ -967,40 +964,40 @@ export default function StatisticsPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={prepareDailyData(monthTransactions)}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                  <XAxis 
-                    dataKey="day" 
+                  <XAxis
+                    dataKey="day"
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                     tickFormatter={(value) => `${value}€`}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenus" 
-                    stroke="#10b981" 
+                  <Line
+                    type="monotone"
+                    dataKey="revenus"
+                    stroke="#10b981"
                     strokeWidth={2}
                     name="Revenus"
                     dot={{ r: 6, fill: '#10b981' }}
                     activeDot={{ r: 8 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="depenses" 
-                    stroke="#ef4444" 
+                  <Line
+                    type="monotone"
+                    dataKey="depenses"
+                    stroke="#ef4444"
                     strokeWidth={2}
                     name="Dépenses"
                     dot={{ r: 6, fill: '#ef4444' }}
                     activeDot={{ r: 8 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="solde" 
-                    stroke="#3b82f6" 
+                  <Line
+                    type="monotone"
+                    dataKey="solde"
+                    stroke="#3b82f6"
                     strokeWidth={2}
                     name="Solde"
                     dot={{ r: 6, fill: '#3b82f6' }}
@@ -1022,7 +1019,7 @@ export default function StatisticsPage() {
         <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold">
-              {selectedCategory 
+              {selectedCategory
                 ? `Sous-catégories - ${selectedCategory.name}${selectedMonth ? ` (${selectedMonth.month} ${selectedMonth.year})` : selectedYear ? ` (${selectedYear})` : ''}`
                 : `Dépenses par Catégories${selectedMonth ? ` - ${selectedMonth.month} ${selectedMonth.year}` : selectedYear ? ` - ${selectedYear}` : ''}`}
             </h2>
@@ -1053,29 +1050,29 @@ export default function StatisticsPage() {
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={subCategoryData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                    <XAxis 
-                      dataKey="name" 
+                    <XAxis
+                      dataKey="name"
                       stroke="#6b7280"
                       className="dark:stroke-gray-400"
                       angle={-45}
                       textAnchor="end"
                       height={100}
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="#6b7280"
                       className="dark:stroke-gray-400"
                       tickFormatter={(value) => `${value}€`}
                     />
-                    <Tooltip 
-                      contentStyle={{ 
+                    <Tooltip
+                      contentStyle={{
                         backgroundColor: 'white',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px'
                       }}
                       formatter={(value: number) => formatCurrency(value)}
                     />
-                    <Bar 
-                      dataKey="amount" 
+                    <Bar
+                      dataKey="amount"
                       fill={categoryColors[selectedCategory.name] || '#3b82f6'}
                       radius={[8, 8, 0, 0]}
                     >
@@ -1101,7 +1098,7 @@ export default function StatisticsPage() {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart 
+                  <BarChart
                     data={filteredCategoryData}
                     onClick={(e: any) => {
                       if (e && e.activePayload && e.activePayload.length > 0) {
@@ -1113,29 +1110,29 @@ export default function StatisticsPage() {
                     }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                    <XAxis 
-                      dataKey="name" 
+                    <XAxis
+                      dataKey="name"
                       stroke="#6b7280"
                       className="dark:stroke-gray-400"
                       angle={-45}
                       textAnchor="end"
                       height={100}
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="#6b7280"
                       className="dark:stroke-gray-400"
                       tickFormatter={(value) => `${value}€`}
                     />
-                    <Tooltip 
-                      contentStyle={{ 
+                    <Tooltip
+                      contentStyle={{
                         backgroundColor: 'white',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px'
                       }}
                       formatter={(value: number) => formatCurrency(value)}
                     />
-                    <Bar 
-                      dataKey="amount" 
+                    <Bar
+                      dataKey="amount"
                       fill="#3b82f6"
                       radius={[8, 8, 0, 0]}
                       style={{ cursor: 'pointer' }}
@@ -1182,9 +1179,9 @@ export default function StatisticsPage() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip 
+                <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ 
+                  contentStyle={{
                     backgroundColor: 'white',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px'

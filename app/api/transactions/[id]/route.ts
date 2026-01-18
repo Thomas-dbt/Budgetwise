@@ -159,7 +159,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
             include: { parent: true }
           },
           account: true,
-          toAccount: true
+          toAccount: true,
+          splits: {
+            include: { category: true }
+          }
         },
       })
 
@@ -231,7 +234,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return { updatedTransaction, updatedFromAccount, updatedToAccount }
     })
 
-    const { updatedTransaction, updatedFromAccount, updatedToAccount } = result
+    const { updatedTransaction, updatedFromAccount, updatedToAccount } = result as any
 
     // Reconstruction of response format
     let resCategory = null
@@ -268,6 +271,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       subCategory: resSubCategory,
       account: { id: updatedFromAccount.id, name: updatedFromAccount.name, balance: Number(updatedFromAccount.balance) },
       toAccount: updatedToAccount ? { id: updatedToAccount.id, name: updatedToAccount.name, balance: Number(updatedToAccount.balance) } : null,
+      hasSplits: updatedTransaction.splits && updatedTransaction.splits.length > 0,
+      splits: updatedTransaction.splits || []
     })
   } catch (error: any) {
     console.error('Transaction update error', error?.message || error)

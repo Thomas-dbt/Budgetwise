@@ -2,6 +2,9 @@
 import { prisma } from '@/lib/prisma'
 import { getCurrentUserId } from '@/lib/server-auth'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(req: Request) {
   try {
     const userId = await getCurrentUserId()
@@ -15,15 +18,22 @@ export async function GET(req: Request) {
     const skip = Number(searchParams.get('skip') || 0)
 
     const search = searchParams.get('search') || searchParams.get('q')
+    const flatten = searchParams.get('flatten') === 'true' // If true, returns atomic transactions (children + singles), excluding parents
+
+
 
     const where: any = accountId
       ? {
+        ...(flatten ? { hasSplits: false } : { parentId: null }), // Flatten: show children. Normal: show parents.
         OR: [
           { accountId, account: { ownerId: userId } },
           { toAccountId: accountId, toAccount: { ownerId: userId } }
         ]
       }
-      : { account: { ownerId: userId } }
+      : {
+        account: { ownerId: userId },
+        ...(flatten ? { hasSplits: false } : { parentId: null }) // Flatten: show children (atomic). Normal: show parents (grouped).
+      }
 
     if (startDate || endDate) {
       where.date = {}
@@ -61,6 +71,9 @@ export async function GET(req: Request) {
           toAccount: true,
           category: {
             include: { parent: true }
+          },
+          splits: {
+            include: { category: true }
           }
         } as any, // Cast include to any
       }) as any[] // Cast result to any[]
@@ -74,6 +87,9 @@ export async function GET(req: Request) {
           account: true,
           category: {
             include: { parent: true }
+          },
+          splits: {
+            include: { category: true }
           }
         } as any, // Cast include to any
       }) as any[] // Cast result to any[]
@@ -110,6 +126,8 @@ export async function GET(req: Request) {
 
       return {
         ...tx,
+        hasSplits: tx.hasSplits, // Explicitly ensure it's passed
+        splits: tx.splits,       // Explicitly ensure it's passed
         category,
         subCategory,
         // Ensure no raw objects leak if not needed, but spread handles most

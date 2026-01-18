@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState, useRef } from 'react'
 import { authFetch } from '@/lib/auth-fetch'
 import { useToast } from '@/components/toast'
+import SplitModal from './split-modal'
 
 interface Transaction {
   id: string
@@ -16,6 +17,8 @@ interface Transaction {
   toAccount?: { id: string; name: string } | null
   attachment: string | null
   pending: boolean
+  hasSplits?: boolean
+  splits?: any[]
   transferGroupId?: string | null
   transferMeta?: {
     fromId: string
@@ -127,6 +130,19 @@ export default function TransactionsPage() {
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+
+  const [splitModalOpen, setSplitModalOpen] = useState(false)
+  const [transactionToSplit, setTransactionToSplit] = useState<Transaction | null>(null)
+  const [showSplitUI, setShowSplitUI] = useState(false)
+
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [importAccountId, setImportAccountId] = useState('')
+  const [importRows, setImportRows] = useState<ParsedImportRow[]>([])
+  const [importFileName, setImportFileName] = useState('')
+  const [importError, setImportError] = useState<string | null>(null)
+  const [importLoading, setImportLoading] = useState(false)
+  const [selectedImportRows, setSelectedImportRows] = useState<Set<number>>(new Set())
   type ManualFormState = {
     accountId: string
     type: Transaction['type']
@@ -164,13 +180,6 @@ export default function TransactionsPage() {
     transferGroupId: null
   })
 
-  const [importModalOpen, setImportModalOpen] = useState(false)
-  const [importAccountId, setImportAccountId] = useState('')
-  const [importRows, setImportRows] = useState<ParsedImportRow[]>([])
-  const [importFileName, setImportFileName] = useState('')
-  const [importError, setImportError] = useState<string | null>(null)
-  const [importLoading, setImportLoading] = useState(false)
-  const [selectedImportRows, setSelectedImportRows] = useState<Set<number>>(new Set())
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [attachmentPreview, setAttachmentPreview] = useState<{ url: string; title: string } | null>(null)
@@ -525,6 +534,8 @@ export default function TransactionsPage() {
         attachment: tx.attachment || null,
         pending: !!tx.pending,
         transferGroupId: tx.transferGroupId || null,
+        hasSplits: tx.hasSplits,
+        splits: tx.splits,
       }))
 
       if (newTransactions.length < LIMIT) {
@@ -826,8 +837,11 @@ export default function TransactionsPage() {
     setEditingTransactionId(null)
     setShowNewCategoryInput(false)
     setNewCategoryName('')
+    setShowNewCategoryInput(false)
+    setNewCategoryName('')
     setShowNewSubCategoryInput(false)
     setNewSubCategoryName('')
+    setShowSplitUI(false) // Reset split UI
     setManualModalOpen(true)
   }
 
@@ -857,36 +871,38 @@ export default function TransactionsPage() {
       transferGroupId: null,
     })
     setEditingTransactionId(tx.id)
+    setEditingTransaction(tx)
     setManualModalOpen(true)
+    setShowSplitUI(false)
   }
 
 
 
-  const handleManualSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleManualSubmit = async (event: FormEvent<HTMLFormElement> | null, shouldClose = true): Promise<Transaction | null> => {
+    if (event) event.preventDefault()
     if (!manualForm.accountId) {
       setFeedback({ type: 'error', message: 'Veuillez choisir un compte.' })
-      return
+      return null
     }
     const normalizedAmount = Number(manualForm.amount.toString().replace(',', '.'))
     if (!manualForm.amount || Number.isNaN(normalizedAmount) || normalizedAmount === 0) {
       setFeedback({ type: 'error', message: 'Veuillez indiquer un montant valide.' })
-      return
+      return null
     }
     if (manualForm.pending && manualForm.type === 'income') {
       setFeedback({ type: 'error', message: 'Le statut "en attente" n\'est disponible que pour les dépenses et transferts.' })
-      return
+      return null
     }
     if (manualForm.type === 'transfer' && (!manualForm.transferAccountId || manualForm.transferAccountId === manualForm.accountId)) {
       setFeedback({ type: 'error', message: 'Sélectionnez un compte de destination différent.' })
-      return
+      return null
     }
 
     setManualLoading(true)
     try {
-
+      let response
       if (manualForm.type === 'transfer') {
-        const response = await authFetch('/api/transactions', {
+        response = await authFetch('/api/transactions', {
           method: 'POST',
           body: JSON.stringify({
             accountId: manualForm.accountId,
@@ -917,7 +933,7 @@ export default function TransactionsPage() {
           throw new Error(message || "Impossible d'ajouter le transfert.")
         }
       } else {
-        const response = await authFetch('/api/transactions', {
+        response = await authFetch('/api/transactions', {
           method: 'POST',
           body: JSON.stringify({
             accountId: manualForm.accountId,
@@ -957,49 +973,58 @@ export default function TransactionsPage() {
         }
       }
 
-      setManualModalOpen(false)
-      setShowNewCategoryInput(false)
-      setNewCategoryName('')
-      setShowNewSubCategoryInput(false)
-      setNewSubCategoryName('')
-      setFeedback({ type: 'success', message: 'Transaction ajoutée avec succès.' })
+      const newTx = await response.json()
+      if (shouldClose) {
+        setManualModalOpen(false)
+        setShowNewCategoryInput(false)
+        setNewCategoryName('')
+        setShowNewSubCategoryInput(false)
+        setNewSubCategoryName('')
+        setFeedback({ type: 'success', message: 'Transaction ajoutée avec succès.' })
+      } else {
+        // If we keep it open (e.g. for splitting), switch to edit mode so we don't duplicate if saved again
+        setEditingTransactionId(newTx.id)
+        setEditingTransaction(newTx)
+      }
       fetchTransactions()
       // Déclencher un événement pour actualiser les comptes
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('accounts-refresh'))
       }
+      return newTx
     } catch (error: any) {
       console.error('Manual transaction error', error)
       setFeedback({ type: 'error', message: error.message || "Impossible d'ajouter la transaction." })
+      return null
     } finally {
       setManualLoading(false)
     }
   }
 
-  const handleManualUpdate = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleManualUpdate = async (event: FormEvent<HTMLFormElement> | null, shouldClose = true): Promise<Transaction | null> => {
+    if (event) event.preventDefault()
     if (!editingTransactionId) {
       console.error('Abort update: editingTransactionId is missing')
       setFeedback({ type: 'error', message: 'Erreur interne: ID de transaction manquant.' })
-      return
+      return null
     }
 
     const normalizedAmount = Number(manualForm.amount.toString().replace(',', '.'))
     if (Number.isNaN(normalizedAmount) || normalizedAmount === 0) {
       setFeedback({ type: 'error', message: 'Veuillez indiquer un montant valide.' })
-      return
+      return null
     }
 
     if (manualForm.type === 'transfer' && (!manualForm.transferAccountId || manualForm.transferAccountId === manualForm.accountId)) {
       setFeedback({ type: 'error', message: 'Sélectionnez un compte de destination différent.' })
-      return
+      return null
     }
 
     setManualLoading(true)
     try {
-
+      let response
       if (manualForm.type === 'transfer') {
-        const response = await authFetch(`/api/transactions/${editingTransactionId}`, {
+        response = await authFetch(`/api/transactions/${editingTransactionId}`, {
           method: 'PATCH',
           body: JSON.stringify({
             accountId: manualForm.accountId,
@@ -1028,7 +1053,7 @@ export default function TransactionsPage() {
           throw new Error(message || 'Impossible de modifier le transfert')
         }
       } else {
-        const response = await authFetch(`/api/transactions/${editingTransactionId}`, {
+        response = await authFetch(`/api/transactions/${editingTransactionId}`, {
           method: 'PATCH',
           body: JSON.stringify({
             accountId: manualForm.accountId,
@@ -1058,23 +1083,46 @@ export default function TransactionsPage() {
         }
       }
 
-      setManualModalOpen(false)
-      setShowNewCategoryInput(false)
-      setNewCategoryName('')
-      setShowNewSubCategoryInput(false)
-      setNewSubCategoryName('')
-      setEditingTransactionId(null)
-      // Suppression du message pour modification unique: setFeedback({ type: 'success', message: 'Transaction mise à jour.' })
+      const newTx = await response.json()
+      if (shouldClose) {
+        setManualModalOpen(false)
+        setShowNewCategoryInput(false)
+        setNewCategoryName('')
+        setShowNewSubCategoryInput(false)
+        setNewSubCategoryName('')
+        setEditingTransactionId(null)
+        setFeedback({ type: 'success', message: 'Transaction mise à jour.' })
+      }
       fetchTransactions()
       // Déclencher un événement pour actualiser les comptes
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('accounts-refresh'))
       }
+      return newTx
     } catch (error: any) {
       console.error('Manual transaction update error', error)
       setFeedback({ type: 'error', message: error.message || 'Impossible de modifier la transaction.' })
+      return null
     } finally {
       setManualLoading(false)
+    }
+  }
+
+  const handleSaveAndSplit = async () => {
+    let savedTx: Transaction | null = null
+    if (editingTransactionId) {
+      // Don't close modal, just save
+      savedTx = await handleManualUpdate(null, false)
+    } else {
+      // Don't close modal, just save
+      savedTx = await handleManualSubmit(null, false)
+    }
+
+    if (savedTx) {
+      // Setup split mode inline
+      setTransactionToSplit(savedTx)
+      setShowSplitUI(true)
+      // We don't need to close ManualModal because we are inside it
     }
   }
 
@@ -1540,8 +1588,15 @@ export default function TransactionsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Transactions</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2 text-lg">Gérez vos revenus et dépenses</p>
+            <div className="flex items-center gap-4">
+              <a href="/" className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                ←
+              </a>
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Transactions</h1>
+                <p className="text-gray-500 dark:text-gray-400 mt-2 text-lg">Gérez vos revenus et dépenses</p>
+              </div>
+            </div>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
@@ -1921,12 +1976,18 @@ export default function TransactionsPage() {
                             <span className="text-xs px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium border border-gray-200 dark:border-gray-700">
                               {isTransfer ? 'Transfert' : TYPE_LABELS[tx.type]}
                             </span>
+
                             {tx.pending && (
                               <span className="text-xs px-2.5 py-1 rounded-md bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800 font-medium">
                                 ⏳ En attente
                               </span>
                             )}
-                            {tx.category && (
+                            {(tx.hasSplits || (tx.splits && tx.splits.length > 0)) && (
+                              <span className="text-xs px-2.5 py-1 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-medium">
+                                ✂️ Multi-catégories
+                              </span>
+                            )}
+                            {(tx.category && !tx.hasSplits && (!tx.splits || tx.splits.length === 0)) && (
                               <span className={`text-xs px-3 py-1 rounded-md font-medium border ${categoryColors[tx.category.name] || categoryColors['Autres']
                                 }`}>
                                 {tx.category.emoji ? `${tx.category.emoji} ` : ''}{tx.category.name}
@@ -1969,6 +2030,7 @@ export default function TransactionsPage() {
                             >
                               ✏️ Modifier
                             </button>
+
                             <button
                               onClick={() => {
                                 setTransactionToDelete(tx)
@@ -2051,439 +2113,469 @@ export default function TransactionsPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">{editingTransactionId ? 'Modifier la transaction' : 'Ajouter une transaction'}</h2>
+                <h2 className="text-2xl font-bold">
+                  {showSplitUI ? 'Diviser la transaction' : (editingTransactionId ? 'Modifier la transaction' : 'Ajouter une transaction')}
+                </h2>
                 <button
-                  onClick={() => { setManualModalOpen(false) }}
+                  onClick={() => { setManualModalOpen(false); setShowSplitUI(false); }}
                   className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                 >
                   ✕
                 </button>
               </div>
-              <form onSubmit={submitManualForm} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Compte *</label>
-                    <select
-                      value={manualForm.accountId}
-                      onChange={(e) =>
-                        setManualForm(prev => {
-                          const nextAccount = e.target.value
-                          const nextTransfer =
-                            prev.type === 'transfer'
-                              ? accounts.find(acc => acc.id !== nextAccount)?.id || ''
-                              : prev.transferAccountId
-                          return { ...prev, accountId: nextAccount, transferAccountId: nextTransfer }
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="" disabled>Choisissez un compte</option>
-                      {accounts.map(acc => (
-                        <option key={acc.id} value={acc.id}>{acc.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Type *</label>
-                    <select
-                      value={manualForm.type}
-                      onChange={(e) =>
-                        setManualForm(prev => {
-                          const value = e.target.value as Transaction['type']
-                          return {
-                            ...prev,
-                            type: value,
-                            transferAccountId:
-                              value === 'transfer'
-                                ? accounts.find(acc => acc.id !== prev.accountId)?.id || ''
-                                : '',
-                            transferGroupId: value === 'transfer' ? prev.transferGroupId : null,
-                          }
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="expense">Dépense</option>
-                      <option value="income">Revenu</option>
-                      <option value="transfer">Transfert</option>
-                    </select>
-                  </div>
-                  {manualForm.type === 'transfer' && (
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-medium mb-2">Compte destinataire *</label>
-                      {accounts.filter(acc => acc.id !== manualForm.accountId).length === 0 ? (
-                        <p className="text-sm text-red-600 dark:text-red-400">
-                          Créez un autre compte pour effectuer un transfert.
-                        </p>
-                      ) : (
-                        <select
-                          value={manualForm.transferAccountId}
-                          onChange={(e) => setManualForm(prev => ({ ...prev, transferAccountId: e.target.value }))}
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          required
-                        >
-                          <option value="" disabled>Sélectionnez le compte de destination</option>
-                          {accounts.filter(acc => acc.id !== manualForm.accountId).map(acc => (
-                            <option key={acc.id} value={acc.id}>{acc.name}</option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Montant *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={manualForm.amount}
-                      onChange={(e) => setManualForm(prev => ({ ...prev, amount: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Date *</label>
-                    <input
-                      type="date"
-                      value={manualForm.date}
-                      onChange={(e) => setManualForm(prev => ({ ...prev, date: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">Description</label>
-                  <input
-                    type="text"
-                    value={manualForm.description}
-                    onChange={(e) => setManualForm(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Libellé qui apparaîtra dans l'historique"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Catégorie</label>
-                    <select
-                      value={showNewCategoryInput ? 'new' : manualForm.categoryId}
-                      onChange={(e) => {
-                        if (e.target.value === 'new') {
-                          setShowNewCategoryInput(true)
-                          setManualForm(prev => ({ ...prev, categoryId: '', subCategoryId: '' }))
-                        } else {
-                          setShowNewCategoryInput(false)
-                          setManualForm(prev => ({ ...prev, categoryId: e.target.value, subCategoryId: '' }))
+              {showSplitUI && transactionToSplit ? (
+                <SplitModal
+                  inline
+                  transaction={transactionToSplit}
+                  categories={categories}
+                  subCategories={subCategories}
+                  onClose={() => setShowSplitUI(false)} // Just go back to main form
+                  onSuccess={() => {
+                    setShowSplitUI(false)
+                    setManualModalOpen(false)
+                    setFeedback({ type: 'success', message: 'Transaction divisée avec succès' })
+                    fetchTransactions()
+                  }}
+                />
+              ) : (
+                <form onSubmit={submitManualForm} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Compte *</label>
+                      <select
+                        value={manualForm.accountId}
+                        onChange={(e) =>
+                          setManualForm(prev => {
+                            const nextAccount = e.target.value
+                            const nextTransfer =
+                              prev.type === 'transfer'
+                                ? accounts.find(acc => acc.id !== nextAccount)?.id || ''
+                                : prev.transferAccountId
+                            return { ...prev, accountId: nextAccount, transferAccountId: nextTransfer }
+                          })
                         }
-                      }}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="" disabled>Choisissez un compte</option>
+                        {accounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Type *</label>
+                      <select
+                        value={manualForm.type}
+                        onChange={(e) =>
+                          setManualForm(prev => {
+                            const value = e.target.value as Transaction['type']
+                            return {
+                              ...prev,
+                              type: value,
+                              transferAccountId:
+                                value === 'transfer'
+                                  ? accounts.find(acc => acc.id !== prev.accountId)?.id || ''
+                                  : '',
+                              transferGroupId: value === 'transfer' ? prev.transferGroupId : null,
+                            }
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="expense">Dépense</option>
+                        <option value="income">Revenu</option>
+                        <option value="transfer">Transfert</option>
+                      </select>
+                    </div>
+                    {manualForm.type === 'transfer' && (
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium mb-2">Compte destinataire *</label>
+                        {accounts.filter(acc => acc.id !== manualForm.accountId).length === 0 ? (
+                          <p className="text-sm text-red-600 dark:text-red-400">
+                            Créez un autre compte pour effectuer un transfert.
+                          </p>
+                        ) : (
+                          <select
+                            value={manualForm.transferAccountId}
+                            onChange={(e) => setManualForm(prev => ({ ...prev, transferAccountId: e.target.value }))}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                          >
+                            <option value="" disabled>Sélectionnez le compte de destination</option>
+                            {accounts.filter(acc => acc.id !== manualForm.accountId).map(acc => (
+                              <option key={acc.id} value={acc.id}>{acc.name}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Montant *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={manualForm.amount}
+                        onChange={(e) => setManualForm(prev => ({ ...prev, amount: e.target.value }))}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Date *</label>
+                      <input
+                        type="date"
+                        value={manualForm.date}
+                        onChange={(e) => setManualForm(prev => ({ ...prev, date: e.target.value }))}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Description</label>
+                    <input
+                      type="text"
+                      value={manualForm.description}
+                      onChange={(e) => setManualForm(prev => ({ ...prev, description: e.target.value }))}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Sans catégorie</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
-                      ))}
-                      <option value="new">➕ Créer une nouvelle catégorie</option>
-                    </select>
-                    {showNewCategoryInput && (
-                      <div className="mt-2 flex gap-2">
-                        <input
-                          type="text"
-                          value={newCategoryName}
-                          onChange={(e) => setNewCategoryName(e.target.value)}
-                          placeholder="Nom de la catégorie"
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault()
+                      placeholder="Libellé qui apparaîtra dans l'historique"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Catégorie</label>
+                      <select
+                        value={showNewCategoryInput ? 'new' : manualForm.categoryId}
+                        onChange={(e) => {
+                          if (e.target.value === 'new') {
+                            setShowNewCategoryInput(true)
+                            setManualForm(prev => ({ ...prev, categoryId: '', subCategoryId: '' }))
+                          } else {
+                            setShowNewCategoryInput(false)
+                            setManualForm(prev => ({ ...prev, categoryId: e.target.value, subCategoryId: '' }))
+                          }
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Sans catégorie</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
+                        ))}
+                        <option value="new">➕ Créer une nouvelle catégorie</option>
+                      </select>
+                      {showNewCategoryInput && (
+                        <div className="mt-2 flex gap-2">
+                          <input
+                            type="text"
+                            value={newCategoryName}
+                            onChange={(e) => setNewCategoryName(e.target.value)}
+                            placeholder="Nom de la catégorie"
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                if (newCategoryName.trim()) {
+                                  createCategory(newCategoryName.trim()).catch(err => {
+                                    setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
+                                  })
+                                }
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
                               if (newCategoryName.trim()) {
                                 createCategory(newCategoryName.trim()).catch(err => {
                                   setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
                                 })
                               }
-                            }
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (newCategoryName.trim()) {
-                              createCategory(newCategoryName.trim()).catch(err => {
-                                setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
-                              })
-                            }
-                          }}
-                          disabled={!newCategoryName.trim()}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowNewCategoryInput(false)
-                            setNewCategoryName('')
-                            setManualForm(prev => ({ ...prev, categoryId: '' }))
-                          }}
-                          className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Sous-catégorie</label>
-                    <select
-                      value={showNewSubCategoryInput ? 'new' : manualForm.subCategoryId}
-                      onChange={(e) => {
-                        if (e.target.value === 'new') {
-                          setShowNewSubCategoryInput(true)
-                          setManualForm(prev => ({ ...prev, subCategoryId: '' }))
-                        } else {
-                          setShowNewSubCategoryInput(false)
-                          setManualForm(prev => ({ ...prev, subCategoryId: e.target.value }))
-                        }
-                      }}
-                      disabled={!manualForm.categoryId}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <option value="">Sans sous-catégorie</option>
-                      {subCategories
-                        .filter(sub => sub.categoryId === manualForm.categoryId)
-                        .map(sub => (
-                          <option key={sub.id} value={sub.id}>{sub.name}</option>
-                        ))}
-                      {manualForm.categoryId && (
-                        <option value="new">➕ Créer une nouvelle sous-catégorie</option>
+                            }}
+                            disabled={!newCategoryName.trim()}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowNewCategoryInput(false)
+                              setNewCategoryName('')
+                              setManualForm(prev => ({ ...prev, categoryId: '' }))
+                            }}
+                            className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       )}
-                    </select>
-                    {showNewSubCategoryInput && manualForm.categoryId && (
-                      <div className="mt-2 flex gap-2">
-                        <input
-                          type="text"
-                          value={newSubCategoryName}
-                          onChange={(e) => setNewSubCategoryName(e.target.value)}
-                          placeholder="Nom de la sous-catégorie"
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault()
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Sous-catégorie</label>
+                      <select
+                        value={showNewSubCategoryInput ? 'new' : manualForm.subCategoryId}
+                        onChange={(e) => {
+                          if (e.target.value === 'new') {
+                            setShowNewSubCategoryInput(true)
+                            setManualForm(prev => ({ ...prev, subCategoryId: '' }))
+                          } else {
+                            setShowNewSubCategoryInput(false)
+                            setManualForm(prev => ({ ...prev, subCategoryId: e.target.value }))
+                          }
+                        }}
+                        disabled={!manualForm.categoryId}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Sans sous-catégorie</option>
+                        {subCategories
+                          .filter(sub => sub.categoryId === manualForm.categoryId)
+                          .map(sub => (
+                            <option key={sub.id} value={sub.id}>{sub.name}</option>
+                          ))}
+                        {manualForm.categoryId && (
+                          <option value="new">➕ Créer une nouvelle sous-catégorie</option>
+                        )}
+                      </select>
+                      {showNewSubCategoryInput && manualForm.categoryId && (
+                        <div className="mt-2 flex gap-2">
+                          <input
+                            type="text"
+                            value={newSubCategoryName}
+                            onChange={(e) => setNewSubCategoryName(e.target.value)}
+                            placeholder="Nom de la sous-catégorie"
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                if (newSubCategoryName.trim()) {
+                                  createSubCategory(newSubCategoryName.trim(), manualForm.categoryId).catch(err => {
+                                    setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
+                                  })
+                                }
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
                               if (newSubCategoryName.trim()) {
                                 createSubCategory(newSubCategoryName.trim(), manualForm.categoryId).catch(err => {
                                   setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
                                 })
                               }
+                            }}
+                            disabled={!newSubCategoryName.trim()}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowNewSubCategoryInput(false)
+                              setNewSubCategoryName('')
+                              setManualForm(prev => ({ ...prev, subCategoryId: '' }))
+                            }}
+                            className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+
+                  {/* Investment Toggle */}
+                  {(manualForm.categoryId && categories.find(c => c.id === manualForm.categoryId)?.name === 'Investissement') && (
+                    <div className="border border-indigo-100 dark:border-indigo-900/50 rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 space-y-4">
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={manualForm.addToPortfolio}
+                          onChange={(e) => setManualForm(prev => ({ ...prev, addToPortfolio: e.target.checked }))}
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        />
+                        <span className="font-medium text-gray-900 dark:text-gray-100">Ajouter au portefeuille</span>
+                      </label>
+
+                      {manualForm.addToPortfolio && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                          <div className="sm:col-span-2">
+                            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nom de l'actif</label>
+                            <input
+                              type="text"
+                              value={manualForm.investmentName}
+                              onChange={(e) => setManualForm(prev => ({ ...prev, investmentName: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              placeholder="Ex: Bitcoin, Apple, ETF World..."
+                              required={manualForm.addToPortfolio}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Symbole (Optionnel)</label>
+                            <input
+                              type="text"
+                              value={manualForm.investmentSymbol}
+                              onChange={(e) => setManualForm(prev => ({ ...prev, investmentSymbol: e.target.value.toUpperCase() }))}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              placeholder="BTC, AAPL..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Quantité</label>
+                            <input
+                              type="number"
+                              step="any"
+                              value={manualForm.investmentQuantity}
+                              onChange={(e) => setManualForm(prev => ({ ...prev, investmentQuantity: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              placeholder="0.00"
+                              required={manualForm.addToPortfolio}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Catégorie d'actif</label>
+                            <select
+                              value={manualForm.investmentCategory}
+                              onChange={(e) => setManualForm(prev => ({ ...prev, investmentCategory: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                              <option value="Crypto">Crypto</option>
+                              <option value="Action">Action</option>
+                              <option value="ETF">ETF</option>
+                              <option value="Immobilier">Immobilier</option>
+                              <option value="Autre">Autre</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Plateforme (Opt.)</label>
+                            <input
+                              type="text"
+                              value={manualForm.investmentPlatform}
+                              onChange={(e) => setManualForm(prev => ({ ...prev, investmentPlatform: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              placeholder="Binance, Boursorama..."
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
+
+                  <div>
+                    <label className="flex items-center gap-3 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">
+                      <input
+                        type="checkbox"
+                        checked={manualForm.pending}
+                        onChange={(e) => setManualForm(prev => ({ ...prev, pending: e.target.checked }))}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-200">Transaction en attente de validation</span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Justificatif (photo)</label>
+                    {manualForm.attachment ? (
+                      <div className="border border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            {manualForm.attachmentName || 'Pièce jointe'}
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAttachmentPreview({
+                                  url: manualForm.attachment as string,
+                                  title: manualForm.description || manualForm.attachmentName || 'Justificatif',
+                                })
+                              }
+                              className="text-xs px-3 py-1 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                            >
+                              Voir
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setManualForm(prev => ({ ...prev, attachment: null, attachmentName: '' }))}
+                              className="text-xs px-3 py-1 border border-red-200 text-red-600 dark:border-red-800 dark:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/30"
+                            >
+                              Retirer
+                            </button>
+                          </div>
+                        </div>
+                        <img
+                          src={manualForm.attachment}
+                          alt="Pièce jointe"
+                          className="max-h-56 object-contain rounded border border-gray-200 dark:border-gray-700"
+                        />
+                      </div>
+                    ) : (
+                      <label className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (event) => {
+                            const file = event.target.files?.[0]
+                            if (!file) return
+                            try {
+                              const dataUrl = await readFileAsDataUrl(file)
+                              setManualForm(prev => ({
+                                ...prev,
+                                attachment: dataUrl,
+                                attachmentName: file.name,
+                              }))
+                              event.target.value = ''
+                            } catch (error) {
+                              console.error('Attachment upload error', error)
+                              setFeedback({ type: 'error', message: 'Impossible de charger cette image.' })
+                              event.target.value = ''
                             }
                           }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (newSubCategoryName.trim()) {
-                              createSubCategory(newSubCategoryName.trim(), manualForm.categoryId).catch(err => {
-                                setFeedback({ type: 'error', message: err.message || 'Erreur lors de la création' })
-                              })
-                            }
-                          }}
-                          disabled={!newSubCategoryName.trim()}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowNewSubCategoryInput(false)
-                            setNewSubCategoryName('')
-                            setManualForm(prev => ({ ...prev, subCategoryId: '' }))
-                          }}
-                          className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                        <span>📎 Joindre une photo</span>
+                      </label>
                     )}
                   </div>
-                </div>
 
-
-                {/* Investment Toggle */}
-                {(manualForm.categoryId && categories.find(c => c.id === manualForm.categoryId)?.name === 'Investissement') && (
-                  <div className="border border-indigo-100 dark:border-indigo-900/50 rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 space-y-4">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={manualForm.addToPortfolio}
-                        onChange={(e) => setManualForm(prev => ({ ...prev, addToPortfolio: e.target.checked }))}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      <span className="font-medium text-gray-900 dark:text-gray-100">Ajouter au portefeuille</span>
-                    </label>
-
-                    {manualForm.addToPortfolio && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2">
-                        <div className="sm:col-span-2">
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nom de l'actif</label>
-                          <input
-                            type="text"
-                            value={manualForm.investmentName}
-                            onChange={(e) => setManualForm(prev => ({ ...prev, investmentName: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            placeholder="Ex: Bitcoin, Apple, ETF World..."
-                            required={manualForm.addToPortfolio}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Symbole (Optionnel)</label>
-                          <input
-                            type="text"
-                            value={manualForm.investmentSymbol}
-                            onChange={(e) => setManualForm(prev => ({ ...prev, investmentSymbol: e.target.value.toUpperCase() }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            placeholder="BTC, AAPL..."
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Quantité</label>
-                          <input
-                            type="number"
-                            step="any"
-                            value={manualForm.investmentQuantity}
-                            onChange={(e) => setManualForm(prev => ({ ...prev, investmentQuantity: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            placeholder="0.00"
-                            required={manualForm.addToPortfolio}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Catégorie d'actif</label>
-                          <select
-                            value={manualForm.investmentCategory}
-                            onChange={(e) => setManualForm(prev => ({ ...prev, investmentCategory: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          >
-                            <option value="Crypto">Crypto</option>
-                            <option value="Action">Action</option>
-                            <option value="ETF">ETF</option>
-                            <option value="Immobilier">Immobilier</option>
-                            <option value="Autre">Autre</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Plateforme (Opt.)</label>
-                          <input
-                            type="text"
-                            value={manualForm.investmentPlatform}
-                            onChange={(e) => setManualForm(prev => ({ ...prev, investmentPlatform: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            placeholder="Binance, Boursorama..."
-                          />
-                        </div>
-                      </div>
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setManualModalOpen(false)}
+                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      Annuler
+                    </button>
+                    {manualForm.type !== 'transfer' && (
+                      <button
+                        type="button"
+                        onClick={handleSaveAndSplit}
+                        disabled={manualLoading}
+                        className="px-4 py-2 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors font-medium border border-transparent flex items-center gap-2"
+                      >
+                        <span className="text-lg">✂️</span>
+                        {editingTransaction?.hasSplits ? 'Modifier la division' : 'Diviser'}
+                      </button>
                     )}
+                    <button
+                      type="submit"
+                      disabled={manualLoading}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {manualLoading ? 'Enregistrement...' : editingTransactionId ? 'Enregistrer les modifications' : 'Enregistrer la transaction'}
+                    </button>
                   </div>
-                )}
-
-
-
-                <div>
-                  <label className="flex items-center gap-3 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">
-                    <input
-                      type="checkbox"
-                      checked={manualForm.pending}
-                      onChange={(e) => setManualForm(prev => ({ ...prev, pending: e.target.checked }))}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-200">Transaction en attente de validation</span>
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Justificatif (photo)</label>
-                  {manualForm.attachment ? (
-                    <div className="border border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          {manualForm.attachmentName || 'Pièce jointe'}
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAttachmentPreview({
-                                url: manualForm.attachment as string,
-                                title: manualForm.description || manualForm.attachmentName || 'Justificatif',
-                              })
-                            }
-                            className="text-xs px-3 py-1 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                          >
-                            Voir
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setManualForm(prev => ({ ...prev, attachment: null, attachmentName: '' }))}
-                            className="text-xs px-3 py-1 border border-red-200 text-red-600 dark:border-red-800 dark:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/30"
-                          >
-                            Retirer
-                          </button>
-                        </div>
-                      </div>
-                      <img
-                        src={manualForm.attachment}
-                        alt="Pièce jointe"
-                        className="max-h-56 object-contain rounded border border-gray-200 dark:border-gray-700"
-                      />
-                    </div>
-                  ) : (
-                    <label className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (event) => {
-                          const file = event.target.files?.[0]
-                          if (!file) return
-                          try {
-                            const dataUrl = await readFileAsDataUrl(file)
-                            setManualForm(prev => ({
-                              ...prev,
-                              attachment: dataUrl,
-                              attachmentName: file.name,
-                            }))
-                            event.target.value = ''
-                          } catch (error) {
-                            console.error('Attachment upload error', error)
-                            setFeedback({ type: 'error', message: 'Impossible de charger cette image.' })
-                            event.target.value = ''
-                          }
-                        }}
-                      />
-                      <span>📎 Joindre une photo</span>
-                    </label>
-                  )}
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setManualModalOpen(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={manualLoading}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
-                  >
-                    {manualLoading ? 'Enregistrement...' : editingTransactionId ? 'Enregistrer les modifications' : 'Enregistrer la transaction'}
-                  </button>
-                </div>
-              </form>
+                </form>
+              )}
             </div>
           </div >
         )
@@ -3209,6 +3301,16 @@ export default function TransactionsPage() {
                     Annuler
                   </button>
                   <div className="flex-1"></div>
+                  {manualForm.type !== 'transfer' && (
+                    <button
+                      type="button"
+                      onClick={handleSaveAndSplit}
+                      disabled={manualLoading}
+                      className="px-6 py-2.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-xl hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors font-medium mr-2"
+                    >
+                      ✂️ Diviser
+                    </button>
+                  )}
                   <button
                     type="submit"
                     disabled={importRows.length === 0 || importLoading}
@@ -3389,6 +3491,26 @@ export default function TransactionsPage() {
           </div>
         )
       }
+
+      {/* Split Modal */}
+      {splitModalOpen && transactionToSplit && (
+        <SplitModal
+          transaction={transactionToSplit}
+          categories={categories}
+          subCategories={subCategories}
+          onClose={() => {
+            setSplitModalOpen(false)
+            setTransactionToSplit(null)
+          }}
+          onSuccess={() => {
+            setSplitModalOpen(false)
+            setTransactionToSplit(null)
+            fetchTransactions() // Refresh list
+            setFeedback({ type: 'success', message: 'Transaction divisée avec succès' })
+          }}
+        />
+      )}
+
     </div>
   )
 }

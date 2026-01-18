@@ -109,6 +109,12 @@ model Transaction {
   @@index([date])
   @@index([categoryId])
   @@index([accountId, date])
+  
+  // Split transactions
+  hasSplits       Boolean      @default(false)
+  parentId        String?
+  parent          Transaction? @relation("TransactionSplits", fields: [parentId], references: [id], onDelete: Cascade) // If parent is deleted, splits are deleted
+  splits          Transaction[] @relation("TransactionSplits")
 }
 
 model CategoryKeyword {

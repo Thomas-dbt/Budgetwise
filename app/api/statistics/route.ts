@@ -7,13 +7,16 @@ export async function GET(req: Request) {
     const userId = await getCurrentUserId()
     // Récupérer toutes les transactions
     const transactions = await prisma.transaction.findMany({
-      where: { account: { ownerId: userId } },
+      where: {
+        account: { ownerId: userId },
+        hasSplits: false // Exclude parents (split transactions) to avoid double counting and use accurate child categories
+      } as any,
       include: {
         category: true,
         account: true
       },
       orderBy: { date: 'desc' }
-    })
+    }) as any[]
 
     const now = new Date()
     const currentMonth = now.getMonth()
@@ -55,7 +58,7 @@ export async function GET(req: Request) {
     for (let i = 5; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59)
-      
+
       const monthTxs = transactions.filter(tx => {
         const txDate = new Date(tx.date)
         return txDate >= monthStart && txDate <= monthEnd
@@ -70,7 +73,7 @@ export async function GET(req: Request) {
         .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
 
       const monthNames = ['janv.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
-      
+
       monthlyEvolution.push({
         month: monthNames[monthStart.getMonth()],
         revenus: income,

@@ -52,13 +52,17 @@ export async function GET() {
         where: {
           account: { ownerId: userId },
           date: { gte: startOfMonth, lte: endOfMonth },
+          hasSplits: false, // Use children for accurate breakdown, exclude parents
         },
         include: { category: true, account: true, toAccount: true },
       }),
 
       // 3. Transactions récentes (10 dernières)
       prisma.transaction.findMany({
-        where: { account: { ownerId: userId } },
+        where: {
+          account: { ownerId: userId },
+          parentId: null // Show parents in list (match main transactions tab)
+        },
         take: 10,
         orderBy: { date: 'desc' },
         include: { category: true, account: true },
@@ -69,6 +73,7 @@ export async function GET() {
         where: {
           account: { ownerId: userId },
           date: { gte: sixMonthsAgo, lte: endOfMonth },
+          hasSplits: false, // Use children for accurate breakdown
         },
         include: {
           account: true,
