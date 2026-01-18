@@ -162,7 +162,7 @@ export async function POST(req: Request) {
     }
 
     const normalizedType = String(type).toLowerCase()
-    if (!['income', 'expense', 'transfer'].includes(normalizedType)) {
+    if (!['income', 'expense', 'transfer', 'investment'].includes(normalizedType)) {
       return NextResponse.json({ error: 'Type de transaction invalide' }, { status: 400 })
     }
 
@@ -244,7 +244,14 @@ export async function POST(req: Request) {
         where: { id: accountId },
         data: {
           balance: {
-            increment: normalizedType === 'transfer' ? -numericAmount : numericAmount,
+            // Expenses AND Investments are withdrawals (negative impact on balance)
+            // Transfers are handled specifically
+            // Incomes are deposits
+            increment: normalizedType === 'income'
+              ? numericAmount
+              : normalizedType === 'transfer'
+                ? -Math.abs(numericAmount) // Source is debited
+                : -Math.abs(numericAmount), // Expense & Investment are debited
           },
         },
       })
@@ -256,7 +263,7 @@ export async function POST(req: Request) {
           where: { id: toAccountId },
           data: {
             balance: {
-              increment: numericAmount,
+              increment: Math.abs(numericAmount),
             },
           },
         })
@@ -307,7 +314,7 @@ export async function POST(req: Request) {
       }
 
       // --- LOGIQUE AJOUTÉE POUR INVESTISSEMENT ---
-      if (investmentData && (normalizedType === 'expense' || normalizedType === 'transfer')) {
+      if (investmentData && (normalizedType === 'expense' || normalizedType === 'transfer' || normalizedType === 'investment')) {
         const { name, symbol, category, quantity, platform, currentPrice } = investmentData
 
         if (name && category && quantity) {

@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
     const recentTransactions = transactions.filter(tx => {
       const txDate = new Date(tx.date)
-      return txDate >= sixMonthsAgo && tx.type === 'expense'
+      return txDate >= sixMonthsAgo // Include all types (Income, Expense, Transfer, Investment)
     })
 
     const categoryExpenses: Record<string, number> = {}
@@ -72,19 +72,24 @@ export async function GET(req: Request) {
         .filter(t => t.type === 'expense')
         .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
 
+      const investments = monthTxs
+        .filter(t => t.type === 'investment')
+        .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
+
       const monthNames = ['janv.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 
       monthlyEvolution.push({
         month: monthNames[monthStart.getMonth()],
         revenus: income,
         depenses: expenses,
-        solde: income - expenses
+        investissements: investments, // Add separate field for frontend capability
+        solde: income - expenses - investments // Cash flow (Solde réel)
       })
     }
 
-    // Top dépenses du mois
+    // Top transactions du mois (tout confondu)
     const topExpenses = currentMonthTransactions
-      .filter(t => t.type === 'expense')
+      // .filter(t => true) // All types included
       .map(t => ({
         id: t.id,
         description: t.description || 'Transaction',

@@ -27,7 +27,7 @@ interface StatisticsData {
 interface Transaction {
   id: string
   amount: number
-  type: 'income' | 'expense' | 'transfer'
+  type: 'income' | 'expense' | 'transfer' | 'investment'
   date: string
   description: string | null
   category: { id: string; name: string } | null
@@ -80,6 +80,14 @@ export default function StatisticsPage() {
     date: string
   }>>([])
   const [loadingTopExpenses, setLoadingTopExpenses] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     fetchStatistics()
@@ -161,6 +169,13 @@ export default function StatisticsPage() {
         dailyData[dateKey].revenus += Number(tx.amount)
       } else if (tx.type === 'expense') {
         dailyData[dateKey].depenses += Math.abs(Number(tx.amount))
+      } else if (tx.type === 'investment') {
+        // Init if not exists (though interface definition needs update, doing implicit update via property add)
+        // TS might complain if I don't update interface.
+        // Let's assume 'any' or update the type definition in the function.
+        // The type was: { revenus: number; depenses: number; solde: number; date: Date }
+        // I need to add investissements to it.
+        (dailyData[dateKey] as any).investissements = ((dailyData[dateKey] as any).investissements || 0) + Math.abs(Number(tx.amount))
       }
     })
 
@@ -191,26 +206,28 @@ export default function StatisticsPage() {
       }
       const transactions: Transaction[] = await response.json()
 
-      const yearlyData: Record<number, { revenus: number; depenses: number; solde: number }> = {}
+      const yearlyData: Record<number, { revenus: number; depenses: number; solde: number; investissements: number }> = {}
 
       transactions.forEach(tx => {
         const txDate = new Date(tx.date)
         const year = txDate.getFullYear()
 
         if (!yearlyData[year]) {
-          yearlyData[year] = { revenus: 0, depenses: 0, solde: 0 }
+          yearlyData[year] = { revenus: 0, depenses: 0, solde: 0, investissements: 0 }
         }
 
         if (tx.type === 'income') {
           yearlyData[year].revenus += Number(tx.amount)
         } else if (tx.type === 'expense') {
           yearlyData[year].depenses += Math.abs(Number(tx.amount))
+        } else if (tx.type === 'investment') {
+          yearlyData[year].investissements = (yearlyData[year].investissements || 0) + Math.abs(Number(tx.amount))
         }
       })
 
       // Calculer le solde pour chaque année
       Object.keys(yearlyData).forEach(year => {
-        yearlyData[parseInt(year)].solde = yearlyData[parseInt(year)].revenus - yearlyData[parseInt(year)].depenses
+        yearlyData[parseInt(year)].solde = yearlyData[parseInt(year)].revenus - yearlyData[parseInt(year)].depenses - (yearlyData[parseInt(year)].investissements || 0)
       })
 
       // Convertir en tableau et trier par année
@@ -219,6 +236,7 @@ export default function StatisticsPage() {
           year: parseInt(year),
           revenus: data.revenus,
           depenses: data.depenses,
+          investissements: data.investissements || 0,
           solde: data.solde
         }))
         .sort((a, b) => a.year - b.year)
@@ -231,7 +249,7 @@ export default function StatisticsPage() {
   }
 
   const prepareMonthlyDataForYear = (transactions: Transaction[], year: number) => {
-    const monthlyData: Record<number, { month: string; revenus: number; depenses: number; solde: number }> = {}
+    const monthlyData: Record<number, { month: string; revenus: number; depenses: number; solde: number; investissements: number }> = {}
     const monthNames = ['janv.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 
     // Initialiser tous les mois de l'année
@@ -240,6 +258,7 @@ export default function StatisticsPage() {
         month: monthNames[i],
         revenus: 0,
         depenses: 0,
+        investissements: 0,
         solde: 0
       }
     }
@@ -253,6 +272,8 @@ export default function StatisticsPage() {
           monthlyData[monthIndex].revenus += Number(tx.amount)
         } else if (tx.type === 'expense') {
           monthlyData[monthIndex].depenses += Math.abs(Number(tx.amount))
+        } else if (tx.type === 'investment') {
+          monthlyData[monthIndex].investissements += Math.abs(Number(tx.amount))
         }
       }
     })
@@ -260,7 +281,7 @@ export default function StatisticsPage() {
     // Calculer le solde pour chaque mois
     Object.keys(monthlyData).forEach(monthIndex => {
       const idx = parseInt(monthIndex)
-      monthlyData[idx].solde = monthlyData[idx].revenus - monthlyData[idx].depenses
+      monthlyData[idx].solde = monthlyData[idx].revenus - monthlyData[idx].depenses - monthlyData[idx].investissements
     })
 
     // Convertir en tableau trié
@@ -334,7 +355,7 @@ export default function StatisticsPage() {
       const categoryExpenses: Record<string, number> = {}
 
       transactions
-        .filter(tx => tx.type === 'expense')
+        // .filter(tx => tx.type === 'expense') // Show all types
         .forEach(tx => {
           const categoryName = tx.category?.name || 'Sans catégorie'
           categoryExpenses[categoryName] = (categoryExpenses[categoryName] || 0) + Math.abs(Number(tx.amount))
@@ -363,7 +384,7 @@ export default function StatisticsPage() {
       const accountExpenses: Record<string, number> = {}
 
       transactions
-        .filter(tx => tx.type === 'expense')
+        // .filter(tx => tx.type === 'expense') // Show all types
         .forEach(tx => {
           const accountName = tx.account?.name || 'Sans compte'
           accountExpenses[accountName] = (accountExpenses[accountName] || 0) + Math.abs(Number(tx.amount))
@@ -390,7 +411,7 @@ export default function StatisticsPage() {
 
       // Filtrer les dépenses et trier par montant décroissant
       const expenses = transactions
-        .filter(tx => tx.type === 'expense')
+        // .filter(tx => tx.type === 'expense') // Show all types
         .map(tx => ({
           id: tx.id,
           description: tx.description || 'Sans description',
@@ -417,7 +438,7 @@ export default function StatisticsPage() {
 
       // Filtrer les transactions de la catégorie sélectionnée
       const categoryTransactions = transactions.filter(tx => {
-        return tx.type === 'expense' && tx.category?.id === categoryId
+        return tx.category?.id === categoryId // Show all types
       })
 
       // Grouper par sous-catégorie
@@ -649,8 +670,8 @@ export default function StatisticsPage() {
 
       {/* Navigation entre les vues */}
       <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 mb-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4 md:gap-0">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full md:w-auto">
             <h2 className="text-lg font-semibold">
               {viewMode === 'yearly' && 'Évolution annuelle'}
               {viewMode === 'monthly' && selectedYear && `Évolution mensuelle - ${selectedYear}`}
@@ -667,8 +688,8 @@ export default function StatisticsPage() {
                   setSubCategoryData([])
                 }}
                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${viewMode === 'yearly'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
               >
                 Années
@@ -684,8 +705,8 @@ export default function StatisticsPage() {
                   }
                 }}
                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${viewMode === 'monthly'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
               >
                 Mois
@@ -709,34 +730,15 @@ export default function StatisticsPage() {
                   }
                 }}
                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${viewMode === 'daily'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
               >
                 Journalier
               </button>
             </div>
           </div>
-          {(viewMode === 'monthly' && selectedYear) || viewMode === 'daily' ? (
-            <button
-              onClick={() => {
-                if (viewMode === 'daily') {
-                  setViewMode('monthly')
-                  setSelectedMonth(null)
-                  setSelectedCategory(null)
-                  setSubCategoryData([])
-                } else if (viewMode === 'monthly' && selectedYear) {
-                  setViewMode('yearly')
-                  setSelectedYear(null)
-                  setSelectedCategory(null)
-                  setSubCategoryData([])
-                }
-              }}
-              className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              ← Retour
-            </button>
-          ) : null}
+
         </div>
 
         {viewMode === 'yearly' && (
@@ -751,6 +753,7 @@ export default function StatisticsPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart
                   data={yearlyData}
+                  margin={{ top: 5, right: 5, left: isMobile ? -20 : 0, bottom: 5 }}
                   onClick={(e: any) => {
                     if (e && e.activePayload && e.activePayload.length > 0) {
                       const year = e.activePayload[0].payload?.year
@@ -765,22 +768,26 @@ export default function StatisticsPage() {
                     dataKey="year"
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
+                    tick={{ fontSize: isMobile ? 11 : 14 }}
+                    minTickGap={isMobile ? 30 : 0}
                   />
                   <YAxis
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                     tickFormatter={(value) => `${value}€`}
+                    tick={{ fontSize: isMobile ? 11 : 14 }}
+                    width={isMobile ? 35 : 60}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }} />
                   <Line
                     type="monotone"
                     dataKey="revenus"
                     stroke="#10b981"
                     strokeWidth={2}
                     name="Revenus"
-                    dot={createClickableDot('#10b981', false)}
-                    activeDot={createClickableDot('#10b981', true)}
+                    dot={isMobile ? (false as any) : createClickableDot('#10b981', false)}
+                    activeDot={createClickableDot('#10b981', true) as any}
                   />
                   <Line
                     type="monotone"
@@ -788,8 +795,8 @@ export default function StatisticsPage() {
                     stroke="#ef4444"
                     strokeWidth={2}
                     name="Dépenses"
-                    dot={createClickableDot('#ef4444', false)}
-                    activeDot={createClickableDot('#ef4444', true)}
+                    dot={isMobile ? (false as any) : createClickableDot('#ef4444', false)}
+                    activeDot={createClickableDot('#ef4444', true) as any}
                   />
                   <Line
                     type="monotone"
@@ -797,8 +804,8 @@ export default function StatisticsPage() {
                     stroke="#3b82f6"
                     strokeWidth={2}
                     name="Solde"
-                    dot={createClickableDot('#3b82f6', false)}
-                    activeDot={createClickableDot('#3b82f6', true)}
+                    dot={isMobile ? (false as any) : createClickableDot('#3b82f6', false)}
+                    activeDot={createClickableDot('#3b82f6', true) as any}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -827,6 +834,7 @@ export default function StatisticsPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart
                   data={prepareMonthlyDataForYear(yearTransactions, selectedYear)}
+                  margin={{ top: 5, right: 5, left: isMobile ? -20 : 0, bottom: 5 }}
                   onClick={(e: any) => {
                     if (e && e.activePayload && e.activePayload.length > 0) {
                       const monthLabel = e.activePayload[0].payload?.month
@@ -845,22 +853,26 @@ export default function StatisticsPage() {
                     dataKey="month"
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
+                    tick={{ fontSize: isMobile ? 11 : 14 }}
+                    minTickGap={isMobile ? 20 : 0}
                   />
                   <YAxis
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                     tickFormatter={(value) => `${value}€`}
+                    tick={{ fontSize: isMobile ? 11 : 14 }}
+                    width={isMobile ? 35 : 60}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }} />
                   <Line
                     type="monotone"
                     dataKey="revenus"
                     stroke="#10b981"
                     strokeWidth={2}
                     name="Revenus"
-                    dot={createClickableDot('#10b981', false)}
-                    activeDot={createClickableDot('#10b981', true)}
+                    dot={isMobile ? (false as any) : createClickableDot('#10b981', false)}
+                    activeDot={createClickableDot('#10b981', true) as any}
                   />
                   <Line
                     type="monotone"
@@ -868,8 +880,8 @@ export default function StatisticsPage() {
                     stroke="#ef4444"
                     strokeWidth={2}
                     name="Dépenses"
-                    dot={createClickableDot('#ef4444', false)}
-                    activeDot={createClickableDot('#ef4444', true)}
+                    dot={isMobile ? (false as any) : createClickableDot('#ef4444', false)}
+                    activeDot={createClickableDot('#ef4444', true) as any}
                   />
                   <Line
                     type="monotone"
@@ -877,8 +889,8 @@ export default function StatisticsPage() {
                     stroke="#3b82f6"
                     strokeWidth={2}
                     name="Solde"
-                    dot={createClickableDot('#3b82f6', false)}
-                    activeDot={createClickableDot('#3b82f6', true)}
+                    dot={isMobile ? (false as any) : createClickableDot('#3b82f6', false)}
+                    activeDot={createClickableDot('#3b82f6', true) as any}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -886,6 +898,7 @@ export default function StatisticsPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart
                   data={safeData.monthlyEvolution}
+                  margin={{ top: 5, right: 5, left: isMobile ? -20 : 0, bottom: 5 }}
                   onClick={(e: any) => {
                     if (e && e.activePayload && e.activePayload.length > 0) {
                       const monthLabel = e.activePayload[0].payload?.month
@@ -912,22 +925,26 @@ export default function StatisticsPage() {
                     dataKey="month"
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
+                    tick={{ fontSize: isMobile ? 11 : 14 }}
+                    minTickGap={isMobile ? 20 : 0}
                   />
                   <YAxis
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                     tickFormatter={(value) => `${value}€`}
+                    tick={{ fontSize: isMobile ? 11 : 14 }}
+                    width={isMobile ? 35 : 60}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }} />
                   <Line
                     type="monotone"
                     dataKey="revenus"
                     stroke="#10b981"
                     strokeWidth={2}
                     name="Revenus"
-                    dot={createClickableDot('#10b981', false)}
-                    activeDot={createClickableDot('#10b981', true)}
+                    dot={isMobile ? (false as any) : createClickableDot('#10b981', false)}
+                    activeDot={createClickableDot('#10b981', true) as any}
                   />
                   <Line
                     type="monotone"
@@ -935,8 +952,8 @@ export default function StatisticsPage() {
                     stroke="#ef4444"
                     strokeWidth={2}
                     name="Dépenses"
-                    dot={createClickableDot('#ef4444', false)}
-                    activeDot={createClickableDot('#ef4444', true)}
+                    dot={isMobile ? (false as any) : createClickableDot('#ef4444', false)}
+                    activeDot={createClickableDot('#ef4444', true) as any}
                   />
                   <Line
                     type="monotone"
@@ -944,8 +961,8 @@ export default function StatisticsPage() {
                     stroke="#3b82f6"
                     strokeWidth={2}
                     name="Solde"
-                    dot={createClickableDot('#3b82f6', false)}
-                    activeDot={createClickableDot('#3b82f6', true)}
+                    dot={isMobile ? (false as any) : createClickableDot('#3b82f6', false)}
+                    activeDot={createClickableDot('#3b82f6', true) as any}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -962,27 +979,34 @@ export default function StatisticsPage() {
               </div>
             ) : monthTransactions.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={prepareDailyData(monthTransactions)}>
+                <LineChart
+                  data={prepareDailyData(monthTransactions)}
+                  margin={{ top: 5, right: 5, left: isMobile ? -20 : 0, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
                   <XAxis
                     dataKey="day"
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
+                    tick={{ fontSize: isMobile ? 11 : 14 }}
+                    minTickGap={isMobile ? 20 : 0}
                   />
                   <YAxis
                     stroke="#6b7280"
                     className="dark:stroke-gray-400"
                     tickFormatter={(value) => `${value}€`}
+                    tick={{ fontSize: isMobile ? 11 : 14 }}
+                    width={isMobile ? 35 : 60}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }} />
                   <Line
                     type="monotone"
                     dataKey="revenus"
                     stroke="#10b981"
                     strokeWidth={2}
                     name="Revenus"
-                    dot={{ r: 6, fill: '#10b981' }}
+                    dot={isMobile ? (false as any) : { r: 6, fill: '#10b981' }}
                     activeDot={{ r: 8 }}
                   />
                   <Line
@@ -991,7 +1015,7 @@ export default function StatisticsPage() {
                     stroke="#ef4444"
                     strokeWidth={2}
                     name="Dépenses"
-                    dot={{ r: 6, fill: '#ef4444' }}
+                    dot={isMobile ? (false as any) : { r: 6, fill: '#ef4444' }}
                     activeDot={{ r: 8 }}
                   />
                   <Line
@@ -1000,7 +1024,7 @@ export default function StatisticsPage() {
                     stroke="#3b82f6"
                     strokeWidth={2}
                     name="Solde"
-                    dot={{ r: 6, fill: '#3b82f6' }}
+                    dot={isMobile ? (false as any) : { r: 6, fill: '#3b82f6' }}
                     activeDot={{ r: 8 }}
                   />
                 </LineChart>

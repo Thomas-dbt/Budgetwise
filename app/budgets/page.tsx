@@ -96,7 +96,7 @@ export default function BudgetsPage() {
             const summary: TransactionSummary = {}
 
             txs.forEach((tx: any) => {
-                if (['expense', 'transfer', 'income'].includes(tx.type) === false) return
+                if (['expense', 'transfer', 'income', 'investment'].includes(tx.type) === false) return
                 const catId = tx.category?.id // Use parent category ID (API format: category is parent if resolved)
 
                 if (catId) {
@@ -206,15 +206,15 @@ export default function BudgetsPage() {
     )
 
     return (
-        <div className="p-6 space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+        <div className="p-4 md:p-6 space-y-6 md:space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-900 p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-4">
                     <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">◀</button>
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent capitalize">
+                        <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent capitalize">
                             {monthDisplay}
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">
+                        <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm">
                             Budgets mensuels
                         </p>
                     </div>
@@ -224,7 +224,7 @@ export default function BudgetsPage() {
                 <div className="flex gap-2">
                     <button
                         onClick={() => setCurrentDate(new Date())}
-                        className="px-4 py-2 border border-purple-200 text-purple-600 rounded-xl hover:bg-purple-50 transition-colors text-sm font-medium"
+                        className="px-3 py-2 md:px-4 md:py-2 border border-purple-200 text-purple-600 rounded-xl hover:bg-purple-50 transition-colors text-xs md:text-sm font-medium"
                     >
                         Aujourd'hui
                     </button>
@@ -240,26 +240,29 @@ export default function BudgetsPage() {
                                 toast('Erreur lors de la réinitialisation')
                             }
                         }}
-                        className="px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors text-sm font-medium"
+                        className="px-3 py-2 md:px-4 md:py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors text-xs md:text-sm font-medium flex items-center gap-2"
+                        title="Réinitialiser"
                     >
-                        🗑️ Réinitialiser
+                        <span>🗑️</span>
+                        <span className="hidden md:inline">Réinitialiser</span>
                     </button>
                     <button
                         onClick={fetchSuggestions}
                         disabled={suggestionsLoading}
-                        className="group relative px-6 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all duration-300 font-medium overflow-hidden"
+                        className="group relative px-3 py-2 md:px-6 md:py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all duration-300 font-medium overflow-hidden"
+                        title="Suggestions"
                     >
                         <span className="relative z-10 flex items-center gap-2">
                             {suggestionsLoading ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
                             ) : '💡'}
-                            {suggestionsLoading ? '...' : 'Suggestions'}
+                            <span className="hidden md:inline">{suggestionsLoading ? '...' : 'Suggestions'}</span>
                         </span>
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                 {categories.map(category => {
                     const budget = budgets.find(b => b.categoryId === category.id)
                     const amount = budget?.amount || 0
@@ -306,14 +309,14 @@ export default function BudgetsPage() {
                     return (
                         <div
                             key={category.id}
-                            className={`group bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm hover:shadow-md border transition-all duration-300 flex flex-col gap-4 ${isGlobal === false ? 'border-purple-200 dark:border-purple-800 ring-1 ring-purple-100 dark:ring-purple-900/20' : 'border-gray-100 dark:border-gray-800'
+                            className={`group bg-white dark:bg-gray-900 p-4 md:p-6 rounded-2xl shadow-sm hover:shadow-md border transition-all duration-300 flex flex-col gap-4 ${isGlobal === false ? 'border-purple-200 dark:border-purple-800 ring-1 ring-purple-100 dark:ring-purple-900/20' : 'border-gray-100 dark:border-gray-800'
                                 }`}
                         >
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
-                                    <span className="text-3xl bg-gray-50 dark:bg-gray-800 p-3 rounded-xl">{category.emoji || '📁'}</span>
+                                    <span className="text-2xl md:text-3xl bg-gray-50 dark:bg-gray-800 p-2 md:p-3 rounded-xl">{category.emoji || '📁'}</span>
                                     <div>
-                                        <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{category.name}</h3>
+                                        <h3 className="font-semibold text-base md:text-lg text-gray-900 dark:text-gray-100">{category.name}</h3>
 
                                         {suggestion !== undefined && suggestion > 0 && Math.abs(suggestion - amount) > 1 && (
                                             <button
@@ -339,17 +342,17 @@ export default function BudgetsPage() {
                                         {isGlobal ? '🌍' : '📅'}
                                     </button>
 
-                                    <div className="relative group/input">
+                                    <div className="relative group/input flex items-center">
                                         <input
                                             type="number"
                                             value={amount || ''}
                                             onChange={(e) => handleBudgetChange(category.id, e.target.value)}
                                             onBlur={(e) => saveBudget(category.id, Number(e.target.value))}
                                             placeholder="0"
-                                            className="w-28 px-3 py-2 text-right font-bold text-lg bg-transparent border-b-2 border-gray-200 dark:border-gray-700 focus:border-purple-500 outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            className="w-20 md:w-28 py-1 text-center font-bold text-lg bg-transparent outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0"
                                         />
-                                        <span className="absolute right-0 -top-4 text-xs text-gray-400 opacity-0 group-hover/input:opacity-100 transition-opacity">Objectif</span>
-                                        <span className="absolute right-[calc(100%+4px)] top-3 text-gray-400 text-sm">€</span>
+                                        <span className="ml-1 text-gray-400 text-sm">€</span>
+                                        <span className="absolute right-0 -top-5 text-[10px] text-gray-400 opacity-0 group-hover/input:opacity-100 transition-opacity">Objectif</span>
                                     </div>
                                 </div>
                             </div>

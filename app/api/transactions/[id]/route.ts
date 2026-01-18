@@ -32,7 +32,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     const normalizedType = type ? String(type).toLowerCase() : existing.type
-    if (!['income', 'expense', 'transfer'].includes(normalizedType)) {
+    if (!['income', 'expense', 'transfer', 'investment'].includes(normalizedType)) {
       return NextResponse.json({ error: 'Type de transaction invalide' }, { status: 400 })
     }
 
@@ -55,7 +55,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       }
     }
 
-    if (normalizedType === 'expense' && numericAmount > 0) {
+    if ((normalizedType === 'expense' || normalizedType === 'investment') && numericAmount > 0) {
       numericAmount = -Math.abs(numericAmount)
     }
     if (normalizedType === 'income' && numericAmount < 0) {

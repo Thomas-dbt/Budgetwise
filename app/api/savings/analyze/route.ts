@@ -19,21 +19,29 @@ export async function POST(req: Request) {
     // Calculer la date de début selon la période
     const now = new Date()
     const startDate = new Date()
+    // Aligner sur le début du mois pour avoir des mois complets
+    startDate.setDate(1)
+    startDate.setHours(0, 0, 0, 0)
+
     switch (period) {
       case '1month':
-        startDate.setMonth(now.getMonth() - 1)
+        // Le mois en cours uniquement
+        startDate.setMonth(now.getMonth())
         break
       case '3months':
-        startDate.setMonth(now.getMonth() - 3)
+        // Le mois en cours + 2 mois précédents = 3 mois
+        startDate.setMonth(now.getMonth() - 2)
         break
       case '6months':
-        startDate.setMonth(now.getMonth() - 6)
+        // Le mois en cours + 5 mois précédents = 6 mois
+        startDate.setMonth(now.getMonth() - 5)
         break
       case '1year':
-        startDate.setFullYear(now.getFullYear() - 1)
+        // Le mois en cours + 11 mois précédents = 12 mois
+        startDate.setMonth(now.getMonth() - 11)
         break
       default:
-        startDate.setMonth(now.getMonth() - 3)
+        startDate.setMonth(now.getMonth() - 2)
     }
 
     // Récupérer les transactions de l'utilisateur
@@ -58,7 +66,7 @@ export async function POST(req: Request) {
     // Calculer les statistiques de base
     const expenses = transactions.filter(t => t.type === 'expense')
     const incomes = transactions.filter(t => t.type === 'income')
-    
+
     const totalExpenses = expenses.reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
     const totalIncome = incomes.reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
     const savings = totalIncome - totalExpenses
@@ -96,6 +104,7 @@ export async function POST(req: Request) {
       period,
       totalIncome: Math.round(totalIncome * 100) / 100,
       totalExpenses: Math.round(totalExpenses * 100) / 100,
+      totalInvested: Math.round(totalInvested * 100) / 100,
       savings: Math.round(savings * 100) / 100,
       savingsRate: Math.round(savingsRate * 100) / 100,
       topCategories,
@@ -116,8 +125,9 @@ export async function POST(req: Request) {
 Données financières:
 - Période analysée: ${period}
 - Revenus totaux: ${analysisData.totalIncome}€
-- Dépenses totales: ${analysisData.totalExpenses}€
-- Épargne: ${analysisData.savings}€
+- Dépenses totales (Consommation): ${analysisData.totalExpenses}€
+- Montant Investi: ${analysisData.totalInvested}€
+- Épargne Totale (Cash + Invest): ${analysisData.savings}€
 - Taux d'épargne: ${analysisData.savingsRate}%
 - Top 5 catégories de dépenses:
 ${topCategories.map((cat, i) => `  ${i + 1}. ${cat.name}: ${cat.amount}€`).join('\n')}
@@ -156,28 +166,28 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
     try {
       // D'abord, lister les modèles disponibles pour trouver ceux qui supportent generateContent
       let availableModel: { name: string; version: string } | null = null
-      
+
       // Essayer v1beta d'abord
       try {
         const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
         const listResponse = await fetch(listUrl)
-        
+
         if (listResponse.ok) {
           const modelsData = await listResponse.json()
           const models = modelsData.models || []
-          
+
           // Chercher un modèle qui supporte generateContent
           const preferredNames = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro', 'gemini-1.0-pro']
           for (const preferredName of preferredNames) {
             const model = models.find((m: any) => {
               const modelName = m.name?.split('/').pop() || ''
-              return modelName.includes(preferredName) && 
-                     m.supportedGenerationMethods?.includes('generateContent')
+              return modelName.includes(preferredName) &&
+                m.supportedGenerationMethods?.includes('generateContent')
             })
             if (model) {
-              availableModel = { 
-                name: model.name.split('/').pop() || preferredName, 
-                version: 'v1beta' 
+              availableModel = {
+                name: model.name.split('/').pop() || preferredName,
+                version: 'v1beta'
               }
               break
             }
@@ -186,28 +196,28 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
       } catch (e) {
         console.log('Erreur lors de la liste des modèles v1beta:', e)
       }
-      
+
       // Si aucun modèle trouvé dans v1beta, essayer v1
       if (!availableModel) {
         try {
           const listUrl = `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
           const listResponse = await fetch(listUrl)
-          
+
           if (listResponse.ok) {
             const modelsData = await listResponse.json()
             const models = modelsData.models || []
-            
+
             const preferredNames = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro', 'gemini-1.0-pro']
             for (const preferredName of preferredNames) {
               const model = models.find((m: any) => {
                 const modelName = m.name?.split('/').pop() || ''
-                return modelName.includes(preferredName) && 
-                       m.supportedGenerationMethods?.includes('generateContent')
+                return modelName.includes(preferredName) &&
+                  m.supportedGenerationMethods?.includes('generateContent')
               })
               if (model) {
-                availableModel = { 
-                  name: model.name.split('/').pop() || preferredName, 
-                  version: 'v1' 
+                availableModel = {
+                  name: model.name.split('/').pop() || preferredName,
+                  version: 'v1'
                 }
                 break
               }
@@ -217,7 +227,7 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
           console.log('Erreur lors de la liste des modèles v1:', e)
         }
       }
-      
+
       // Si toujours aucun modèle trouvé, essayer directement avec les modèles par défaut
       if (!availableModel) {
         // Essayer dans l'ordre de préférence
@@ -226,7 +236,7 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
           { name: 'gemini-1.5-pro', version: 'v1beta' },
           { name: 'gemini-pro', version: 'v1beta' },
         ]
-        
+
         for (const modelConfig of fallbackModels) {
           try {
             const testUrl = `https://generativelanguage.googleapis.com/${modelConfig.version}/models/${modelConfig.name}:generateContent?key=${apiKey}`
@@ -235,7 +245,7 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ contents: [{ parts: [{ text: 'test' }] }] })
             })
-            
+
             if (testResponse.ok || testResponse.status === 400) {
               // 400 peut signifier que le modèle existe mais la requête est invalide (ce qui est OK pour notre test)
               availableModel = modelConfig
@@ -246,14 +256,14 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
           }
         }
       }
-      
+
       if (!availableModel) {
         throw new Error('Aucun modèle Gemini disponible trouvé. Vérifiez votre clé API.')
       }
-      
+
       // Utiliser le modèle trouvé
       const apiUrl = `https://generativelanguage.googleapis.com/${availableModel.version}/models/${availableModel.name}:generateContent?key=${apiKey}`
-      
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -270,25 +280,25 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }))
-        
+
         // Détecter les erreurs de quota spécifiquement
-        if (response.status === 429 || errorData.error?.code === 429 || 
-            errorData.error?.status === 'RESOURCE_EXHAUSTED' ||
-            JSON.stringify(errorData).includes('quota') ||
-            JSON.stringify(errorData).includes('RESOURCE_EXHAUSTED')) {
-          
+        if (response.status === 429 || errorData.error?.code === 429 ||
+          errorData.error?.status === 'RESOURCE_EXHAUSTED' ||
+          JSON.stringify(errorData).includes('quota') ||
+          JSON.stringify(errorData).includes('RESOURCE_EXHAUSTED')) {
+
           // Extraire les détails du quota depuis la réponse Gemini
           let quotaDetails = null
           let retryDelaySeconds = null
-          
+
           if (errorData.error?.message) {
             const message = errorData.error.message
-            
+
             // Extraire le temps d'attente si disponible
             const retryMatch = message.match(/Please retry in ([\d.]+)s/i)
             const retryDelay = retryMatch ? retryMatch[1] : null
             retryDelaySeconds = retryDelay ? Math.ceil(parseFloat(retryDelay)) : null
-            
+
             // Extraire les métriques de quota dépassées
             const quotaMetrics = []
             const quotaRegex = /Quota exceeded for metric: ([^,\n]+)/g
@@ -296,19 +306,19 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
             while ((match = quotaRegex.exec(message)) !== null) {
               quotaMetrics.push(match[1].trim())
             }
-            
+
             quotaDetails = {
               retryDelay,
               quotaMetrics: quotaMetrics.length > 0 ? quotaMetrics : null,
               fullMessage: message
             }
           }
-          
+
           // Si un délai de retry est spécifié et qu'on n'a pas encore retenté, attendre et réessayer
           if (retryDelaySeconds && retryDelaySeconds > 0 && retryDelaySeconds < 60) {
             // Attendre le délai spécifié
             await new Promise(resolve => setTimeout(resolve, retryDelaySeconds * 1000))
-            
+
             // Réessayer une seule fois
             const retryResponse = await fetch(apiUrl, {
               method: 'POST',
@@ -323,12 +333,12 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
                 }]
               })
             })
-            
+
             if (retryResponse.ok) {
               // Le retry a réussi, continuer avec le traitement normal
               const data = await retryResponse.json()
               const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-              
+
               if (!text) {
                 throw new Error('Aucune réponse générée par l\'IA')
               }
@@ -356,26 +366,26 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
             } else {
               // Le retry a aussi échoué, retourner l'erreur avec les détails
               const retryErrorData = await retryResponse.json().catch(() => ({ error: 'Erreur inconnue' }))
-              throw new Error(JSON.stringify({ 
+              throw new Error(JSON.stringify({
                 type: 'QUOTA_EXCEEDED',
                 details: quotaDetails || retryErrorData
               }))
             }
           } else {
             // Pas de retry possible ou délai trop long, retourner l'erreur
-            throw new Error(JSON.stringify({ 
+            throw new Error(JSON.stringify({
               type: 'QUOTA_EXCEEDED',
               details: quotaDetails || errorData
             }))
           }
         }
-        
+
         throw new Error(`Erreur API Gemini: ${response.status}`)
       }
 
       const data = await response.json()
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-      
+
       if (!text) {
         throw new Error('Aucune réponse générée par l\'IA')
       }
@@ -404,13 +414,13 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
       })
     } catch (aiError: any) {
       console.error('Gemini API error:', aiError)
-      
+
       // Si c'est une erreur de quota avec détails
       try {
         const parsedError = JSON.parse(aiError.message)
         if (parsedError.type === 'QUOTA_EXCEEDED') {
           return NextResponse.json(
-            { 
+            {
               error: 'QUOTA_EXCEEDED',
               quotaDetails: parsedError.details
             },
@@ -420,25 +430,25 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`
       } catch {
         // Pas un JSON, continuer avec la détection normale
       }
-      
+
       // Détection normale des erreurs de quota
-      if (aiError.message === 'QUOTA_EXCEEDED' || 
-          aiError.message.includes('429') ||
-          aiError.message.includes('quota') ||
-          aiError.message.includes('RESOURCE_EXHAUSTED')) {
+      if (aiError.message === 'QUOTA_EXCEEDED' ||
+        aiError.message.includes('429') ||
+        aiError.message.includes('quota') ||
+        aiError.message.includes('RESOURCE_EXHAUSTED')) {
         return NextResponse.json(
           { error: 'QUOTA_EXCEEDED' },
           { status: 429 }
         )
       }
-      
+
       // Pour les autres erreurs, renvoyer un message simplifié
-      const errorMessage = aiError.message.includes('GEMINI_API_KEY') 
+      const errorMessage = aiError.message.includes('GEMINI_API_KEY')
         ? 'API_KEY_MISSING'
         : aiError.message.length > 100
-        ? 'Erreur lors de l\'analyse IA'
-        : aiError.message
-      
+          ? 'Erreur lors de l\'analyse IA'
+          : aiError.message
+
       return NextResponse.json(
         { error: errorMessage },
         { status: 500 }

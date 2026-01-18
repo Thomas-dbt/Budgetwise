@@ -498,9 +498,9 @@ export default function AccountsPage() {
           </div>
           <button
             onClick={openCreateModal}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200 font-medium"
+            className="px-4 py-2 md:px-6 md:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200 font-medium text-sm md:text-base"
           >
-            <span className="text-xl font-bold">+</span>
+            <span className="text-lg md:text-xl font-bold">+</span>
             <span>Nouveau Compte</span>
           </button>
         </div>
@@ -605,7 +605,7 @@ export default function AccountsPage() {
                         onClick={() => openTransactionsModal(account)}
                         className={`group relative overflow-hidden bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer bg-gradient-to-br ${bgGradient}`}
                       >
-                        <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
+                        <div className="absolute top-0 right-0 p-6 opacity-100 transition-opacity z-10 flex gap-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -642,7 +642,7 @@ export default function AccountsPage() {
                                 </div>
                               }
                             />
-                            <div className="min-w-0">
+                            <div className="min-w-0 pr-20">
                               <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 truncate mb-0.5">
                                 {account.name}
                               </h3>

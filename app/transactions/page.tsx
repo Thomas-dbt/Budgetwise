@@ -8,7 +8,7 @@ import SplitModal from './split-modal'
 interface Transaction {
   id: string
   amount: number
-  type: 'income' | 'expense' | 'transfer'
+  type: 'income' | 'expense' | 'transfer' | 'investment'
   date: string
   description: string | null
   category: { id: string; name: string; emoji: string | null } | null
@@ -99,7 +99,8 @@ const categoryColors: Record<string, string> = {
 const TYPE_LABELS: Record<Transaction['type'], string> = {
   income: 'Revenu',
   expense: 'Dépense',
-  transfer: 'Transfert'
+  transfer: 'Transfert',
+  investment: 'Investissement'
 }
 
 const DEFAULT_DATE = () => new Date().toISOString().slice(0, 10)
@@ -108,7 +109,7 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterOption, setFilterOption] = useState<'all' | 'income' | 'expense' | 'transfer' | 'pending' | `category:${string}`>('all')
+  const [filterOption, setFilterOption] = useState<'all' | 'income' | 'expense' | 'transfer' | 'investment' | 'pending' | `category:${string}`>('all')
   const [filterStartDate, setFilterStartDate] = useState<string | null>(null)
   const [filterEndDate, setFilterEndDate] = useState<string | null>(null)
   const [filterAccountId, setFilterAccountId] = useState<string>('all')
@@ -496,7 +497,7 @@ export default function TransactionsPage() {
   // Pagination state
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
-  const LIMIT = 200
+  const LIMIT = 100
 
   // Main fetch function
   const fetchTransactions = async (startDate?: string | null, endDate?: string | null, append = false, search = '') => {
@@ -777,7 +778,8 @@ export default function TransactionsPage() {
       let matchesFilter = true
       if (filterOption === 'income') matchesFilter = tx.type === 'income'
       else if (filterOption === 'expense') matchesFilter = tx.type === 'expense'
-      if (filterOption === 'transfer') matchesFilter = tx.type === 'transfer'
+      else if (filterOption === 'investment') matchesFilter = tx.type === 'investment'
+      else if (filterOption === 'transfer') matchesFilter = tx.type === 'transfer'
       else if (filterOption === 'pending') matchesFilter = tx.pending === true
       else if (typeof filterOption === 'string' && filterOption.startsWith('category:')) {
         const categoryId = filterOption.split(':')[1]
@@ -1842,7 +1844,9 @@ export default function TransactionsPage() {
       {/* Bulk Selection Toolbar */}
       <div className="flex items-center justify-between mb-4 px-1">
         <div className="text-gray-500 dark:text-gray-400 font-medium">
-          {filteredTransactions.length} transaction{filteredTransactions.length > 1 ? 's' : ''} trouvée{filteredTransactions.length > 1 ? 's' : ''}
+          {(searchQuery || filterAccountId !== 'all' || filterOption !== 'all' || filterStartDate || filterEndDate || filterMinAmount || filterMaxAmount) && (
+            `${filteredTransactions.length} transaction${filteredTransactions.length > 1 ? 's' : ''} trouvée${filteredTransactions.length > 1 ? 's' : ''}`
+          )}
         </div>
         {filteredTransactions.length > 0 && (
           <button
@@ -1932,17 +1936,21 @@ export default function TransactionsPage() {
                     ? `${tx.account.name} → ${tx.toAccount?.name ?? 'Compte inconnu'} [Debug: ${isIncomingTransfer ? 'IN' : 'OUT'} | Filter: ${filterAccountId.slice(0, 4)}... | To: ${tx.toAccount?.id?.slice(0, 4)}...]`
                     : tx.account.name
 
-                  const iconSymbol = isTransfer ? (isIncomingTransfer ? '↓' : '↔') : isExpense ? '↑' : '↓'
+                  const iconSymbol = isTransfer ? (isIncomingTransfer ? '↓' : '↔') : isExpense ? '↑' : isIncome ? '↓' : '📈'
                   const iconBg = isTransfer
                     ? 'bg-blue-100 dark:bg-blue-900/30'
                     : isExpense
                       ? 'bg-red-100 dark:bg-red-900/30'
-                      : 'bg-green-100 dark:bg-green-900/30'
+                      : isIncome
+                        ? 'bg-green-100 dark:bg-green-900/30'
+                        : 'bg-purple-100 dark:bg-purple-900/30'
                   const iconColor = isTransfer
                     ? 'text-blue-600'
                     : isExpense
                       ? 'text-red-600'
-                      : 'text-green-600'
+                      : isIncome
+                        ? 'text-green-600'
+                        : 'text-purple-600'
 
                   return (
                     <div
@@ -2292,6 +2300,7 @@ export default function TransactionsPage() {
                         <option value="expense">Dépense</option>
                         <option value="income">Revenu</option>
                         <option value="transfer">Transfert</option>
+                        <option value="investment">Investissement</option>
                       </select>
                     </div>
                     {manualForm.type === 'transfer' && (
@@ -2497,7 +2506,7 @@ export default function TransactionsPage() {
 
 
                   {/* Investment Toggle */}
-                  {(manualForm.categoryId && categories.find(c => c.id === manualForm.categoryId)?.name === 'Investissement') && (
+                  {(manualForm.type === 'investment' || (manualForm.categoryId && categories.find(c => c.id === manualForm.categoryId)?.name === 'Investissement')) && (
                     <div className="border border-indigo-100 dark:border-indigo-900/50 rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 space-y-4">
                       <label className="flex items-center gap-3">
                         <input

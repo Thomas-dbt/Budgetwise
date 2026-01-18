@@ -5,7 +5,7 @@ import { authFetch } from '@/lib/auth-fetch'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { useToast } from '@/components/toast'
 import { useRef } from 'react'
-import { Send, User, Bot, Sparkles } from 'lucide-react'
+import { Send, User, Bot, Sparkles, ChevronDown } from 'lucide-react'
 
 interface AnalysisData {
   summary: string
@@ -35,6 +35,7 @@ interface StatisticsData {
   monthlyEvolution: Array<{ month: string; income: number; expenses: number }>
   totalAccounts: number
   totalBalance: number
+  totalInvested: number
 }
 
 interface ChatMessage {
@@ -65,6 +66,39 @@ export default function SavingsPage() {
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Mobile & Accordion State
+  const [isMobile, setIsMobile] = useState(false)
+  const [expandedRecs, setExpandedRecs] = useState<Set<number>>(new Set())
+  const [expandedInsights, setExpandedInsights] = useState<Set<number>>(new Set())
+  const [expandedTips, setExpandedTips] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  const toggleRec = (index: number) => {
+    const newExpanded = new Set(expandedRecs)
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index)
+    } else {
+      newExpanded.add(index)
+    }
+    setExpandedRecs(newExpanded)
+  }
+
+  const toggleInsight = (index: number) => {
+    const newExpanded = new Set(expandedInsights)
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index)
+    } else {
+      newExpanded.add(index)
+    }
+    setExpandedInsights(newExpanded)
+  }
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -338,6 +372,12 @@ export default function SavingsPage() {
             </div>
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Investissements</div>
+            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+              {formatCurrency(statistics.totalInvested)}
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800">
             <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Épargne</div>
             <div className={`text-3xl font-bold ${statistics.savings >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {formatCurrency(statistics.savings)}
@@ -502,17 +542,27 @@ export default function SavingsPage() {
                 {analysis.recommendations.map((rec, index) => (
                   <div
                     key={index}
-                    className={`p-4 rounded-lg border-l-4 ${getPriorityColor(rec.priority)}`}
+                    className={`p-4 rounded-lg border-l-4 transition-all duration-200 ${getPriorityColor(rec.priority)} ${isMobile ? 'cursor-pointer active:scale-[0.99]' : ''}`}
+                    onClick={() => isMobile && toggleRec(index)}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold text-gray-900 dark:text-white">{rec.title}</h4>
+                    <div className={`flex ${isMobile ? 'flex-col gap-3' : 'items-start justify-between gap-4'} mb-2`}>
+                      <div className="flex items-start justify-between w-full gap-2">
+                        <h4 className="font-semibold text-gray-900 dark:text-white leading-tight">{rec.title}</h4>
+                        {isMobile && (
+                          <ChevronDown
+                            className={`w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 transition-transform duration-300 mt-0.5 ${expandedRecs.has(index) ? 'rotate-180' : ''}`}
+                          />
+                        )}
+                      </div>
                       {rec.category && (
-                        <span className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded">
+                        <span className={`inline-flex px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded font-medium ${isMobile ? 'self-start' : 'flex-shrink-0'}`}>
                           {rec.category}
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-700 dark:text-gray-300">{rec.description}</p>
+                    <div className={`text-gray-700 dark:text-gray-300 overflow-hidden transition-all duration-300 ${isMobile ? (expandedRecs.has(index) ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0') : 'block'}`}>
+                      {rec.description}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -530,12 +580,22 @@ export default function SavingsPage() {
                 {analysis.insights.map((insight, index) => (
                   <div
                     key={index}
-                    className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700"
+                    className={`p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 transition-all duration-200 ${isMobile ? 'cursor-pointer active:scale-[0.99]' : ''}`}
+                    onClick={() => isMobile && toggleInsight(index)}
                   >
-                    <h4 className={`font-semibold mb-2 ${getImpactColor(insight.impact)}`}>
-                      {insight.title}
-                    </h4>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">{insight.description}</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <h4 className={`font-semibold mb-0 ${getImpactColor(insight.impact)} flex-1`}>
+                        {insight.title}
+                      </h4>
+                      {isMobile && (
+                        <ChevronDown
+                          className={`w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 transition-transform duration-300 ${expandedInsights.has(index) ? 'rotate-180' : ''}`}
+                        />
+                      )}
+                    </div>
+                    <div className={`text-sm text-gray-700 dark:text-gray-300 overflow-hidden transition-all duration-300 ${isMobile ? (expandedInsights.has(index) ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0') : 'block mt-2'}`}>
+                      {insight.description}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -545,11 +605,21 @@ export default function SavingsPage() {
           {/* Conseils budgétaires */}
           {analysis.budgetTips.length > 0 && (
             <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                <span className="text-2xl">💼</span>
-                Conseils budgétaires
+              <h3
+                className={`text-xl font-semibold mb-4 flex items-center justify-between gap-2 text-blue-800 dark:text-blue-200 ${isMobile ? 'cursor-pointer' : ''}`}
+                onClick={() => isMobile && setExpandedTips(!expandedTips)}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">💼</span>
+                  <span className="flex-1">Conseils budgétaires</span>
+                </div>
+                {isMobile && (
+                  <ChevronDown
+                    className={`w-5 h-5 text-blue-600 dark:text-blue-400 transition-transform duration-300 ${expandedTips ? 'rotate-180' : ''}`}
+                  />
+                )}
               </h3>
-              <ul className="space-y-3">
+              <ul className={`space-y-3 overflow-hidden transition-all duration-300 ${isMobile ? (expandedTips ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0') : 'block'}`}>
                 {analysis.budgetTips.map((tip, index) => (
                   <li key={index} className="text-blue-700 dark:text-blue-300 flex items-start gap-3">
                     <span className="mt-1 text-lg">💡</span>

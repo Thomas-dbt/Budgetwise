@@ -111,11 +111,18 @@ export async function GET() {
       return true
     }
 
-    // Calcul de l'épargne (tout confondu: dépenses + transferts)
+    // Calcul de l'épargne (tout confondu: dépenses + transferts + investissements explicites)
     const monthlyInvested = monthTransactions
-      .filter(t => isInvestmentTx(t))
+      .filter(t => t.type === 'investment' || isInvestmentTx(t))
       .reduce((sum, t) => {
         const amount = Math.abs(Number(t.amount))
+
+        if (t.type === 'investment') {
+          // Si l'investissement vient d'un compte épargne (ex: Livret -> Bourse), c'est une réallocation, pas une nouvelle épargne.
+          // On ne compte que si ca vient d'un compte courant (Checking)
+          const sourceIsSavings = savingsAccountTypes.includes(t.account.type)
+          return sourceIsSavings ? sum : sum + amount
+        }
 
         if (t.type === 'expense') {
           return sum + amount
@@ -141,9 +148,17 @@ export async function GET() {
     // Calcul spécifique des transferts vers l'épargne (pour déduction du Reste à Vivre)
     // On se base uniquement sur le type de compte (Checking -> Savings) et non sur la catégorie
     const investedViaTransfer = monthTransactions
-      .filter(t => t.type === 'transfer')
+      .filter(t => t.type === 'transfer' || t.type === 'investment')
       .reduce((sum, t) => {
         const amount = Math.abs(Number(t.amount))
+
+        if (t.type === 'investment') {
+          // Si l'investissement vient d'un compte épargne, on ignore (réallocation)
+          const sourceIsSavings = savingsAccountTypes.includes(t.account.type)
+          return sourceIsSavings ? sum : sum + amount
+        }
+
+        // Logic for Transfers
         const sourceIsSavings = savingsAccountTypes.includes(t.account.type)
         const destIsSavings = t.toAccount ? savingsAccountTypes.includes(t.toAccount.type) : false
 
@@ -190,10 +205,17 @@ export async function GET() {
         .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
 
       // Calculer les transferts d'épargne pour l'historique (même logique que investedViaTransfer)
+      // Calculer les transferts d'épargne pour l'historique (même logique que investedViaTransfer)
       const transfers = monthTxs
-        .filter(t => t.type === 'transfer')
+        .filter(t => t.type === 'transfer' || t.type === 'investment')
         .reduce((sum, t) => {
           const amount = Math.abs(Number(t.amount))
+
+          if (t.type === 'investment') {
+            const sourceIsSavings = savingsAccountTypes.includes(t.account.type)
+            return sourceIsSavings ? sum : sum + amount
+          }
+
           const sourceIsSavings = savingsAccountTypes.includes(t.account.type)
           const destIsSavings = t.toAccount ? savingsAccountTypes.includes(t.toAccount.type) : false
 

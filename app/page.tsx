@@ -173,7 +173,7 @@ export default function DashboardPage() {
               <div className="text-xs md:text-sm lg:text-lg font-semibold truncate">{formatCurrency(safeData.monthlyExpenses)}</div>
             </div>
             <div className="text-right">
-              <div className="text-indigo-100 text-[10px] md:text-xs mb-0.5 flex items-center justify-end gap-1"><ArrowRight className="w-2.5 h-2.5" /> Transferts</div>
+              <div className="text-indigo-100 text-[10px] md:text-xs mb-0.5 flex items-center justify-end gap-1"><ArrowRight className="w-2.5 h-2.5" /> Épargne</div>
               <div className="text-xs md:text-sm lg:text-lg font-semibold truncate">{formatCurrency(safeData.investedViaTransfer)}</div>
             </div>
           </div>
@@ -238,7 +238,7 @@ export default function DashboardPage() {
                 />
                 <Area type="monotone" dataKey="revenus" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" name="Revenus" />
                 <Area type="monotone" dataKey="depenses" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" name="Dépenses" />
-                <Line type="monotone" dataKey="transferts" stroke="#6366f1" strokeWidth={3} dot={false} name="Transferts" />
+                <Line type="monotone" dataKey="transferts" stroke="#6366f1" strokeWidth={3} dot={false} name="Épargne" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
