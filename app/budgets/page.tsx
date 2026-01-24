@@ -26,6 +26,15 @@ interface TransactionSummary {
     [categoryId: string]: number
 }
 
+interface Transaction {
+    id: string
+    amount: number
+    type: 'income' | 'expense' | 'transfer' | 'investment'
+    category: { id: string; name: string } | null
+    subCategory: { id: string; name: string } | null
+    date: string
+}
+
 export default function BudgetsPage() {
     const [categories, setCategories] = useState<Category[]>([])
     const [budgets, setBudgets] = useState<Budget[]>([])
@@ -43,6 +52,27 @@ export default function BudgetsPage() {
     const monthDisplay = useMemo(() => {
         return new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(currentDate)
     }, [currentDate])
+
+    // Transaction Details State
+    const [transactions, setTransactions] = useState<Transaction[]>([])
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+
+    const categoryDetails = useMemo(() => {
+        if (!selectedCategory) return []
+
+        const categoryTxs = transactions.filter((tx) =>
+            tx.category?.id === selectedCategory &&
+            ['expense', 'transfer', 'income', 'investment'].includes(tx.type)
+        )
+
+        const bySubcat: Record<string, number> = {}
+        categoryTxs.forEach((tx) => {
+            const subName = tx.subCategory?.name || 'Autres'
+            bySubcat[subName] = (bySubcat[subName] || 0) + Math.abs(Number(tx.amount))
+        })
+
+        return Object.entries(bySubcat).sort((a, b) => b[1] - a[1])
+    }, [selectedCategory, transactions])
 
     useEffect(() => {
         fetchData()
@@ -92,10 +122,12 @@ export default function BudgetsPage() {
         const params = new URLSearchParams({ start, end, take: '2000' })
         const res = await authFetch(`/api/transactions?${params.toString()}`)
         if (res.ok) {
-            const txs = await res.json()
+            const txs: Transaction[] = await res.json()
+            setTransactions(txs) // Store raw transactions
+
             const summary: TransactionSummary = {}
 
-            txs.forEach((tx: any) => {
+            txs.forEach((tx) => {
                 if (['expense', 'transfer', 'income', 'investment'].includes(tx.type) === false) return
                 const catId = tx.category?.id // Use parent category ID (API format: category is parent if resolved)
 
@@ -315,8 +347,14 @@ export default function BudgetsPage() {
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
                                     <span className="text-2xl md:text-3xl bg-gray-50 dark:bg-gray-800 p-2 md:p-3 rounded-xl">{category.emoji || '📁'}</span>
-                                    <div>
-                                        <h3 className="font-semibold text-base md:text-lg text-gray-900 dark:text-gray-100">{category.name}</h3>
+                                    <div
+                                        onClick={() => setSelectedCategory(category.id)}
+                                        className="cursor-pointer hover:opacity-70 transition-opacity"
+                                    >
+                                        <h3 className="font-semibold text-base md:text-lg text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            {category.name}
+                                            <span className="text-xs font-normal text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-full">Détails</span>
+                                        </h3>
 
                                         {suggestion !== undefined && suggestion > 0 && Math.abs(suggestion - amount) > 1 && (
                                             <button
@@ -385,6 +423,62 @@ export default function BudgetsPage() {
                     )
                 })}
             </div>
+
+            {/* Detail Modal */}
+            {selectedCategory && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedCategory(null)}>
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    {categories.find(c => c.id === selectedCategory)?.emoji}
+                                    {categories.find(c => c.id === selectedCategory)?.name}
+                                </h3>
+                                <p className="text-sm text-gray-500">Détail du mois</p>
+                            </div>
+                            <button onClick={() => setSelectedCategory(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-500 transition-colors">✕</button>
+                        </div>
+                        <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4">
+                            {categoryDetails.map(([name, amount], index) => {
+                                const total = categoryDetails.reduce((acc, [, v]) => acc + v, 0)
+                                const percent = (amount / total) * 100
+
+                                return (
+                                    <div key={name} className="space-y-1">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{name}</span>
+                                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                                {amount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                                            </span>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-purple-500 rounded-full"
+                                                style={{ width: `${percent}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )
+                            })}
+
+                            {categoryDetails.length === 0 && (
+                                <div className="text-center py-8 text-gray-400">
+                                    <p className="text-4xl mb-2">😴</p>
+                                    <p>Aucune dépense ce mois-ci</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex justify-end">
+                            <button
+                                onClick={() => setSelectedCategory(null)}
+                                className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl font-medium text-sm hover:opacity-90 transition-opacity"
+                            >
+                                Fermer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { ReactNode, useEffect } from "react"
+import EmailVerificationGuard from "@/components/email-verification-guard"
 import { usePathname, useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { useAuth } from "@/components/auth-provider"
@@ -65,17 +66,20 @@ export function AppShell({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!user && !isPublic) {
-    return null
-  }
-
+  // If public route, render children regardless of user state
   if (isPublic) {
     return <>{children}</>
   }
 
+  if (!user) {
+    return null
+  }
+
   return (
     <SidebarProvider>
-      <AppShellContent>{children}</AppShellContent>
+      <EmailVerificationGuard>
+        <AppShellContent>{children}</AppShellContent>
+      </EmailVerificationGuard>
     </SidebarProvider>
   )
 }

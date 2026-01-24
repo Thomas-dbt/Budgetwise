@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
+  sendEmailVerification,
 } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
@@ -33,8 +34,11 @@ export const googleProvider = new GoogleAuthProvider()
 export const emailSignIn = (email: string, password: string) =>
   signInWithEmailAndPassword(firebaseAuth, email, password)
 
-export const emailSignUp = (email: string, password: string) =>
-  createUserWithEmailAndPassword(firebaseAuth, email, password)
+export const emailSignUp = async (email: string, password: string) => {
+  const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password)
+  await sendEmailVerification(userCredential.user)
+  return userCredential
+}
 
 export const googleSignIn = () => signInWithPopup(firebaseAuth, googleProvider)
 export const signOut = () => firebaseSignOut(firebaseAuth)

@@ -26,11 +26,13 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
     try {
+      localStorage.setItem('budgetwise_login_pending', 'true')
       if (mode === "signin") {
         await emailSignIn(email, password)
       } else {
         await emailSignUp(email, password)
       }
+      localStorage.setItem('budgetwise_auth_date', Date.now().toString())
       router.replace(searchParams.get("redirect") || "/")
     } catch (err: any) {
       setError(err?.message || "Impossible de se connecter")
@@ -43,7 +45,11 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
     try {
+      localStorage.setItem('budgetwise_login_pending', 'true')
       await googleSignIn()
+      // Note: The AuthProvider will detect the user and see the pending flag.
+      // It will then set the valid auth_date.
+      localStorage.setItem('budgetwise_auth_date', Date.now().toString())
       router.replace(searchParams.get("redirect") || "/")
     } catch (err: any) {
       setError(err?.message || "Connexion Google impossible")
@@ -65,17 +71,15 @@ export default function LoginPage() {
         <div className="grid grid-cols-2 bg-slate-900/60 p-1 rounded-lg">
           <button
             onClick={() => setMode("signin")}
-            className={`py-2 rounded-md text-sm ${
-              mode === "signin" ? "bg-blue-600 text-white" : "text-slate-300"
-            }`}
+            className={`py-2 rounded-md text-sm ${mode === "signin" ? "bg-blue-600 text-white" : "text-slate-300"
+              }`}
           >
             Se connecter
           </button>
           <button
             onClick={() => setMode("signup")}
-            className={`py-2 rounded-md text-sm ${
-              mode === "signup" ? "bg-blue-600 text-white" : "text-slate-300"
-            }`}
+            className={`py-2 rounded-md text-sm ${mode === "signup" ? "bg-blue-600 text-white" : "text-slate-300"
+              }`}
           >
             Créer un compte
           </button>

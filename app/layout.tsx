@@ -11,6 +11,9 @@ export const metadata = {
   description: 'Gestion financière personnelle et familiale'
 }
 
+import { PinProvider } from "@/lib/pin-context"
+import PinLock from "@/components/pin-lock"
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr" suppressHydrationWarning>
@@ -21,7 +24,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <ToastProvider>
             <AuthProvider>
-              <AppShell>{children}</AppShell>
+              <PinProvider>
+                <PinLock />
+                <AppShell>{children}</AppShell>
+              </PinProvider>
             </AuthProvider>
           </ToastProvider>
         </ThemeProvider>
