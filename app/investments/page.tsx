@@ -1469,10 +1469,10 @@ export default function InvestmentsPage() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-[#0D1117] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0D1117] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#58A6FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#8B949E]">Chargement...</p>
+          <div className="w-12 h-12 border-4 border-blue-500 dark:border-[#58A6FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500 dark:text-[#8B949E]">Chargement...</p>
         </div>
       </div>
     )
@@ -1480,12 +1480,12 @@ export default function InvestmentsPage() {
 
   if (error && !data) {
     return (
-      <div className="min-h-screen bg-[#0D1117] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0D1117] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-[#E74C3C] mb-4">{error}</p>
+          <p className="text-red-500 dark:text-[#E74C3C] mb-4">{error}</p>
           <button
             onClick={() => fetchDashboard()}
-            className="px-4 py-2 bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] transition-colors"
+            className="px-4 py-2 bg-blue-500 dark:bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] transition-colors"
           >
             Réessayer
           </button>
@@ -1497,22 +1497,22 @@ export default function InvestmentsPage() {
   if (!data) return null
 
   return (
-    <div className="min-h-screen bg-[#0D1117] text-[#E6EDF3] p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0D1117] text-gray-900 dark:text-[#E6EDF3] p-4 md:p-6">
       <div className="w-full space-y-6 animate-in fade-in duration-300">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-[#E6EDF3] flex items-center gap-3">
-              <Activity className="w-8 h-8 text-[#58A6FF]" />
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6EDF3] flex items-center gap-3">
+              <Activity className="w-8 h-8 text-blue-500 dark:text-[#58A6FF]" />
               Investissements
             </h1>
-            <p className="text-sm text-[#8B949E] mt-1">Suivez vos performances en temps réel</p>
+            <p className="text-sm text-gray-500 dark:text-[#8B949E] mt-1">Suivez vos performances en temps réel</p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => fetchDashboard(true)}
               disabled={refreshing}
-              className="px-4 py-2 bg-[#161B22] border border-[#30363D] text-[#E6EDF3] rounded-lg hover:bg-[#21262D] hover:border-[#58A6FF] transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] text-gray-900 dark:text-[#E6EDF3] rounded-lg hover:bg-gray-100 dark:bg-[#21262D] hover:border-blue-500 dark:border-[#58A6FF] transition-all flex items-center gap-2 disabled:opacity-50"
               title="Actualiser"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
@@ -1520,7 +1520,7 @@ export default function InvestmentsPage() {
             </button>
             <button
               onClick={() => setCreateModalOpen(true)}
-              className="px-4 py-2 bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] transition-colors flex items-center gap-2 shadow-lg shadow-[#58A6FF]/20"
+              className="px-4 py-2 bg-blue-500 dark:bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20 dark:shadow-[#58A6FF]/20"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Ajouter</span>
@@ -1529,48 +1529,48 @@ export default function InvestmentsPage() {
         </div>
 
         {/* KPI Line */}
-        <div className="bg-gradient-to-br from-[#161B22] to-[#0D1117] border border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
+        <div className="bg-gradient-to-br from-[#161B22] to-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-[#8B949E] mb-2">Valeur Totale</p>
+              <p className="text-sm text-gray-500 dark:text-[#8B949E] mb-2">Valeur Totale</p>
               <div className="flex items-baseline gap-3 flex-wrap">
-                <p className="text-4xl font-bold text-[#E6EDF3]">
+                <p className="text-4xl font-bold text-gray-900 dark:text-[#E6EDF3]">
                   {formatCurrency(data.total_value)}
                 </p>
                 <div className="flex items-center gap-2">
                   {data.period_change_pct >= 0 ? (
-                    <TrendingUp className="w-5 h-5 text-[#2ECC71]" />
+                    <TrendingUp className="w-5 h-5 text-green-500 dark:text-[#2ECC71]" />
                   ) : (
-                    <TrendingDown className="w-5 h-5 text-[#E74C3C]" />
+                    <TrendingDown className="w-5 h-5 text-red-500 dark:text-[#E74C3C]" />
                   )}
-                  <span className={`text-xl font-semibold ${data.period_change_pct >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                  <span className={`text-xl font-semibold ${data.period_change_pct >= 0 ? 'text-green-500 dark:text-[#2ECC71]' : 'text-red-500 dark:text-[#E74C3C]'}`}>
                     {data.period_change_pct >= 0 ? '+' : ''}{data.period_change_pct.toFixed(1)}%
                   </span>
-                  <span className="text-sm text-[#8B949E]">
+                  <span className="text-sm text-gray-500 dark:text-[#8B949E]">
                     ({PERIODS.find(p => p.value === selectedPeriod)?.label || '30j'})
                   </span>
                 </div>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-[#8B949E] mb-1">Dernière mise à jour</p>
+              <p className="text-sm text-gray-500 dark:text-[#8B949E] mb-1">Dernière mise à jour</p>
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${refreshing ? 'bg-[#58A6FF] animate-pulse' : 'bg-[#2ECC71]'}`} />
-                <p className="text-sm text-[#E6EDF3] font-medium">{formatTimeAgo(data.updated_at)}</p>
+                <div className={`w-2 h-2 rounded-full ${refreshing ? 'bg-blue-500 dark:bg-[#58A6FF] animate-pulse' : 'bg-[#2ECC71]'}`} />
+                <p className="text-sm text-gray-900 dark:text-[#E6EDF3] font-medium">{formatTimeAgo(data.updated_at)}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-2 border-b border-[#30363D] overflow-x-auto pb-2">
+        <div className="flex items-center gap-2 border-b border-gray-200 dark:border-[#30363D] overflow-x-auto pb-2">
           {['all', 'crypto', 'bourse', 'épargne', 'immobilier', 'autres'].map((type) => (
             <button
               key={type}
               onClick={() => setSelectedType(type)}
               className={`px-4 py-2 text-sm font-medium transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${selectedType === type
-                ? 'border-[#58A6FF] text-[#58A6FF] bg-[#58A6FF]/10'
-                : 'border-transparent text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#161B22]'
+                ? 'border-blue-500 dark:border-[#58A6FF] text-blue-500 dark:text-[#58A6FF] bg-blue-500/10 dark:bg-[#58A6FF]/10'
+                : 'border-transparent text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:text-[#E6EDF3] hover:bg-white dark:bg-[#161B22]'
                 } rounded-t-lg`}
             >
               {type !== 'all' && <span className="inline-flex">{getTypeIcon(type, 16)}</span>}
@@ -1580,10 +1580,10 @@ export default function InvestmentsPage() {
         </div>
 
         {/* Portfolio Evolution Chart */}
-        <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
+        <div className="bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-            <h2 className="text-lg font-semibold text-[#E6EDF3] flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-[#58A6FF]" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-blue-500 dark:text-[#58A6FF]" />
               Évolution du Portefeuille
             </h2>
             <div className="flex gap-2 flex-wrap">
@@ -1592,8 +1592,8 @@ export default function InvestmentsPage() {
                   key={period.value}
                   onClick={() => setSelectedPeriod(period.value)}
                   className={`px-3 py-1.5 text-sm rounded-lg transition-all ${selectedPeriod === period.value
-                    ? 'bg-[#58A6FF] text-white shadow-lg shadow-[#58A6FF]/30'
-                    : 'bg-[#21262D] text-[#8B949E] hover:bg-[#30363D] hover:text-[#E6EDF3]'
+                    ? 'bg-blue-500 dark:bg-[#58A6FF] text-white shadow-lg shadow-blue-500/30 dark:shadow-[#58A6FF]/30'
+                    : 'bg-gray-100 dark:bg-[#21262D] text-gray-500 dark:text-[#8B949E] hover:bg-gray-200 dark:hover:bg-[#30363D] hover:text-gray-900 dark:text-[#E6EDF3]'
                     }`}
                 >
                   {period.label}
@@ -1660,9 +1660,9 @@ export default function InvestmentsPage() {
         {/* Three Blocks */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Répartition */}
-          <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-            <h2 className="text-lg font-semibold text-[#E6EDF3] mb-4 flex items-center gap-2">
-              <PieChartIcon className="w-5 h-5 text-[#58A6FF]" />
+          <div className="bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4 flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-blue-500 dark:text-[#58A6FF]" />
               Répartition du Portefeuille
             </h2>
             {data.allocation.length > 0 ? (
@@ -1702,31 +1702,31 @@ export default function InvestmentsPage() {
                   {data.allocation.map((item) => {
                     const colorKey = item.label.toLowerCase() as keyof typeof COLORS
                     return (
-                      <div key={item.label} className="flex items-center justify-between text-sm group hover:bg-[#21262D] p-2 rounded-lg transition-colors">
+                      <div key={item.label} className="flex items-center justify-between text-sm group hover:bg-gray-100 dark:bg-[#21262D] p-2 rounded-lg transition-colors">
                         <div className="flex items-center gap-2.5">
                           <div
                             className="w-3.5 h-3.5 rounded-full shadow-sm"
                             style={{ backgroundColor: COLORS[colorKey] || COLORS.autres }}
                           />
-                          <span className="text-[#8B949E] group-hover:text-[#E6EDF3] transition-colors">
+                          <span className="text-gray-500 dark:text-[#8B949E] group-hover:text-gray-900 dark:text-[#E6EDF3] transition-colors">
                             {TYPE_LABELS[item.label] || item.label}
                           </span>
                         </div>
-                        <span className="text-[#E6EDF3] font-semibold">{item.value}%</span>
+                        <span className="text-gray-900 dark:text-[#E6EDF3] font-semibold">{item.value}%</span>
                       </div>
                     )
                   })}
                 </div>
               </>
             ) : (
-              <div className="text-center py-12 text-[#8B949E]">Aucune donnée</div>
+              <div className="text-center py-12 text-gray-500 dark:text-[#8B949E]">Aucune donnée</div>
             )}
           </div>
 
           {/* Top Performances */}
-          <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-            <h2 className="text-lg font-semibold text-[#E6EDF3] mb-4 flex items-center gap-2">
-              <ArrowUpRight className="w-5 h-5 text-[#2ECC71]" />
+          <div className="bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4 flex items-center gap-2">
+              <ArrowUpRight className="w-5 h-5 text-green-500 dark:text-[#2ECC71]" />
               Top Performances (30j)
             </h2>
             {data.top.length > 0 ? (
@@ -1734,19 +1734,19 @@ export default function InvestmentsPage() {
                 {data.top.map((item, index) => {
                   const investment = data.items.find(i => i.name === item.label)
                   return (
-                    <div key={index} className="flex items-center justify-between p-3 bg-[#0D1117] rounded-lg hover:bg-[#21262D] transition-colors group">
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#0D1117] rounded-lg hover:bg-gray-100 dark:bg-[#21262D] transition-colors group">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-[#21262D] rounded-lg group-hover:bg-[#30363D] transition-colors">
+                        <div className="p-2 bg-gray-100 dark:bg-[#21262D] rounded-lg group-hover:bg-gray-200 dark:hover:bg-[#30363D] transition-colors">
                           {getTypeIcon(investment?.type || 'autres', 18)}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-[#E6EDF3]">{item.label}</p>
-                          <p className="text-xs text-[#8B949E]">{investment?.category || ''}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3]">{item.label}</p>
+                          <p className="text-xs text-gray-500 dark:text-[#8B949E]">{investment?.category || ''}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-[#2ECC71]" />
-                        <span className="text-sm font-semibold text-[#2ECC71]">
+                        <TrendingUp className="w-4 h-4 text-green-500 dark:text-[#2ECC71]" />
+                        <span className="text-sm font-semibold text-green-500 dark:text-[#2ECC71]">
                           +{item.pct.toFixed(1)}%
                         </span>
                       </div>
@@ -1755,14 +1755,14 @@ export default function InvestmentsPage() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-12 text-[#8B949E]">Aucune donnée</div>
+              <div className="text-center py-12 text-gray-500 dark:text-[#8B949E]">Aucune donnée</div>
             )}
           </div>
 
           {/* Worst Performances */}
-          <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-            <h2 className="text-lg font-semibold text-[#E6EDF3] mb-4 flex items-center gap-2">
-              <ArrowDownRight className="w-5 h-5 text-[#E74C3C]" />
+          <div className="bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4 flex items-center gap-2">
+              <ArrowDownRight className="w-5 h-5 text-red-500 dark:text-[#E74C3C]" />
               Pires Performances (30j)
             </h2>
             {data.worst.length > 0 ? (
@@ -1770,19 +1770,19 @@ export default function InvestmentsPage() {
                 {data.worst.map((item, index) => {
                   const investment = data.items.find(i => i.name === item.label)
                   return (
-                    <div key={index} className="flex items-center justify-between p-3 bg-[#0D1117] rounded-lg hover:bg-[#21262D] transition-colors group">
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#0D1117] rounded-lg hover:bg-gray-100 dark:bg-[#21262D] transition-colors group">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-[#21262D] rounded-lg group-hover:bg-[#30363D] transition-colors">
+                        <div className="p-2 bg-gray-100 dark:bg-[#21262D] rounded-lg group-hover:bg-gray-200 dark:hover:bg-[#30363D] transition-colors">
                           {getTypeIcon(investment?.type || 'autres', 18)}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-[#E6EDF3]">{item.label}</p>
-                          <p className="text-xs text-[#8B949E]">{investment?.category || ''}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3]">{item.label}</p>
+                          <p className="text-xs text-gray-500 dark:text-[#8B949E]">{investment?.category || ''}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <TrendingDown className="w-4 h-4 text-[#E74C3C]" />
-                        <span className="text-sm font-semibold text-[#E74C3C]">
+                        <TrendingDown className="w-4 h-4 text-red-500 dark:text-[#E74C3C]" />
+                        <span className="text-sm font-semibold text-red-500 dark:text-[#E74C3C]">
                           {item.pct.toFixed(1)}%
                         </span>
                       </div>
@@ -1791,7 +1791,7 @@ export default function InvestmentsPage() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-12 text-[#8B949E]">Aucune donnée</div>
+              <div className="text-center py-12 text-gray-500 dark:text-[#8B949E]">Aucune donnée</div>
             )}
           </div>
         </div>
@@ -1799,11 +1799,11 @@ export default function InvestmentsPage() {
         {/* Investment Cards */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-[#E6EDF3] flex items-center gap-2">
-              <Package className="w-6 h-6 text-[#58A6FF]" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-[#E6EDF3] flex items-center gap-2">
+              <Package className="w-6 h-6 text-blue-500 dark:text-[#58A6FF]" />
               Mes Investissements
             </h2>
-            <span className="text-sm text-[#8B949E]">{data.items.length} investissement{data.items.length > 1 ? 's' : ''}</span>
+            <span className="text-sm text-gray-500 dark:text-[#8B949E]">{data.items.length} investissement{data.items.length > 1 ? 's' : ''}</span>
           </div>
           {data.items.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
@@ -1811,23 +1811,23 @@ export default function InvestmentsPage() {
                 <div
                   key={item.id}
                   onClick={() => handleInvestmentClick(item.id)}
-                  className="bg-[#161B22] border border-[#30363D] rounded-xl p-6 hover:border-[#58A6FF] hover:shadow-lg hover:shadow-[#58A6FF]/10 transition-all group cursor-pointer"
+                  className="bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl p-6 hover:border-blue-500 dark:border-[#58A6FF] hover:shadow-lg hover:shadow-[#58A6FF]/10 transition-all group cursor-pointer"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                     <div className="flex-1 w-full">
                       <div className="flex items-start gap-4 mb-4">
-                        <div className="p-3 bg-[#21262D] rounded-xl group-hover:bg-[#30363D] transition-colors">
+                        <div className="p-3 bg-gray-100 dark:bg-[#21262D] rounded-xl group-hover:bg-gray-200 dark:hover:bg-[#30363D] transition-colors">
                           {getTypeIcon(item.type, 24)}
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-xl font-semibold text-[#E6EDF3] mb-1">{item.name}</h3>
-                          <p className="text-sm text-[#8B949E] mb-2">{item.subtitle}</p>
+                          <h3 className="text-xl font-semibold text-gray-900 dark:text-[#E6EDF3] mb-1">{item.name}</h3>
+                          <p className="text-sm text-gray-500 dark:text-[#8B949E] mb-2">{item.subtitle}</p>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs px-2 py-1 bg-[#21262D] text-[#8B949E] rounded">
+                            <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-[#21262D] text-gray-500 dark:text-[#8B949E] rounded">
                               {item.category}
                             </span>
-                            <span className="text-xs px-2 py-1 bg-[#21262D] text-[#8B949E] rounded">
+                            <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-[#21262D] text-gray-500 dark:text-[#8B949E] rounded">
                               {item.platform}
                             </span>
                           </div>
@@ -1835,51 +1835,51 @@ export default function InvestmentsPage() {
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div>
-                          <p className="text-xs text-[#8B949E] mb-1.5">Valeur</p>
-                          <p className="text-lg font-bold text-[#E6EDF3]">
+                          <p className="text-xs text-gray-500 dark:text-[#8B949E] mb-1.5">Valeur</p>
+                          <p className="text-lg font-bold text-gray-900 dark:text-[#E6EDF3]">
                             {formatCurrency(item.value, item.currency)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-[#8B949E] mb-1.5">Gain/Perte</p>
+                          <p className="text-xs text-gray-500 dark:text-[#8B949E] mb-1.5">Gain/Perte</p>
                           <div className="flex items-center gap-1">
                             {item.pl_pct >= 0 ? (
-                              <ArrowUpRight className="w-4 h-4 text-[#2ECC71]" />
+                              <ArrowUpRight className="w-4 h-4 text-green-500 dark:text-[#2ECC71]" />
                             ) : (
-                              <ArrowDownRight className="w-4 h-4 text-[#E74C3C]" />
+                              <ArrowDownRight className="w-4 h-4 text-red-500 dark:text-[#E74C3C]" />
                             )}
-                            <p className={`text-lg font-bold ${item.pl_pct >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                            <p className={`text-lg font-bold ${item.pl_pct >= 0 ? 'text-green-500 dark:text-[#2ECC71]' : 'text-red-500 dark:text-[#E74C3C]'}`}>
                               {item.pl_pct >= 0 ? '+' : ''}{item.pl_pct.toFixed(1)}%
                             </p>
                           </div>
-                          <p className={`text-sm ${item.pl_value >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                          <p className={`text-sm ${item.pl_value >= 0 ? 'text-green-500 dark:text-[#2ECC71]' : 'text-red-500 dark:text-[#E74C3C]'}`}>
                             {item.pl_value >= 0 ? '+' : ''}{formatCurrency(item.pl_value, item.currency)}
                           </p>
                         </div>
                         {item.change_24h_pct !== 0 && (
                           <div>
-                            <p className="text-xs text-[#8B949E] mb-1.5">24h</p>
+                            <p className="text-xs text-gray-500 dark:text-[#8B949E] mb-1.5">24h</p>
                             <div className="flex items-center gap-1">
                               {item.change_24h_pct >= 0 ? (
-                                <ArrowUpRight className="w-3 h-3 text-[#2ECC71]" />
+                                <ArrowUpRight className="w-3 h-3 text-green-500 dark:text-[#2ECC71]" />
                               ) : (
-                                <ArrowDownRight className="w-3 h-3 text-[#E74C3C]" />
+                                <ArrowDownRight className="w-3 h-3 text-red-500 dark:text-[#E74C3C]" />
                               )}
-                              <p className={`text-base font-semibold ${item.change_24h_pct >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                              <p className={`text-base font-semibold ${item.change_24h_pct >= 0 ? 'text-green-500 dark:text-[#2ECC71]' : 'text-red-500 dark:text-[#E74C3C]'}`}>
                                 {item.change_24h_pct >= 0 ? '+' : ''}{item.change_24h_pct.toFixed(2)}%
                               </p>
                             </div>
                           </div>
                         )}
                         <div>
-                          <p className="text-xs text-[#8B949E] mb-1.5">Allocation</p>
-                          <p className="text-lg font-semibold text-[#E6EDF3]">
+                          <p className="text-xs text-gray-500 dark:text-[#8B949E] mb-1.5">Allocation</p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3]">
                             {((item.value / data.total_value) * 100).toFixed(1)}%
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="w-full lg:w-40 h-20 lg:h-24 bg-[#0D1117] rounded-lg p-2 border border-[#30363D]">
+                    <div className="w-full lg:w-40 h-20 lg:h-24 bg-gray-50 dark:bg-[#0D1117] rounded-lg p-2 border border-gray-200 dark:border-[#30363D]">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={item.sparkline.map((v, i) => ({ value: v, index: i }))} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
                           <Line
@@ -1899,10 +1899,10 @@ export default function InvestmentsPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-[#161B22] border border-[#30363D] rounded-xl p-12 text-center">
-              <Package className="w-12 h-12 text-[#8B949E] mx-auto mb-4 opacity-50" />
-              <p className="text-[#8B949E] mb-2">Aucun investissement trouvé</p>
-              <p className="text-sm text-[#8B949E] opacity-75">Commencez par ajouter votre premier investissement</p>
+            <div className="bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl p-12 text-center">
+              <Package className="w-12 h-12 text-gray-500 dark:text-[#8B949E] mx-auto mb-4 opacity-50" />
+              <p className="text-gray-500 dark:text-[#8B949E] mb-2">Aucun investissement trouvé</p>
+              <p className="text-sm text-gray-500 dark:text-[#8B949E] opacity-75">Commencez par ajouter votre premier investissement</p>
             </div>
           )}
         </div>
@@ -1914,26 +1914,26 @@ export default function InvestmentsPage() {
             onClick={closeDetailsModal}
           >
             <div
-              className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col"
+              className="bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {loadingDetails || loadingRealEstateMetrics ? (
                 <div className="p-12 text-center">
-                  <div className="w-12 h-12 border-4 border-[#58A6FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-[#8B949E]">Chargement des détails...</p>
+                  <div className="w-12 h-12 border-4 border-blue-500 dark:border-[#58A6FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-500 dark:text-[#8B949E]">Chargement des détails...</p>
                 </div>
               ) : realEstateMetrics ? (
                 <>
                   {/* Header Immobilier */}
-                  <div className="sticky top-0 bg-[#161B22] border-b border-[#30363D] p-6 flex items-start justify-between z-10">
+                  <div className="sticky top-0 bg-white dark:bg-[#161B22] border-b border-gray-200 dark:border-[#30363D] p-6 flex items-start justify-between z-10">
                     <div className="flex items-start gap-4 flex-1">
-                      <div className="p-3 bg-[#21262D] rounded-xl">
-                        <Home className="w-8 h-8 text-[#E67E22]" />
+                      <div className="p-3 bg-gray-100 dark:bg-[#21262D] rounded-xl">
+                        <Home className="w-8 h-8 text-orange-500 dark:text-[#E67E22]" />
                       </div>
                       <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-[#E6EDF3] mb-1">{realEstateMetrics.investmentName}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6EDF3] mb-1">{realEstateMetrics.investmentName}</h2>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs px-2 py-1 bg-[#21262D] text-[#8B949E] rounded">
+                          <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-[#21262D] text-gray-500 dark:text-[#8B949E] rounded">
                             Immobilier
                           </span>
                         </div>
@@ -1942,21 +1942,21 @@ export default function InvestmentsPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handleEditInvestment}
-                        className="p-2 text-[#8B949E] hover:text-[#58A6FF] hover:bg-[#21262D] rounded-lg transition-colors"
+                        className="p-2 text-gray-500 dark:text-[#8B949E] hover:text-blue-500 dark:text-[#58A6FF] hover:bg-gray-100 dark:bg-[#21262D] rounded-lg transition-colors"
                         title="Modifier"
                       >
                         <Edit className="w-5 h-5" />
                       </button>
                       <button
                         onClick={handleDeleteInvestment}
-                        className="p-2 text-[#8B949E] hover:text-[#E74C3C] hover:bg-[#21262D] rounded-lg transition-colors"
+                        className="p-2 text-gray-500 dark:text-[#8B949E] hover:text-red-500 dark:text-[#E74C3C] hover:bg-gray-100 dark:bg-[#21262D] rounded-lg transition-colors"
                         title="Supprimer"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
                       <button
                         onClick={closeDetailsModal}
-                        className="p-2 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#21262D] rounded-lg transition-colors"
+                        className="p-2 text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:text-[#E6EDF3] hover:bg-gray-100 dark:bg-[#21262D] rounded-lg transition-colors"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -1967,39 +1967,39 @@ export default function InvestmentsPage() {
                   <div className="p-6 space-y-6 overflow-hidden">
                     {/* KPIs Principaux */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                        <p className="text-xs text-[#8B949E] mb-2">Cashflow Net Mensuel</p>
-                        <p className={`text-2xl font-bold ${realEstateMetrics.cashflowNet >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                      <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                        <p className="text-xs text-gray-500 dark:text-[#8B949E] mb-2">Cashflow Net Mensuel</p>
+                        <p className={`text-2xl font-bold ${realEstateMetrics.cashflowNet >= 0 ? 'text-green-500 dark:text-[#2ECC71]' : 'text-red-500 dark:text-[#E74C3C]'}`}>
                           {formatCurrency(realEstateMetrics.cashflowNet)}
                         </p>
                       </div>
-                      <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                        <p className="text-xs text-[#8B949E] mb-2">Cash Investi Initial</p>
-                        <p className="text-2xl font-bold text-[#E6EDF3]">
+                      <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                        <p className="text-xs text-gray-500 dark:text-[#8B949E] mb-2">Cash Investi Initial</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-[#E6EDF3]">
                           {formatCurrency(realEstateMetrics.cashInitial)}
                         </p>
                       </div>
-                      <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                        <p className="text-xs text-[#8B949E] mb-2">Payback</p>
+                      <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                        <p className="text-xs text-gray-500 dark:text-[#8B949E] mb-2">Payback</p>
                         {realEstateMetrics.paybackMonths ? (
                           <div>
-                            <p className="text-xl font-bold text-[#E6EDF3]">
+                            <p className="text-xl font-bold text-gray-900 dark:text-[#E6EDF3]">
                               {realEstateMetrics.paybackYears?.toFixed(1)} ans
                             </p>
-                            <p className="text-sm text-[#8B949E]">
+                            <p className="text-sm text-gray-500 dark:text-[#8B949E]">
                               ({realEstateMetrics.paybackMonths.toFixed(0)} mois)
                             </p>
                           </div>
                         ) : (
-                          <p className="text-lg font-medium text-[#8B949E]">Non rentable</p>
+                          <p className="text-lg font-medium text-gray-500 dark:text-[#8B949E]">Non rentable</p>
                         )}
                       </div>
                     </div>
 
                     {/* Graphique Cashflow Cumulé */}
                     {realEstateMetrics.cumulativeSeries && (
-                      <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                        <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Cashflow Cumulé (30 ans)</h3>
+                      <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Cashflow Cumulé (30 ans)</h3>
                         <ResponsiveContainer width="100%" height={300}>
                           <AreaChart data={realEstateMetrics.cumulativeSeries.filter((_: any, i: number) => i % 12 === 0 || i === 0 || i === realEstateMetrics.cumulativeSeries.length - 1)}>
                             <defs>
@@ -2061,27 +2061,27 @@ export default function InvestmentsPage() {
               ) : investmentDetails ? (
                 <>
                   {/* Header */}
-                  <div className="sticky top-0 bg-[#161B22] border-b border-[#30363D] p-6 flex items-start justify-between z-10">
+                  <div className="sticky top-0 bg-white dark:bg-[#161B22] border-b border-gray-200 dark:border-[#30363D] p-6 flex items-start justify-between z-10">
                     <div className="flex items-start gap-4 flex-1">
-                      <div className="p-3 bg-[#21262D] rounded-xl">
+                      <div className="p-3 bg-gray-100 dark:bg-[#21262D] rounded-xl">
                         {getTypeIcon(data?.items.find(i => i.id === selectedInvestment)?.type || 'autres', 32)}
                       </div>
                       <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-[#E6EDF3] mb-1">{investmentDetails.name}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6EDF3] mb-1">{investmentDetails.name}</h2>
                         {investmentDetails.symbol && (
-                          <p className="text-sm text-[#8B949E] font-mono mb-2">{investmentDetails.symbol}</p>
+                          <p className="text-sm text-gray-500 dark:text-[#8B949E] font-mono mb-2">{investmentDetails.symbol}</p>
                         )}
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs px-2 py-1 bg-[#21262D] text-[#8B949E] rounded">
+                          <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-[#21262D] text-gray-500 dark:text-[#8B949E] rounded">
                             {investmentDetails.category}
                           </span>
                           {investmentDetails.subCategory && (
-                            <span className="text-xs px-2 py-1 bg-[#21262D] text-[#8B949E] rounded">
+                            <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-[#21262D] text-gray-500 dark:text-[#8B949E] rounded">
                               {investmentDetails.subCategory}
                             </span>
                           )}
                           {investmentDetails.platform && (
-                            <span className="text-xs px-2 py-1 bg-[#21262D] text-[#8B949E] rounded">
+                            <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-[#21262D] text-gray-500 dark:text-[#8B949E] rounded">
                               {investmentDetails.platform}
                             </span>
                           )}
@@ -2091,21 +2091,21 @@ export default function InvestmentsPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handleEditInvestment}
-                        className="p-2 text-[#8B949E] hover:text-[#58A6FF] hover:bg-[#21262D] rounded-lg transition-colors"
+                        className="p-2 text-gray-500 dark:text-[#8B949E] hover:text-blue-500 dark:text-[#58A6FF] hover:bg-gray-100 dark:bg-[#21262D] rounded-lg transition-colors"
                         title="Modifier"
                       >
                         <Edit className="w-5 h-5" />
                       </button>
                       <button
                         onClick={handleDeleteInvestment}
-                        className="p-2 text-[#8B949E] hover:text-[#E74C3C] hover:bg-[#21262D] rounded-lg transition-colors"
+                        className="p-2 text-gray-500 dark:text-[#8B949E] hover:text-red-500 dark:text-[#E74C3C] hover:bg-gray-100 dark:bg-[#21262D] rounded-lg transition-colors"
                         title="Supprimer"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
                       <button
                         onClick={closeDetailsModal}
-                        className="p-2 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#21262D] rounded-lg transition-colors"
+                        className="p-2 text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:text-[#E6EDF3] hover:bg-gray-100 dark:bg-[#21262D] rounded-lg transition-colors"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -2116,31 +2116,31 @@ export default function InvestmentsPage() {
                   <div className="p-6 space-y-6 overflow-hidden">
                     {/* KPIs Principaux */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                        <p className="text-xs text-[#8B949E] mb-2">Valeur Actuelle</p>
-                        <p className="text-2xl font-bold text-[#E6EDF3]">
+                      <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                        <p className="text-xs text-gray-500 dark:text-[#8B949E] mb-2">Valeur Actuelle</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-[#E6EDF3]">
                           {formatCurrency(investmentDetails.currentValue, investmentDetails.currency)}
                         </p>
                       </div>
-                      <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                        <p className="text-xs text-[#8B949E] mb-2">Gain/Perte</p>
+                      <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                        <p className="text-xs text-gray-500 dark:text-[#8B949E] mb-2">Gain/Perte</p>
                         <div className="flex items-center gap-2">
                           {investmentDetails.performance >= 0 ? (
-                            <TrendingUp className="w-5 h-5 text-[#2ECC71]" />
+                            <TrendingUp className="w-5 h-5 text-green-500 dark:text-[#2ECC71]" />
                           ) : (
-                            <TrendingDown className="w-5 h-5 text-[#E74C3C]" />
+                            <TrendingDown className="w-5 h-5 text-red-500 dark:text-[#E74C3C]" />
                           )}
-                          <p className={`text-2xl font-bold ${investmentDetails.performance >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                          <p className={`text-2xl font-bold ${investmentDetails.performance >= 0 ? 'text-green-500 dark:text-[#2ECC71]' : 'text-red-500 dark:text-[#E74C3C]'}`}>
                             {investmentDetails.performance >= 0 ? '+' : ''}{investmentDetails.performance.toFixed(2)}%
                           </p>
                         </div>
-                        <p className={`text-sm mt-1 ${investmentDetails.gainLoss >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                        <p className={`text-sm mt-1 ${investmentDetails.gainLoss >= 0 ? 'text-green-500 dark:text-[#2ECC71]' : 'text-red-500 dark:text-[#E74C3C]'}`}>
                           {investmentDetails.gainLoss >= 0 ? '+' : ''}{formatCurrency(investmentDetails.gainLoss, investmentDetails.currency)}
                         </p>
                       </div>
-                      <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                        <p className="text-xs text-[#8B949E] mb-2">Montant Investi</p>
-                        <p className="text-2xl font-bold text-[#E6EDF3]">
+                      <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                        <p className="text-xs text-gray-500 dark:text-[#8B949E] mb-2">Montant Investi</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-[#E6EDF3]">
                           {investmentDetails.amountInvested
                             ? formatCurrency(investmentDetails.amountInvested, investmentDetails.currency)
                             : formatCurrency(investmentDetails.costBasis * investmentDetails.quantity, investmentDetails.currency)
@@ -2151,8 +2151,8 @@ export default function InvestmentsPage() {
 
                     {/* Graphique détaillé */}
                     {data && (
-                      <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                        <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Évolution</h3>
+                      <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Évolution</h3>
                         <ResponsiveContainer width="100%" height={200}>
                           <AreaChart data={data.items.find(i => i.id === selectedInvestment)?.sparkline.map((v, i) => ({
                             date: i,
@@ -2197,19 +2197,19 @@ export default function InvestmentsPage() {
 
                     {/* Informations détaillées */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                        <h3 className="text-sm font-semibold text-[#E6EDF3] mb-4 flex items-center gap-2">
-                          <Info className="w-4 h-4 text-[#58A6FF]" />
+                      <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4 flex items-center gap-2">
+                          <Info className="w-4 h-4 text-blue-500 dark:text-[#58A6FF]" />
                           Informations Générales
                         </h3>
                         <div className="space-y-3">
                           <div className="flex justify-between">
-                            <span className="text-sm text-[#8B949E]">Quantité</span>
-                            <span className="text-sm font-medium text-[#E6EDF3]">{investmentDetails.quantity.toFixed(4)}</span>
+                            <span className="text-sm text-gray-500 dark:text-[#8B949E]">Quantité</span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3]">{investmentDetails.quantity.toFixed(4)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-sm text-[#8B949E]">Prix Unitaire Actuel</span>
-                            <span className="text-sm font-medium text-[#E6EDF3]">
+                            <span className="text-sm text-gray-500 dark:text-[#8B949E]">Prix Unitaire Actuel</span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3]">
                               {investmentDetails.currentPrice
                                 ? formatCurrency(investmentDetails.currentPrice, investmentDetails.currency)
                                 : '-'
@@ -2217,21 +2217,21 @@ export default function InvestmentsPage() {
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-sm text-[#8B949E]">Prix d'Achat Moyen</span>
-                            <span className="text-sm font-medium text-[#E6EDF3]">
+                            <span className="text-sm text-gray-500 dark:text-[#8B949E]">Prix d'Achat Moyen</span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3]">
                               {formatCurrency(investmentDetails.costBasis, investmentDetails.currency)}
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-sm text-[#8B949E]">Mode de Valorisation</span>
-                            <span className="text-sm font-medium text-[#E6EDF3] capitalize">
+                            <span className="text-sm text-gray-500 dark:text-[#8B949E]">Mode de Valorisation</span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3] capitalize">
                               {investmentDetails.valuationMode}
                             </span>
                           </div>
                           {investmentDetails.lastValuationDate && (
                             <div className="flex justify-between">
-                              <span className="text-sm text-[#8B949E]">Dernière Valorisation</span>
-                              <span className="text-sm font-medium text-[#E6EDF3]">
+                              <span className="text-sm text-gray-500 dark:text-[#8B949E]">Dernière Valorisation</span>
+                              <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3]">
                                 {new Date(investmentDetails.lastValuationDate).toLocaleDateString('fr-FR', {
                                   day: 'numeric',
                                   month: 'long',
@@ -2247,40 +2247,40 @@ export default function InvestmentsPage() {
 
                       {/* Informations spécifiques selon le mode */}
                       {investmentDetails.valuationMode === 'taux' && (
-                        <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                          <h3 className="text-sm font-semibold text-[#E6EDF3] mb-4 flex items-center gap-2">
-                            <Percent className="w-4 h-4 text-[#58A6FF]" />
+                        <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4 flex items-center gap-2">
+                            <Percent className="w-4 h-4 text-blue-500 dark:text-[#58A6FF]" />
                             Paramètres Taux
                           </h3>
                           <div className="space-y-3">
                             {investmentDetails.baseAmount && (
                               <div className="flex justify-between">
-                                <span className="text-sm text-[#8B949E]">Montant de Base</span>
-                                <span className="text-sm font-medium text-[#E6EDF3]">
+                                <span className="text-sm text-gray-500 dark:text-[#8B949E]">Montant de Base</span>
+                                <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3]">
                                   {formatCurrency(investmentDetails.baseAmount, investmentDetails.currency)}
                                 </span>
                               </div>
                             )}
                             {investmentDetails.annualRate && (
                               <div className="flex justify-between">
-                                <span className="text-sm text-[#8B949E]">Taux Annuel</span>
-                                <span className="text-sm font-medium text-[#E6EDF3]">
+                                <span className="text-sm text-gray-500 dark:text-[#8B949E]">Taux Annuel</span>
+                                <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3]">
                                   {investmentDetails.annualRate.toFixed(2)}%
                                 </span>
                               </div>
                             )}
                             {investmentDetails.capitalizationMode && (
                               <div className="flex justify-between">
-                                <span className="text-sm text-[#8B949E]">Capitalisation</span>
-                                <span className="text-sm font-medium text-[#E6EDF3] capitalize">
+                                <span className="text-sm text-gray-500 dark:text-[#8B949E]">Capitalisation</span>
+                                <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3] capitalize">
                                   {investmentDetails.capitalizationMode}
                                 </span>
                               </div>
                             )}
                             {investmentDetails.startDate && (
                               <div className="flex justify-between">
-                                <span className="text-sm text-[#8B949E]">Date de Début</span>
-                                <span className="text-sm font-medium text-[#E6EDF3]">
+                                <span className="text-sm text-gray-500 dark:text-[#8B949E]">Date de Début</span>
+                                <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3]">
                                   {new Date(investmentDetails.startDate).toLocaleDateString('fr-FR')}
                                 </span>
                               </div>
@@ -2290,22 +2290,22 @@ export default function InvestmentsPage() {
                       )}
 
                       {investmentDetails.valuationMode === 'marché' && investmentDetails.tradingViewSymbol && (
-                        <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                          <h3 className="text-sm font-semibold text-[#E6EDF3] mb-4 flex items-center gap-2">
-                            <ExternalLink className="w-4 h-4 text-[#58A6FF]" />
+                        <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4 flex items-center gap-2">
+                            <ExternalLink className="w-4 h-4 text-blue-500 dark:text-[#58A6FF]" />
                             Source de Prix
                           </h3>
                           <div className="space-y-3">
                             <div className="flex justify-between">
-                              <span className="text-sm text-[#8B949E]">Symbole TradingView</span>
-                              <span className="text-sm font-medium text-[#E6EDF3] font-mono">
+                              <span className="text-sm text-gray-500 dark:text-[#8B949E]">Symbole TradingView</span>
+                              <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3] font-mono">
                                 {investmentDetails.tradingViewSymbol}
                               </span>
                             </div>
                             {investmentDetails.priceProvider && (
                               <div className="flex justify-between">
-                                <span className="text-sm text-[#8B949E]">Fournisseur</span>
-                                <span className="text-sm font-medium text-[#E6EDF3] capitalize">
+                                <span className="text-sm text-gray-500 dark:text-[#8B949E]">Fournisseur</span>
+                                <span className="text-sm font-medium text-gray-900 dark:text-[#E6EDF3] capitalize">
                                   {investmentDetails.priceProvider.replace('_', ' ')}
                                 </span>
                               </div>
@@ -2314,7 +2314,7 @@ export default function InvestmentsPage() {
                               href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(investmentDetails.tradingViewSymbol)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 text-sm text-[#58A6FF] hover:text-[#4A9EFF] transition-colors mt-4"
+                              className="flex items-center gap-2 text-sm text-blue-500 dark:text-[#58A6FF] hover:text-[#4A9EFF] transition-colors mt-4"
                             >
                               <ExternalLink className="w-4 h-4" />
                               Voir sur TradingView
@@ -2324,9 +2324,9 @@ export default function InvestmentsPage() {
                       )}
 
                       {investmentDetails.comment && (
-                        <div className="bg-[#0D1117] border border-[#30363D] rounded-lg p-4">
-                          <h3 className="text-sm font-semibold text-[#E6EDF3] mb-4">Commentaire</h3>
-                          <p className="text-sm text-[#8B949E]">{investmentDetails.comment}</p>
+                        <div className="bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg p-4">
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Commentaire</h3>
+                          <p className="text-sm text-gray-500 dark:text-[#8B949E]">{investmentDetails.comment}</p>
                         </div>
                       )}
                     </div>
@@ -2334,10 +2334,10 @@ export default function InvestmentsPage() {
                 </>
               ) : (
                 <div className="p-12 text-center">
-                  <p className="text-[#E74C3C] mb-4">Erreur lors du chargement des détails</p>
+                  <p className="text-red-500 dark:text-[#E74C3C] mb-4">Erreur lors du chargement des détails</p>
                   <button
                     onClick={closeDetailsModal}
-                    className="px-4 py-2 bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] transition-colors"
+                    className="px-4 py-2 bg-blue-500 dark:bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] transition-colors"
                   >
                     Fermer
                   </button>
@@ -2357,19 +2357,19 @@ export default function InvestmentsPage() {
             }}
           >
             <div
-              className={`bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full ${formData.category === 'Immobilier' ? 'max-w-4xl' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200`}
+              className={`bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl shadow-2xl w-full ${formData.category === 'Immobilier' ? 'max-w-4xl' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200`}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-[#161B22] border-b border-[#30363D] p-6 flex items-center justify-between z-10">
-                <h2 className="text-2xl font-bold text-[#E6EDF3] flex items-center gap-2">
+              <div className="sticky top-0 bg-white dark:bg-[#161B22] border-b border-gray-200 dark:border-[#30363D] p-6 flex items-center justify-between z-10">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6EDF3] flex items-center gap-2">
                   {formData.category === 'Immobilier' ? (
                     <>
-                      <Home className="w-6 h-6 text-[#E67E22]" />
+                      <Home className="w-6 h-6 text-orange-500 dark:text-[#E67E22]" />
                       Nouvel Investissement Immobilier
                     </>
                   ) : (
                     <>
-                      <Plus className="w-6 h-6 text-[#58A6FF]" />
+                      <Plus className="w-6 h-6 text-blue-500 dark:text-[#58A6FF]" />
                       Nouvel Investissement
                     </>
                   )}
@@ -2379,7 +2379,7 @@ export default function InvestmentsPage() {
                     setCreateModalOpen(false)
                     setInvestmentTypeSelected(false)
                   }}
-                  className="p-2 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#21262D] rounded-lg transition-colors"
+                  className="p-2 text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:text-[#E6EDF3] hover:bg-gray-100 dark:bg-[#21262D] rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2388,8 +2388,8 @@ export default function InvestmentsPage() {
               {!investmentTypeSelected ? (
                 <div className="p-6">
                   <div className="text-center mb-6">
-                    <h3 className="text-xl font-semibold text-[#E6EDF3] mb-2">Choisissez le type d'investissement</h3>
-                    <p className="text-sm text-[#8B949E]">Sélectionnez une catégorie pour continuer</p>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-[#E6EDF3] mb-2">Choisissez le type d'investissement</h3>
+                    <p className="text-sm text-gray-500 dark:text-[#8B949E]">Sélectionnez une catégorie pour continuer</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {CATEGORIES.map(cat => (
@@ -2400,25 +2400,25 @@ export default function InvestmentsPage() {
                           setFormData({ ...formData, category: cat })
                           setInvestmentTypeSelected(true)
                         }}
-                        className="p-6 bg-[#0D1117] border border-[#30363D] rounded-xl hover:border-[#58A6FF] hover:bg-[#161B22] transition-all text-left group"
+                        className="p-6 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-xl hover:border-blue-500 dark:border-[#58A6FF] hover:bg-white dark:bg-[#161B22] transition-all text-left group"
                       >
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 bg-[#21262D] rounded-lg group-hover:bg-[#30363D] transition-colors">
+                          <div className="p-2 bg-gray-100 dark:bg-[#21262D] rounded-lg group-hover:bg-gray-200 dark:hover:bg-[#30363D] transition-colors">
                             {cat === 'Immobilier' ? (
-                              <Home className="w-6 h-6 text-[#E67E22]" />
+                              <Home className="w-6 h-6 text-orange-500 dark:text-[#E67E22]" />
                             ) : cat === 'Crypto' ? (
-                              <Coins className="w-6 h-6 text-[#58A6FF]" />
+                              <Coins className="w-6 h-6 text-blue-500 dark:text-[#58A6FF]" />
                             ) : cat === 'Action' || cat === 'ETF' ? (
-                              <BarChart3 className="w-6 h-6 text-[#58A6FF]" />
+                              <BarChart3 className="w-6 h-6 text-blue-500 dark:text-[#58A6FF]" />
                             ) : cat === 'Livret' ? (
-                              <PiggyBank className="w-6 h-6 text-[#58A6FF]" />
+                              <PiggyBank className="w-6 h-6 text-blue-500 dark:text-[#58A6FF]" />
                             ) : (
-                              <Package className="w-6 h-6 text-[#58A6FF]" />
+                              <Package className="w-6 h-6 text-blue-500 dark:text-[#58A6FF]" />
                             )}
                           </div>
-                          <h4 className="text-lg font-semibold text-[#E6EDF3]">{cat}</h4>
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3]">{cat}</h4>
                         </div>
-                        <p className="text-xs text-[#8B949E]">
+                        <p className="text-xs text-gray-500 dark:text-[#8B949E]">
                           {cat === 'Immobilier' ? 'Biens immobiliers locatifs' :
                             cat === 'Crypto' ? 'Cryptomonnaies' :
                               cat === 'Action' ? 'Actions en bourse' :
@@ -2429,14 +2429,14 @@ export default function InvestmentsPage() {
                       </button>
                     ))}
                   </div>
-                  <div className="mt-6 pt-6 border-t border-[#30363D]">
+                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-[#30363D]">
                     <button
                       type="button"
                       onClick={() => {
                         setCreateModalOpen(false)
                         setInvestmentTypeSelected(false)
                       }}
-                      className="w-full px-4 py-2.5 border border-[#30363D] text-[#E6EDF3] rounded-lg hover:bg-[#21262D] transition-colors font-medium"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-[#30363D] text-gray-900 dark:text-[#E6EDF3] rounded-lg hover:bg-gray-100 dark:bg-[#21262D] transition-colors font-medium"
                     >
                       Annuler
                     </button>
@@ -2445,24 +2445,24 @@ export default function InvestmentsPage() {
               ) : (
                 <form onSubmit={handleCreateInvestment} className="p-6 space-y-6">
                   {error && (
-                    <div className="bg-[#E74C3C]/20 border border-[#E74C3C] rounded-lg p-4 text-[#E74C3C] text-sm">
+                    <div className="bg-[#E74C3C]/20 border border-[#E74C3C] rounded-lg p-4 text-red-500 dark:text-[#E74C3C] text-sm">
                       {error}
                     </div>
                   )}
-                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-[#30363D]">
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-[#30363D]">
                     <div className="flex items-center gap-3">
                       {formData.category === 'Immobilier' ? (
-                        <Home className="w-5 h-5 text-[#E67E22]" />
+                        <Home className="w-5 h-5 text-orange-500 dark:text-[#E67E22]" />
                       ) : formData.category === 'Crypto' ? (
-                        <Coins className="w-5 h-5 text-[#58A6FF]" />
+                        <Coins className="w-5 h-5 text-blue-500 dark:text-[#58A6FF]" />
                       ) : formData.category === 'Action' || formData.category === 'ETF' ? (
-                        <BarChart3 className="w-5 h-5 text-[#58A6FF]" />
+                        <BarChart3 className="w-5 h-5 text-blue-500 dark:text-[#58A6FF]" />
                       ) : formData.category === 'Livret' ? (
-                        <PiggyBank className="w-5 h-5 text-[#58A6FF]" />
+                        <PiggyBank className="w-5 h-5 text-blue-500 dark:text-[#58A6FF]" />
                       ) : (
-                        <Package className="w-5 h-5 text-[#58A6FF]" />
+                        <Package className="w-5 h-5 text-blue-500 dark:text-[#58A6FF]" />
                       )}
-                      <span className="text-lg font-semibold text-[#E6EDF3]">{formData.category}</span>
+                      <span className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3]">{formData.category}</span>
                     </div>
                     <button
                       type="button"
@@ -2470,14 +2470,14 @@ export default function InvestmentsPage() {
                         setInvestmentTypeSelected(false)
                         setFormData({ ...formData, category: 'Crypto' })
                       }}
-                      className="text-sm text-[#8B949E] hover:text-[#E6EDF3] transition-colors"
+                      className="text-sm text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:text-[#E6EDF3] transition-colors"
                     >
                       Changer de type
                     </button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className={formData.category === 'Immobilier' ? 'md:col-span-2' : ''}>
-                      <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                      <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                         {formData.category === 'Immobilier' ? 'Nom du bien *' : 'Nom de l\'investissement *'}
                       </label>
                       <input
@@ -2492,7 +2492,7 @@ export default function InvestmentsPage() {
                           }
                         }}
                         placeholder={formData.category === 'Immobilier' ? 'Ex: Studio à Lorient' : 'Ex: Bitcoin, Apple Inc.'}
-                        className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                        className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                         required
                       />
                     </div>
@@ -2500,7 +2500,7 @@ export default function InvestmentsPage() {
                     {formData.category === 'Immobilier' ? (
                       <>
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Adresse
                           </label>
                           <input
@@ -2508,18 +2508,18 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.address}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, address: e.target.value })}
                             placeholder="123 Rue de la République, 56100 Lorient"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Type de bien
                           </label>
                           <select
                             value={realEstateFormData.propertyType}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyType: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           >
                             <option value="">Sélectionner...</option>
                             <option value="Appartement">Appartement</option>
@@ -2533,7 +2533,7 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Date d'achat
                           </label>
                           <input
@@ -2543,16 +2543,16 @@ export default function InvestmentsPage() {
                               setRealEstateFormData({ ...realEstateFormData, purchaseDate: e.target.value })
                               setFormData({ ...formData, purchaseDate: e.target.value })
                             }}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
-                        <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                          <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Coûts d'acquisition</h3>
+                        <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Coûts d'acquisition</h3>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Prix d'achat (€) *
                           </label>
                           <input
@@ -2561,13 +2561,13 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.purchasePrice}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, purchasePrice: e.target.value })}
                             placeholder="150000"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Frais de notaire (€)
                           </label>
                           <input
@@ -2576,12 +2576,12 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.notaryFees}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, notaryFees: e.target.value })}
                             placeholder="12000"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Travaux initiaux (€)
                           </label>
                           <input
@@ -2590,12 +2590,12 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.initialWorks}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, initialWorks: e.target.value })}
                             placeholder="5000"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Apport initial (€) *
                           </label>
                           <input
@@ -2604,17 +2604,17 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.downPayment}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, downPayment: e.target.value })}
                             placeholder="30000"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
-                        <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                          <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Prêt</h3>
+                        <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Prêt</h3>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Mensualité de crédit (€)
                           </label>
                           <input
@@ -2623,12 +2623,12 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.loanMonthlyPayment}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, loanMonthlyPayment: e.target.value })}
                             placeholder="450"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Assurance emprunteur mensuelle (€)
                           </label>
                           <input
@@ -2637,16 +2637,16 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.loanInsuranceMonthly}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, loanInsuranceMonthly: e.target.value })}
                             placeholder="50"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
-                        <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                          <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Revenus</h3>
+                        <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Revenus</h3>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Loyer mensuel (€) *
                           </label>
                           <input
@@ -2655,13 +2655,13 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.rentMonthly}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, rentMonthly: e.target.value })}
                             placeholder="650"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Taux de vacance (%)
                           </label>
                           <input
@@ -2670,16 +2670,16 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.vacancyRatePct}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, vacancyRatePct: e.target.value })}
                             placeholder="5"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
-                        <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                          <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Charges</h3>
+                        <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Charges</h3>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Charges non récupérables mensuelles (€)
                           </label>
                           <input
@@ -2688,12 +2688,12 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.nonRecoverableChargesMonthly}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, nonRecoverableChargesMonthly: e.target.value })}
                             placeholder="50"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Taxe foncière annuelle (€)
                           </label>
                           <input
@@ -2702,12 +2702,12 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.propertyTaxYearly}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyTaxYearly: e.target.value })}
                             placeholder="1200"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Assurance PNO annuelle (€)
                           </label>
                           <input
@@ -2716,12 +2716,12 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.insuranceYearly}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, insuranceYearly: e.target.value })}
                             placeholder="300"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Réserve maintenance mensuelle (€)
                           </label>
                           <input
@@ -2730,12 +2730,12 @@ export default function InvestmentsPage() {
                             value={realEstateFormData.maintenanceReserveMonthly}
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, maintenanceReserveMonthly: e.target.value })}
                             placeholder="100"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Commentaire
                           </label>
                           <textarea
@@ -2743,7 +2743,7 @@ export default function InvestmentsPage() {
                             onChange={(e) => setRealEstateFormData({ ...realEstateFormData, comment: e.target.value })}
                             placeholder="Notes supplémentaires..."
                             rows={3}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
                       </>
@@ -2751,7 +2751,7 @@ export default function InvestmentsPage() {
                       <>
                         {/* Formulaire spécifique Livret */}
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Nom du Livret *
                           </label>
                           <input
@@ -2759,13 +2759,13 @@ export default function InvestmentsPage() {
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             placeholder="Ex: Livret A, LDDS, LEP..."
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Banque/Plateforme *
                           </label>
                           <input
@@ -2773,19 +2773,19 @@ export default function InvestmentsPage() {
                             value={formData.platform}
                             onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
                             placeholder="Ex: Crédit Mutuel, BNP Paribas..."
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Devise *
                           </label>
                           <select
                             value={formData.paidCurrency}
                             onChange={(e) => setFormData({ ...formData, paidCurrency: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           >
                             <option value="EUR">EUR</option>
@@ -2795,20 +2795,20 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Date de début *
                           </label>
                           <input
                             type="date"
                             value={formData.startDate}
                             onChange={(e) => setFormData({ ...formData, startDate: e.target.value, purchaseDate: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Solde actuel ({formData.paidCurrency || 'EUR'}) *
                           </label>
                           <input
@@ -2817,14 +2817,14 @@ export default function InvestmentsPage() {
                             value={formData.currentBalance}
                             onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
                             placeholder="5000.00"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                            Taux d'intérêt annuel (%) <span className="text-[#8B949E] text-xs">(recommandé)</span>
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
+                            Taux d'intérêt annuel (%) <span className="text-gray-500 dark:text-[#8B949E] text-xs">(recommandé)</span>
                           </label>
                           <input
                             type="number"
@@ -2832,13 +2832,13 @@ export default function InvestmentsPage() {
                             value={formData.annualRate}
                             onChange={(e) => setFormData({ ...formData, annualRate: e.target.value })}
                             placeholder="3.0"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
-                            Contribution mensuelle ({formData.paidCurrency || 'EUR'}) <span className="text-[#8B949E] text-xs">(prévision)</span>
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
+                            Contribution mensuelle ({formData.paidCurrency || 'EUR'}) <span className="text-gray-500 dark:text-[#8B949E] text-xs">(prévision)</span>
                           </label>
                           <input
                             type="number"
@@ -2846,12 +2846,12 @@ export default function InvestmentsPage() {
                             value={formData.monthlyContribution}
                             onChange={(e) => setFormData({ ...formData, monthlyContribution: e.target.value })}
                             placeholder="100.00"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Plafond ({formData.paidCurrency || 'EUR'})
                           </label>
                           <input
@@ -2860,18 +2860,18 @@ export default function InvestmentsPage() {
                             value={formData.ceiling}
                             onChange={(e) => setFormData({ ...formData, ceiling: e.target.value })}
                             placeholder="22950.00"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Mode de calcul des intérêts
                           </label>
                           <select
                             value={formData.interestMode}
                             onChange={(e) => setFormData({ ...formData, interestMode: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           >
                             <option value="simple_annuel">Simple annuel (par défaut)</option>
                             <option value="capitalisation_mensuelle">Capitalisation mensuelle</option>
@@ -2880,7 +2880,7 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Notes
                           </label>
                           <textarea
@@ -2888,29 +2888,29 @@ export default function InvestmentsPage() {
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                             placeholder="Notes supplémentaires..."
                             rows={3}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         {/* Aperçu des projections */}
                         {savingsProjection.currentValue !== null ? (
-                          <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg space-y-2">
-                            <h4 className="text-sm font-semibold text-[#E6EDF3] mb-3">Projections</h4>
+                          <div className="md:col-span-2 p-4 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg space-y-2">
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-[#E6EDF3] mb-3">Projections</h4>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                               <div>
-                                <span className="text-[#8B949E]">Valeur actuelle:</span>
-                                <span className="ml-2 text-[#E6EDF3] font-medium">{savingsProjection.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
+                                <span className="text-gray-500 dark:text-[#8B949E]">Valeur actuelle:</span>
+                                <span className="ml-2 text-gray-900 dark:text-[#E6EDF3] font-medium">{savingsProjection.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
                               </div>
                               {savingsProjection.projection1y !== null && (
                                 <div>
-                                  <span className="text-[#8B949E]">Projection 1 an:</span>
-                                  <span className="ml-2 text-[#E6EDF3] font-medium">{savingsProjection.projection1y?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
+                                  <span className="text-gray-500 dark:text-[#8B949E]">Projection 1 an:</span>
+                                  <span className="ml-2 text-gray-900 dark:text-[#E6EDF3] font-medium">{savingsProjection.projection1y?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
                                 </div>
                               )}
                               {savingsProjection.estimatedInterest1y !== null && savingsProjection.estimatedInterest1y > 0 && (
                                 <div className="md:col-span-2">
-                                  <span className="text-[#8B949E]">Intérêts estimés sur 1 an:</span>
-                                  <span className="ml-2 text-[#2ECC71] font-medium">+{savingsProjection.estimatedInterest1y?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
+                                  <span className="text-gray-500 dark:text-[#8B949E]">Intérêts estimés sur 1 an:</span>
+                                  <span className="ml-2 text-green-500 dark:text-[#2ECC71] font-medium">+{savingsProjection.estimatedInterest1y?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.paidCurrency || 'EUR'}</span>
                                 </div>
                               )}
                             </div>
@@ -2921,7 +2921,7 @@ export default function InvestmentsPage() {
                       <>
                         {/* Formulaire spécifique Crypto */}
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Nom de l'investissement *
                           </label>
                           <input
@@ -2929,13 +2929,13 @@ export default function InvestmentsPage() {
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             placeholder="Ex: Bitcoin, Ethereum"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Symbole de base (ex: BTC, ETH) *
                           </label>
                           <input
@@ -2943,19 +2943,19 @@ export default function InvestmentsPage() {
                             value={formData.baseSymbol}
                             onChange={(e) => setFormData({ ...formData, baseSymbol: e.target.value.toUpperCase() })}
                             placeholder="BTC"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Devise de cotation *
                           </label>
                           <select
                             value={formData.quoteSymbol}
                             onChange={(e) => setFormData({ ...formData, quoteSymbol: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           >
                             <option value="USD">USD</option>
@@ -2965,7 +2965,7 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Plateforme *
                           </label>
                           <input
@@ -2973,13 +2973,13 @@ export default function InvestmentsPage() {
                             value={formData.platform}
                             onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
                             placeholder="Binance, Kraken, Ledger..."
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Quantité (base) *
                           </label>
                           <input
@@ -2988,26 +2988,26 @@ export default function InvestmentsPage() {
                             value={formData.quantity}
                             onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                             placeholder="0.15"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Date d'achat *
                           </label>
                           <input
                             type="date"
                             value={formData.purchaseDate}
                             onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Prix unitaire d'achat ({formData.quoteSymbol}) *
                           </label>
                           <input
@@ -3016,13 +3016,13 @@ export default function InvestmentsPage() {
                             value={formData.buyUnitPriceQuote}
                             onChange={(e) => setFormData({ ...formData, buyUnitPriceQuote: e.target.value })}
                             placeholder="50000.00"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Frais ({formData.quoteSymbol})
                           </label>
                           <input
@@ -3031,12 +3031,12 @@ export default function InvestmentsPage() {
                             value={formData.fees}
                             onChange={(e) => setFormData({ ...formData, fees: e.target.value })}
                             placeholder="0.00"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Montant payé (optionnel)
                           </label>
                           <input
@@ -3045,18 +3045,18 @@ export default function InvestmentsPage() {
                             value={formData.paidAmount}
                             onChange={(e) => setFormData({ ...formData, paidAmount: e.target.value })}
                             placeholder="500.00"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Devise payée
                           </label>
                           <select
                             value={formData.paidCurrency}
                             onChange={(e) => setFormData({ ...formData, paidCurrency: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           >
                             <option value="EUR">EUR</option>
                             <option value="USD">USD</option>
@@ -3065,7 +3065,7 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Taux de change ({formData.paidCurrency} → {formData.quoteSymbol})
                           </label>
                           <input
@@ -3074,12 +3074,12 @@ export default function InvestmentsPage() {
                             value={formData.fxPaidToQuote}
                             onChange={(e) => setFormData({ ...formData, fxPaidToQuote: e.target.value })}
                             placeholder="1.10"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Notes
                           </label>
                           <textarea
@@ -3087,34 +3087,34 @@ export default function InvestmentsPage() {
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                             placeholder="Notes supplémentaires..."
                             rows={3}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         {/* Aperçu des métriques en temps réel */}
                         {cryptoMetrics.loading ? (
-                          <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg">
-                            <p className="text-sm text-[#8B949E]">Calcul des métriques...</p>
+                          <div className="md:col-span-2 p-4 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-[#8B949E]">Calcul des métriques...</p>
                           </div>
                         ) : cryptoMetrics.currentPrice !== null ? (
-                          <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg space-y-2">
-                            <h4 className="text-sm font-semibold text-[#E6EDF3] mb-3">Aperçu des métriques</h4>
+                          <div className="md:col-span-2 p-4 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg space-y-2">
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-[#E6EDF3] mb-3">Aperçu des métriques</h4>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                               <div>
-                                <span className="text-[#8B949E]">Prix actuel:</span>
-                                <span className="ml-2 text-[#E6EDF3] font-medium">{cryptoMetrics.currentPrice?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} {formData.quoteSymbol}</span>
+                                <span className="text-gray-500 dark:text-[#8B949E]">Prix actuel:</span>
+                                <span className="ml-2 text-gray-900 dark:text-[#E6EDF3] font-medium">{cryptoMetrics.currentPrice?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} {formData.quoteSymbol}</span>
                               </div>
                               <div>
-                                <span className="text-[#8B949E]">Valeur actuelle:</span>
-                                <span className="ml-2 text-[#E6EDF3] font-medium">{cryptoMetrics.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol}</span>
+                                <span className="text-gray-500 dark:text-[#8B949E]">Valeur actuelle:</span>
+                                <span className="ml-2 text-gray-900 dark:text-[#E6EDF3] font-medium">{cryptoMetrics.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol}</span>
                               </div>
                               <div>
-                                <span className="text-[#8B949E]">Coût total:</span>
-                                <span className="ml-2 text-[#E6EDF3] font-medium">{cryptoMetrics.costBasisQuote?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol}</span>
+                                <span className="text-gray-500 dark:text-[#8B949E]">Coût total:</span>
+                                <span className="ml-2 text-gray-900 dark:text-[#E6EDF3] font-medium">{cryptoMetrics.costBasisQuote?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol}</span>
                               </div>
                               <div>
-                                <span className="text-[#8B949E]">P/L:</span>
-                                <span className={`ml-2 font-medium ${(cryptoMetrics.plValue || 0) >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                                <span className="text-gray-500 dark:text-[#8B949E]">P/L:</span>
+                                <span className={`ml-2 font-medium ${(cryptoMetrics.plValue || 0) >= 0 ? 'text-green-500 dark:text-[#2ECC71]' : 'text-red-500 dark:text-[#E74C3C]'}`}>
                                   {cryptoMetrics.plValue !== null ? `${cryptoMetrics.plValue >= 0 ? '+' : ''}${cryptoMetrics.plValue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${formData.quoteSymbol}` : '-'}
                                   {cryptoMetrics.plPct !== null && ` (${cryptoMetrics.plPct >= 0 ? '+' : ''}${cryptoMetrics.plPct.toFixed(2)}%)`}
                                 </span>
@@ -3127,7 +3127,7 @@ export default function InvestmentsPage() {
                       <>
                         {/* Formulaire spécifique ETF */}
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Nom de l'ETF *
                           </label>
                           <input
@@ -3135,13 +3135,13 @@ export default function InvestmentsPage() {
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             placeholder="Ex: Amundi MSCI World"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             ISIN (prioritaire) *
                           </label>
                           <input
@@ -3149,12 +3149,12 @@ export default function InvestmentsPage() {
                             value={formData.isin}
                             onChange={(e) => setFormData({ ...formData, isin: e.target.value.toUpperCase() })}
                             placeholder="FR0010315770"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Ticker (si pas d'ISIN)
                           </label>
                           <input
@@ -3162,12 +3162,12 @@ export default function InvestmentsPage() {
                             value={formData.ticker}
                             onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
                             placeholder="CW8"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Plateforme/Broker *
                           </label>
                           <input
@@ -3175,13 +3175,13 @@ export default function InvestmentsPage() {
                             value={formData.platform}
                             onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
                             placeholder="BoursoBank, Degiro..."
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Nombre de parts *
                           </label>
                           <input
@@ -3190,26 +3190,26 @@ export default function InvestmentsPage() {
                             value={formData.quantityParts}
                             onChange={(e) => setFormData({ ...formData, quantityParts: e.target.value })}
                             placeholder="10.5"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Date d'achat *
                           </label>
                           <input
                             type="date"
                             value={formData.purchaseDate}
                             onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Prix unitaire d'achat ({formData.quoteSymbol || 'EUR'}) *
                           </label>
                           <input
@@ -3218,19 +3218,19 @@ export default function InvestmentsPage() {
                             value={formData.buyUnitPrice}
                             onChange={(e) => setFormData({ ...formData, buyUnitPrice: e.target.value })}
                             placeholder="50.00"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Devise de cotation *
                           </label>
                           <select
                             value={formData.quoteSymbol}
                             onChange={(e) => setFormData({ ...formData, quoteSymbol: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           >
                             <option value="EUR">EUR</option>
@@ -3240,7 +3240,7 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Frais ({formData.quoteSymbol || 'EUR'})
                           </label>
                           <input
@@ -3249,18 +3249,18 @@ export default function InvestmentsPage() {
                             value={formData.fees}
                             onChange={(e) => setFormData({ ...formData, fees: e.target.value })}
                             placeholder="0.00"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Type de distribution
                           </label>
                           <select
                             value={formData.distributionType}
                             onChange={(e) => setFormData({ ...formData, distributionType: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           >
                             <option value="">Sélectionner...</option>
                             <option value="ACC">ACC (Capitalisation)</option>
@@ -3269,13 +3269,13 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Enveloppe
                           </label>
                           <select
                             value={formData.envelope}
                             onChange={(e) => setFormData({ ...formData, envelope: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           >
                             <option value="">Sélectionner...</option>
                             <option value="PEA">PEA</option>
@@ -3285,7 +3285,7 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Benchmark
                           </label>
                           <input
@@ -3293,12 +3293,12 @@ export default function InvestmentsPage() {
                             value={formData.benchmark}
                             onChange={(e) => setFormData({ ...formData, benchmark: e.target.value })}
                             placeholder="MSCI World, S&P 500..."
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Notes
                           </label>
                           <textarea
@@ -3306,34 +3306,34 @@ export default function InvestmentsPage() {
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                             placeholder="Notes supplémentaires..."
                             rows={3}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         {/* Aperçu des métriques en temps réel */}
                         {etfMetrics.loading ? (
-                          <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg">
-                            <p className="text-sm text-[#8B949E]">Calcul des métriques...</p>
+                          <div className="md:col-span-2 p-4 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-[#8B949E]">Calcul des métriques...</p>
                           </div>
                         ) : etfMetrics.currentPrice !== null ? (
-                          <div className="md:col-span-2 p-4 bg-[#0D1117] border border-[#30363D] rounded-lg space-y-2">
-                            <h4 className="text-sm font-semibold text-[#E6EDF3] mb-3">Aperçu des métriques</h4>
+                          <div className="md:col-span-2 p-4 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg space-y-2">
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-[#E6EDF3] mb-3">Aperçu des métriques</h4>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                               <div>
-                                <span className="text-[#8B949E]">Prix actuel:</span>
-                                <span className="ml-2 text-[#E6EDF3] font-medium">{etfMetrics.currentPrice?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
+                                <span className="text-gray-500 dark:text-[#8B949E]">Prix actuel:</span>
+                                <span className="ml-2 text-gray-900 dark:text-[#E6EDF3] font-medium">{etfMetrics.currentPrice?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
                               </div>
                               <div>
-                                <span className="text-[#8B949E]">Valeur actuelle:</span>
-                                <span className="ml-2 text-[#E6EDF3] font-medium">{etfMetrics.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
+                                <span className="text-gray-500 dark:text-[#8B949E]">Valeur actuelle:</span>
+                                <span className="ml-2 text-gray-900 dark:text-[#E6EDF3] font-medium">{etfMetrics.currentValue?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
                               </div>
                               <div>
-                                <span className="text-[#8B949E]">Coût total:</span>
-                                <span className="ml-2 text-[#E6EDF3] font-medium">{etfMetrics.costBasis?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
+                                <span className="text-gray-500 dark:text-[#8B949E]">Coût total:</span>
+                                <span className="ml-2 text-gray-900 dark:text-[#E6EDF3] font-medium">{etfMetrics.costBasis?.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.quoteSymbol || 'EUR'}</span>
                               </div>
                               <div>
-                                <span className="text-[#8B949E]">P/L:</span>
-                                <span className={`ml-2 font-medium ${(etfMetrics.plValue || 0) >= 0 ? 'text-[#2ECC71]' : 'text-[#E74C3C]'}`}>
+                                <span className="text-gray-500 dark:text-[#8B949E]">P/L:</span>
+                                <span className={`ml-2 font-medium ${(etfMetrics.plValue || 0) >= 0 ? 'text-green-500 dark:text-[#2ECC71]' : 'text-red-500 dark:text-[#E74C3C]'}`}>
                                   {etfMetrics.plValue !== null ? `${etfMetrics.plValue >= 0 ? '+' : ''}${etfMetrics.plValue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${formData.quoteSymbol || 'EUR'}` : '-'}
                                   {etfMetrics.plPct !== null && ` (${etfMetrics.plPct >= 0 ? '+' : ''}${etfMetrics.plPct.toFixed(2)}%)`}
                                 </span>
@@ -3346,7 +3346,7 @@ export default function InvestmentsPage() {
                       <>
                         {/* Action, ETF */}
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Symbole (ex: BTCUSD, AAPL) *
                           </label>
                           <input
@@ -3362,13 +3362,13 @@ export default function InvestmentsPage() {
                               })
                             }}
                             placeholder="BTCUSD, AAPL"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Symbole de base (ex: BTC, ETH)
                           </label>
                           <input
@@ -3376,18 +3376,18 @@ export default function InvestmentsPage() {
                             value={formData.baseSymbol}
                             onChange={(e) => setFormData({ ...formData, baseSymbol: e.target.value.toUpperCase() })}
                             placeholder="BTC"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Devise de cotation *
                           </label>
                           <select
                             value={formData.quoteSymbol}
                             onChange={(e) => setFormData({ ...formData, quoteSymbol: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           >
                             <option value="USD">USD</option>
                             <option value="EUR">EUR</option>
@@ -3396,7 +3396,7 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Plateforme
                           </label>
                           <input
@@ -3404,12 +3404,12 @@ export default function InvestmentsPage() {
                             value={formData.platform}
                             onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
                             placeholder="Binance, Degiro, etc."
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Quantité *
                           </label>
                           <input
@@ -3418,13 +3418,13 @@ export default function InvestmentsPage() {
                             value={formData.quantity}
                             onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                             placeholder="2.0"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Montant payé *
                           </label>
                           <input
@@ -3433,19 +3433,19 @@ export default function InvestmentsPage() {
                             value={formData.paidAmount}
                             onChange={(e) => setFormData({ ...formData, paidAmount: e.target.value })}
                             placeholder="500.00"
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Devise payée *
                           </label>
                           <select
                             value={formData.paidCurrency}
                             onChange={(e) => setFormData({ ...formData, paidCurrency: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                           >
                             <option value="EUR">EUR</option>
                             <option value="USD">USD</option>
@@ -3454,41 +3454,41 @@ export default function InvestmentsPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                             Date d'achat *
                           </label>
                           <input
                             type="date"
                             value={formData.purchaseDate}
                             onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                            className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                             required
                           />
                         </div>
 
                         {/* Transaction Toggle */}
-                        <div className="md:col-span-2 border-t border-[#30363D] pt-4 mt-4">
+                        <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4 mt-4">
                           <label className="flex items-center gap-3">
                             <input
                               type="checkbox"
                               checked={formData.createTransaction}
                               onChange={(e) => setFormData({ ...formData, createTransaction: e.target.checked })}
-                              className="h-4 w-4 text-[#58A6FF] bg-[#0D1117] border-[#30363D] rounded focus:ring-[#58A6FF]"
+                              className="h-4 w-4 text-blue-500 dark:text-[#58A6FF] bg-gray-50 dark:bg-[#0D1117] border-gray-200 dark:border-[#30363D] rounded focus:ring-[#58A6FF]"
                             />
-                            <span className="text-[#E6EDF3] font-medium">Créer une transaction associée</span>
+                            <span className="text-gray-900 dark:text-[#E6EDF3] font-medium">Créer une transaction associée</span>
                           </label>
                         </div>
 
                         {formData.createTransaction && (
                           <div className="md:col-span-2 space-y-4 animate-in slide-in-from-top-2">
                             <div>
-                              <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                              <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                                 Compte source (dépense) *
                               </label>
                               <select
                                 value={formData.sourceAccountId}
                                 onChange={(e) => setFormData({ ...formData, sourceAccountId: e.target.value })}
-                                className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                                 required={formData.createTransaction}
                               >
                                 <option value="">Sélectionner un compte...</option>
@@ -3505,7 +3505,7 @@ export default function InvestmentsPage() {
                     )}
                   </div>
 
-                  <div className="flex gap-3 pt-4 border-t border-[#30363D]">
+                  <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-[#30363D]">
                     <button
                       type="button"
                       onClick={() => {
@@ -3587,14 +3587,14 @@ export default function InvestmentsPage() {
                           comment: ''
                         })
                       }}
-                      className="flex-1 px-4 py-2.5 border border-[#30363D] text-[#E6EDF3] rounded-lg hover:bg-[#21262D] transition-colors font-medium"
+                      className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-[#30363D] text-gray-900 dark:text-[#E6EDF3] rounded-lg hover:bg-gray-100 dark:bg-[#21262D] transition-colors font-medium"
                     >
                       Annuler
                     </button>
                     <button
                       type="submit"
                       disabled={formLoading}
-                      className={`flex-1 px-4 py-2.5 ${formData.category === 'Immobilier' ? 'bg-[#E67E22] hover:bg-[#D35400]' : 'bg-[#58A6FF] hover:bg-[#4A9EFF]'} text-white rounded-lg disabled:opacity-60 transition-colors font-medium`}
+                      className={`flex-1 px-4 py-2.5 ${formData.category === 'Immobilier' ? 'bg-[#E67E22] hover:bg-[#D35400]' : 'bg-blue-500 dark:bg-[#58A6FF] hover:bg-[#4A9EFF]'} text-white rounded-lg disabled:opacity-60 transition-colors font-medium`}
                     >
                       {formLoading ? 'Création...' : 'Créer'}
                     </button>
@@ -3616,17 +3616,17 @@ export default function InvestmentsPage() {
             }}
           >
             <div
-              className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+              className="bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-[#161B22] border-b border-[#30363D] p-6 flex items-center justify-between z-10">
-                <h2 className="text-2xl font-bold text-[#E6EDF3] flex items-center gap-2">
-                  <Home className="w-6 h-6 text-[#E67E22]" />
+              <div className="sticky top-0 bg-white dark:bg-[#161B22] border-b border-gray-200 dark:border-[#30363D] p-6 flex items-center justify-between z-10">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6EDF3] flex items-center gap-2">
+                  <Home className="w-6 h-6 text-orange-500 dark:text-[#E67E22]" />
                   Nouvel Investissement Immobilier
                 </h2>
                 <button
                   onClick={() => setCreateRealEstateModalOpen(false)}
-                  className="p-2 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#21262D] rounded-lg transition-colors"
+                  className="p-2 text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:text-[#E6EDF3] hover:bg-gray-100 dark:bg-[#21262D] rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -3634,13 +3634,13 @@ export default function InvestmentsPage() {
 
               <form onSubmit={handleCreateRealEstate} className="p-6 space-y-6">
                 {error && (
-                  <div className="bg-[#E74C3C]/20 border border-[#E74C3C] rounded-lg p-4 text-[#E74C3C] text-sm">
+                  <div className="bg-[#E74C3C]/20 border border-[#E74C3C] rounded-lg p-4 text-red-500 dark:text-[#E74C3C] text-sm">
                     {error}
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Nom du bien *
                     </label>
                     <input
@@ -3648,13 +3648,13 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.name}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, name: e.target.value })}
                       placeholder="Ex: Studio à Lorient"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                       required
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Adresse
                     </label>
                     <input
@@ -3662,18 +3662,18 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.address}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, address: e.target.value })}
                       placeholder="123 Rue de la République, 56100 Lorient"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Type de bien
                     </label>
                     <select
                       value={realEstateFormData.propertyType}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyType: e.target.value })}
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     >
                       <option value="">Sélectionner...</option>
                       <option value="Appartement">Appartement</option>
@@ -3687,23 +3687,23 @@ export default function InvestmentsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Date d'achat
                     </label>
                     <input
                       type="date"
                       value={realEstateFormData.purchaseDate}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, purchaseDate: e.target.value })}
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
-                  <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                    <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Coûts d'acquisition</h3>
+                  <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Coûts d'acquisition</h3>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Prix d'achat (€) *
                     </label>
                     <input
@@ -3712,13 +3712,13 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.purchasePrice}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, purchasePrice: e.target.value })}
                       placeholder="150000"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Frais de notaire (€)
                     </label>
                     <input
@@ -3727,12 +3727,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.notaryFees}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, notaryFees: e.target.value })}
                       placeholder="12000"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Travaux initiaux (€)
                     </label>
                     <input
@@ -3741,12 +3741,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.initialWorks}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, initialWorks: e.target.value })}
                       placeholder="5000"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Apport initial (€) *
                     </label>
                     <input
@@ -3755,17 +3755,17 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.downPayment}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, downPayment: e.target.value })}
                       placeholder="30000"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                       required
                     />
                   </div>
 
-                  <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                    <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Prêt</h3>
+                  <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Prêt</h3>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Mensualité de crédit (€)
                     </label>
                     <input
@@ -3774,12 +3774,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.loanMonthlyPayment}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, loanMonthlyPayment: e.target.value })}
                       placeholder="450"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Assurance emprunteur mensuelle (€)
                     </label>
                     <input
@@ -3788,16 +3788,16 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.loanInsuranceMonthly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, loanInsuranceMonthly: e.target.value })}
                       placeholder="50"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
-                  <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                    <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Revenus</h3>
+                  <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Revenus</h3>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Loyer mensuel (€) *
                     </label>
                     <input
@@ -3806,13 +3806,13 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.rentMonthly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, rentMonthly: e.target.value })}
                       placeholder="650"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Taux de vacance (%)
                     </label>
                     <input
@@ -3821,16 +3821,16 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.vacancyRatePct}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, vacancyRatePct: e.target.value })}
                       placeholder="5"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
-                  <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                    <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Charges</h3>
+                  <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Charges</h3>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Charges non récupérables mensuelles (€)
                     </label>
                     <input
@@ -3839,12 +3839,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.nonRecoverableChargesMonthly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, nonRecoverableChargesMonthly: e.target.value })}
                       placeholder="50"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Taxe foncière annuelle (€)
                     </label>
                     <input
@@ -3853,12 +3853,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.propertyTaxYearly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyTaxYearly: e.target.value })}
                       placeholder="1200"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Assurance PNO annuelle (€)
                     </label>
                     <input
@@ -3867,12 +3867,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.insuranceYearly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, insuranceYearly: e.target.value })}
                       placeholder="300"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Réserve maintenance mensuelle (€)
                     </label>
                     <input
@@ -3881,12 +3881,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.maintenanceReserveMonthly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, maintenanceReserveMonthly: e.target.value })}
                       placeholder="100"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Commentaire
                     </label>
                     <textarea
@@ -3894,16 +3894,16 @@ export default function InvestmentsPage() {
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, comment: e.target.value })}
                       placeholder="Notes supplémentaires..."
                       rows={3}
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-[#30363D]">
+                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-[#30363D]">
                   <button
                     type="button"
                     onClick={() => setCreateRealEstateModalOpen(false)}
-                    className="flex-1 px-4 py-2.5 border border-[#30363D] text-[#E6EDF3] rounded-lg hover:bg-[#21262D] transition-colors font-medium"
+                    className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-[#30363D] text-gray-900 dark:text-[#E6EDF3] rounded-lg hover:bg-gray-100 dark:bg-[#21262D] transition-colors font-medium"
                   >
                     Annuler
                   </button>
@@ -3927,17 +3927,17 @@ export default function InvestmentsPage() {
             onClick={() => setEditModalOpen(false)}
           >
             <div
-              className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+              className="bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-[#161B22] border-b border-[#30363D] p-6 flex items-center justify-between z-10">
-                <h2 className="text-2xl font-bold text-[#E6EDF3] flex items-center gap-2">
-                  <Edit className="w-6 h-6 text-[#58A6FF]" />
+              <div className="sticky top-0 bg-white dark:bg-[#161B22] border-b border-gray-200 dark:border-[#30363D] p-6 flex items-center justify-between z-10">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6EDF3] flex items-center gap-2">
+                  <Edit className="w-6 h-6 text-blue-500 dark:text-[#58A6FF]" />
                   Modifier l'Investissement
                 </h2>
                 <button
                   onClick={() => setEditModalOpen(false)}
-                  className="p-2 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#21262D] rounded-lg transition-colors"
+                  className="p-2 text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:text-[#E6EDF3] hover:bg-gray-100 dark:bg-[#21262D] rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -3945,13 +3945,13 @@ export default function InvestmentsPage() {
 
               <form onSubmit={handleUpdateInvestment} className="p-6 space-y-6">
                 {error && (
-                  <div className="bg-[#E74C3C]/20 border border-[#E74C3C] rounded-lg p-4 text-[#E74C3C] text-sm">
+                  <div className="bg-[#E74C3C]/20 border border-[#E74C3C] rounded-lg p-4 text-red-500 dark:text-[#E74C3C] text-sm">
                     {error}
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Nom de l'investissement *
                     </label>
                     <input
@@ -3959,13 +3959,13 @@ export default function InvestmentsPage() {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Ex: Bitcoin, Apple Inc."
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Symbole (ex: BTCUSD, AAPL)
                     </label>
                     <input
@@ -3981,12 +3981,12 @@ export default function InvestmentsPage() {
                         })
                       }}
                       placeholder="BTCUSD, AAPL"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Symbole de base (ex: BTC, ETH)
                     </label>
                     <input
@@ -3994,18 +3994,18 @@ export default function InvestmentsPage() {
                       value={formData.baseSymbol}
                       onChange={(e) => setFormData({ ...formData, baseSymbol: e.target.value.toUpperCase() })}
                       placeholder="BTC"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Devise de cotation *
                     </label>
                     <select
                       value={formData.quoteSymbol}
                       onChange={(e) => setFormData({ ...formData, quoteSymbol: e.target.value })}
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                     >
                       <option value="USD">USD</option>
                       <option value="EUR">EUR</option>
@@ -4014,13 +4014,13 @@ export default function InvestmentsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Catégorie *
                     </label>
                     <select
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                       required
                     >
                       {CATEGORIES.map(cat => (
@@ -4030,7 +4030,7 @@ export default function InvestmentsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Plateforme
                     </label>
                     <input
@@ -4038,23 +4038,23 @@ export default function InvestmentsPage() {
                       value={formData.platform}
                       onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
                       placeholder="Binance, Degiro, etc."
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#58A6FF]"
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-[#30363D]">
+                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-[#30363D]">
                   <button
                     type="button"
                     onClick={() => setEditModalOpen(false)}
-                    className="flex-1 px-4 py-2.5 border border-[#30363D] text-[#E6EDF3] rounded-lg hover:bg-[#21262D] transition-colors font-medium"
+                    className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-[#30363D] text-gray-900 dark:text-[#E6EDF3] rounded-lg hover:bg-gray-100 dark:bg-[#21262D] transition-colors font-medium"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
                     disabled={formLoading}
-                    className="flex-1 px-4 py-2.5 bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] disabled:opacity-60 transition-colors font-medium"
+                    className="flex-1 px-4 py-2.5 bg-blue-500 dark:bg-[#58A6FF] text-white rounded-lg hover:bg-[#4A9EFF] disabled:opacity-60 transition-colors font-medium"
                   >
                     {formLoading ? 'Modification...' : 'Modifier'}
                   </button>
@@ -4075,17 +4075,17 @@ export default function InvestmentsPage() {
             }}
           >
             <div
-              className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+              className="bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#30363D] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-[#161B22] border-b border-[#30363D] p-6 flex items-center justify-between z-10">
-                <h2 className="text-2xl font-bold text-[#E6EDF3] flex items-center gap-2">
-                  <Edit className="w-6 h-6 text-[#E67E22]" />
+              <div className="sticky top-0 bg-white dark:bg-[#161B22] border-b border-gray-200 dark:border-[#30363D] p-6 flex items-center justify-between z-10">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6EDF3] flex items-center gap-2">
+                  <Edit className="w-6 h-6 text-orange-500 dark:text-[#E67E22]" />
                   Modifier l'Investissement Immobilier
                 </h2>
                 <button
                   onClick={() => setEditRealEstateModalOpen(false)}
-                  className="p-2 text-[#8B949E] hover:text-[#E6EDF3] hover:bg-[#21262D] rounded-lg transition-colors"
+                  className="p-2 text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:text-[#E6EDF3] hover:bg-gray-100 dark:bg-[#21262D] rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -4093,13 +4093,13 @@ export default function InvestmentsPage() {
 
               <form onSubmit={handleUpdateRealEstate} className="p-6 space-y-6">
                 {error && (
-                  <div className="bg-[#E74C3C]/20 border border-[#E74C3C] rounded-lg p-4 text-[#E74C3C] text-sm">
+                  <div className="bg-[#E74C3C]/20 border border-[#E74C3C] rounded-lg p-4 text-red-500 dark:text-[#E74C3C] text-sm">
                     {error}
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Nom du bien *
                     </label>
                     <input
@@ -4107,13 +4107,13 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.name}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, name: e.target.value })}
                       placeholder="Ex: Studio à Lorient"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                       required
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Adresse
                     </label>
                     <input
@@ -4121,18 +4121,18 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.address}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, address: e.target.value })}
                       placeholder="123 Rue de la République, 56100 Lorient"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Type de bien
                     </label>
                     <select
                       value={realEstateFormData.propertyType}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyType: e.target.value })}
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     >
                       <option value="">Sélectionner...</option>
                       <option value="Appartement">Appartement</option>
@@ -4146,23 +4146,23 @@ export default function InvestmentsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Date d'achat
                     </label>
                     <input
                       type="date"
                       value={realEstateFormData.purchaseDate}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, purchaseDate: e.target.value })}
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
-                  <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                    <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Coûts d'acquisition</h3>
+                  <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Coûts d'acquisition</h3>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Prix d'achat (€) *
                     </label>
                     <input
@@ -4171,13 +4171,13 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.purchasePrice}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, purchasePrice: e.target.value })}
                       placeholder="150000"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Frais de notaire (€)
                     </label>
                     <input
@@ -4186,12 +4186,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.notaryFees}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, notaryFees: e.target.value })}
                       placeholder="12000"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Travaux initiaux (€)
                     </label>
                     <input
@@ -4200,12 +4200,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.initialWorks}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, initialWorks: e.target.value })}
                       placeholder="5000"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Apport initial (€) *
                     </label>
                     <input
@@ -4214,17 +4214,17 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.downPayment}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, downPayment: e.target.value })}
                       placeholder="30000"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                       required
                     />
                   </div>
 
-                  <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                    <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Prêt</h3>
+                  <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Prêt</h3>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Mensualité de crédit (€)
                     </label>
                     <input
@@ -4233,12 +4233,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.loanMonthlyPayment}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, loanMonthlyPayment: e.target.value })}
                       placeholder="450"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Assurance emprunteur mensuelle (€)
                     </label>
                     <input
@@ -4247,16 +4247,16 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.loanInsuranceMonthly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, loanInsuranceMonthly: e.target.value })}
                       placeholder="50"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
-                  <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                    <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Revenus</h3>
+                  <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Revenus</h3>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Loyer mensuel (€) *
                     </label>
                     <input
@@ -4265,13 +4265,13 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.rentMonthly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, rentMonthly: e.target.value })}
                       placeholder="650"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Taux de vacance (%)
                     </label>
                     <input
@@ -4280,16 +4280,16 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.vacancyRatePct}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, vacancyRatePct: e.target.value })}
                       placeholder="5"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
-                  <div className="md:col-span-2 border-t border-[#30363D] pt-4">
-                    <h3 className="text-lg font-semibold text-[#E6EDF3] mb-4">Charges</h3>
+                  <div className="md:col-span-2 border-t border-gray-200 dark:border-[#30363D] pt-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-[#E6EDF3] mb-4">Charges</h3>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Charges non récupérables mensuelles (€)
                     </label>
                     <input
@@ -4298,12 +4298,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.nonRecoverableChargesMonthly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, nonRecoverableChargesMonthly: e.target.value })}
                       placeholder="50"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Taxe foncière annuelle (€)
                     </label>
                     <input
@@ -4312,12 +4312,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.propertyTaxYearly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, propertyTaxYearly: e.target.value })}
                       placeholder="1200"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Assurance PNO annuelle (€)
                     </label>
                     <input
@@ -4326,12 +4326,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.insuranceYearly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, insuranceYearly: e.target.value })}
                       placeholder="300"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Réserve maintenance mensuelle (€)
                     </label>
                     <input
@@ -4340,12 +4340,12 @@ export default function InvestmentsPage() {
                       value={realEstateFormData.maintenanceReserveMonthly}
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, maintenanceReserveMonthly: e.target.value })}
                       placeholder="100"
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-[#E6EDF3] mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-[#E6EDF3] mb-2">
                       Commentaire
                     </label>
                     <textarea
@@ -4353,16 +4353,16 @@ export default function InvestmentsPage() {
                       onChange={(e) => setRealEstateFormData({ ...realEstateFormData, comment: e.target.value })}
                       placeholder="Notes supplémentaires..."
                       rows={3}
-                      className="w-full px-4 py-2 bg-[#0D1117] border border-[#30363D] rounded-lg text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#30363D] rounded-lg text-gray-900 dark:text-[#E6EDF3] focus:outline-none focus:ring-2 focus:ring-[#E67E22]"
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-[#30363D]">
+                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-[#30363D]">
                   <button
                     type="button"
                     onClick={() => setEditRealEstateModalOpen(false)}
-                    className="flex-1 px-4 py-2.5 border border-[#30363D] text-[#E6EDF3] rounded-lg hover:bg-[#21262D] transition-colors font-medium"
+                    className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-[#30363D] text-gray-900 dark:text-[#E6EDF3] rounded-lg hover:bg-gray-100 dark:bg-[#21262D] transition-colors font-medium"
                   >
                     Annuler
                   </button>

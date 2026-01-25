@@ -1,9 +1,57 @@
 'use client'
 
 import { useTheme } from '@/components/theme-provider'
-import { Moon, Sun, ChevronDown, Trash2, Move, Loader2, Edit } from 'lucide-react'
+import { Moon, Sun, ChevronDown, Trash2, Move, Loader2, Edit, GripVertical } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { authFetch } from '@/lib/auth-fetch'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function SortableAccountItem(props: any) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: props.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg group hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-3">
+        <button {...attributes} {...listeners} className="cursor-grab text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <GripVertical className="w-5 h-5" />
+        </button>
+        <div>
+          <p className="font-medium text-gray-900 dark:text-gray-100">{props.name}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{props.bank}</p>
+        </div>
+      </div>
+      <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+        {props.type}
+      </div>
+    </div>
+  );
+}
 
 interface Category {
   id: string
@@ -79,6 +127,16 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
+  const [accounts, setAccounts] = useState<any[]>([])
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
   useEffect(() => {
     fetchData()
   }, [])
@@ -98,6 +156,14 @@ export default function SettingsPage() {
       if (!subCategoriesResponse.ok) throw new Error('Erreur lors du chargement des sous-catégories')
       const subCategoriesData = await subCategoriesResponse.json()
       setSubCategories(subCategoriesData)
+
+      // Charger les comptes
+      const accountsResponse = await authFetch('/api/accounts')
+      if (!accountsResponse.ok) throw new Error('Erreur lors du chargement des comptes')
+      const accountsData = await accountsResponse.json()
+      // Sort by displayOrder
+      accountsData.sort((a: any, b: any) => (a.displayOrder || 0) - (b.displayOrder || 0))
+      setAccounts(accountsData)
 
       // Charger les transactions pour compter
       const transactionsResponse = await authFetch('/api/transactions')
@@ -129,6 +195,37 @@ export default function SettingsPage() {
       setError(err.message || 'Erreur lors du chargement des données')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event
+
+    if (active.id !== over.id) {
+      setAccounts((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id)
+        const newIndex = items.findIndex((item) => item.id === over.id)
+
+        const newItems = arrayMove(items, oldIndex, newIndex)
+
+        // Optimistic update done, now persist
+        const updates = newItems.map((acc, idx) => ({
+          id: acc.id,
+          displayOrder: idx
+        }))
+
+        // Fire and forget (or handle error strictly if needed)
+        authFetch('/api/accounts/reorder', {
+          method: 'POST',
+          body: JSON.stringify({ items: updates })
+        }).catch(err => {
+          console.error('Reorder failed', err)
+          // Revert? For now simple log
+          setError('Erreur lors de la sauvegarde de l\'ordre des comptes')
+        })
+
+        return newItems
+      })
     }
   }
 
@@ -640,6 +737,37 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Section Gestion des Comptes */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
+        <div className="mb-6">
+          <h3 className="text-xl font-semibold mb-2">Gestion des comptes</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Réorganisez vos comptes par glisser-déposer. L'ordre sera mis à jour partout.
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-3">
+              <SortableContext
+                items={accounts}
+                strategy={verticalListSortingStrategy}
+              >
+                {accounts.map(acc => <SortableAccountItem key={acc.id} id={acc.id} name={acc.name} bank={acc.bank} type={acc.type} />)}
+              </SortableContext>
+            </div>
+          </DndContext>
+        )}
       </div>
 
       {/* Section Gestion des catégories */}

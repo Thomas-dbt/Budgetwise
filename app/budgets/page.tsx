@@ -387,7 +387,7 @@ export default function BudgetsPage() {
                                             onChange={(e) => handleBudgetChange(category.id, e.target.value)}
                                             onBlur={(e) => saveBudget(category.id, Number(e.target.value))}
                                             placeholder="0"
-                                            className="w-20 md:w-28 py-1 text-center font-bold text-lg bg-transparent outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0"
+                                            className="w-20 md:w-28 py-1 text-center font-bold text-lg bg-transparent outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0 text-gray-900 dark:text-gray-100"
                                         />
                                         <span className="ml-1 text-gray-400 text-sm">€</span>
                                         <span className="absolute right-0 -top-5 text-[10px] text-gray-400 opacity-0 group-hover/input:opacity-100 transition-opacity">Objectif</span>

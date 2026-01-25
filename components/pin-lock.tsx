@@ -12,16 +12,28 @@ export default function PinLock() {
     const [inputPin, setInputPin] = useState("")
     const [confirmPin, setConfirmPin] = useState("")
     const [error, setError] = useState(false)
-    const [mode, setMode] = useState<'UNLOCK' | 'SETUP' | 'CONFIRM'>('UNLOCK')
+    const [mode, setMode] = useState<'UNLOCK' | 'SETUP' | 'CONFIRM' | 'FORGOT_REQUEST' | 'FORGOT_VERIFY'>('UNLOCK')
     const [shake, setShake] = useState(false)
     const [keys, setKeys] = useState<string[]>(['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'])
+    const [email, setEmail] = useState("")
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [requestMessage, setRequestMessage] = useState("")
 
     useEffect(() => {
         // Randomize keys on mount or when locked state changes
         if (isLocked) {
             shuffleKeys()
+            // Reset state
+            // If user was in forgot flow and closed/reopened, maybe reset? 
+            // But actually isLocked stays true. 
+            // If we just loaded, check hasPin.
+            if (!hasPin) {
+                setMode('SETUP')
+            } else {
+                setMode('UNLOCK')
+            }
         }
-    }, [isLocked])
+    }, [isLocked]) // Removed hasPin dependency to avoid resetting mode when hasPin changes during setup
 
     const shuffleKeys = () => {
         const newKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
@@ -37,20 +49,15 @@ export default function PinLock() {
             setInputPin("")
             setConfirmPin("")
             setError(false)
+            setMode('UNLOCK') // Reset to default for next time
             return
         }
-
-        if (!hasPin) {
-            setMode('SETUP')
-        } else {
-            setMode('UNLOCK')
-        }
-    }, [isLocked, hasPin])
+    }, [isLocked])
 
     const PIN_LENGTH = 6
 
-    const handleDigit = (digit: string) => {
-        if (shake) return // Block input during error animation
+    const handleDigit = async (digit: string) => {
+        if (shake || isSubmitting) return // Block input during error or submission
 
         if (mode === 'UNLOCK') {
             const nextPin = inputPin + digit
@@ -84,6 +91,34 @@ export default function PinLock() {
                     }, 500)
                 }
             }
+        } else if (mode === 'FORGOT_VERIFY') {
+            const nextPin = inputPin + digit
+            setInputPin(nextPin)
+            if (nextPin.length === PIN_LENGTH) {
+                // Verify code
+                setIsSubmitting(true)
+                try {
+                    const res = await fetch('/api/auth/pin-reset/verify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, code: nextPin })
+                    })
+                    const data = await res.json()
+                    if (data.success) {
+                        setMode('SETUP')
+                        setInputPin("")
+                        setConfirmPin("")
+                        setRequestMessage("Code validé. Définissez votre nouveau code.")
+                    } else {
+                        triggerError()
+                        setRequestMessage(data.error || "Code invalide")
+                    }
+                } catch (e) {
+                    triggerError()
+                } finally {
+                    setIsSubmitting(false)
+                }
+            }
         }
     }
 
@@ -101,8 +136,33 @@ export default function PinLock() {
         setTimeout(() => {
             setShake(false)
             setError(false)
-            if (mode === 'UNLOCK') setInputPin("")
+            if (mode === 'UNLOCK' || mode === 'FORGOT_VERIFY') setInputPin("")
         }, 500)
+    }
+
+    const handleForgotRequest = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!email) return
+        setIsSubmitting(true)
+        try {
+            const res = await fetch('/api/auth/pin-reset/request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            })
+            const data = await res.json()
+            if (data.success) {
+                setMode('FORGOT_VERIFY')
+                setInputPin("")
+                setRequestMessage("Code envoyé par email.")
+            } else {
+                setRequestMessage(data.error || "Erreur lors de l'envoi")
+            }
+        } catch (e) {
+            setRequestMessage("Une erreur est survenue")
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     if (!isLocked) return null
@@ -110,8 +170,25 @@ export default function PinLock() {
     if (pathname === '/login') return null
 
     const currentInput = mode === 'CONFIRM' ? confirmPin : inputPin
-    const title = mode === 'UNLOCK' ? 'Entrez votre code' : (mode === 'SETUP' ? 'Nouveau Code Sécurité' : 'Confirmez le code')
-    const subTitle = mode === 'UNLOCK' ? 'Code à 6 chiffres' : (mode === 'SETUP' ? 'Créez votre code code à 6 chiffres' : 'Vérifiez la saisie')
+
+    // Dynamic titles
+    let title = 'Entrez votre code'
+    let subTitle = 'Code à 6 chiffres'
+
+    if (mode === 'SETUP') {
+        title = 'Nouveau Code Sécurité'
+        subTitle = 'Créez votre code à 6 chiffres'
+    } else if (mode === 'CONFIRM') {
+        title = 'Confirmez le code'
+        subTitle = 'Vérifiez la saisie'
+    } else if (mode === 'FORGOT_REQUEST') {
+        title = 'Réinitialisation PIN'
+        subTitle = 'Entrez votre email pour recevoir un code'
+    } else if (mode === 'FORGOT_VERIFY') {
+        title = 'Vérification'
+        subTitle = 'Entrez le code reçu par email'
+    }
+
 
     return (
         <div className="fixed inset-0 z-[100] bg-slate-900 text-white flex flex-col items-center justify-center p-4">
@@ -127,44 +204,85 @@ export default function PinLock() {
                     <p className={`text-sm ${error ? 'text-red-400' : 'text-slate-400'}`}>
                         {error ? 'Code incorrect' : subTitle}
                     </p>
+                    {requestMessage && (
+                        <p className="text-xs text-blue-300 mt-2">{requestMessage}</p>
+                    )}
                 </div>
 
-                {/* Dots Display (6 dots) */}
-                <div className="flex gap-4 mb-4">
-                    {[0, 1, 2, 3, 4, 5].map(i => (
-                        <div
-                            key={i}
-                            className={`w-3 h-3 rounded-full transition-all duration-200 ${i < currentInput.length
-                                ? (error ? 'bg-red-500 scale-125' : 'bg-blue-500 scale-125')
-                                : 'bg-slate-700'
-                                }`}
+                {mode === 'FORGOT_REQUEST' ? (
+                    <form onSubmit={handleForgotRequest} className="w-full space-y-4">
+                        <input
+                            type="email"
+                            placeholder="votre@email.com"
+                            className="w-full bg-slate-800 text-white border border-slate-700 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                         />
-                    ))}
-                </div>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => { setMode('UNLOCK'); setRequestMessage("") }}
+                                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-medium transition-colors"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting || !email}
+                                className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white py-3 rounded-lg font-medium transition-colors"
+                            >
+                                {isSubmitting ? 'Envoi...' : 'Envoyer'}
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <>
+                        {/* Dots Display (6 dots) */}
+                        <div className="flex gap-4 mb-4">
+                            {[0, 1, 2, 3, 4, 5].map(i => (
+                                <div
+                                    key={i}
+                                    className={`w-3 h-3 rounded-full transition-all duration-200 ${i < currentInput.length
+                                        ? (error ? 'bg-red-500 scale-125' : 'bg-blue-500 scale-125')
+                                        : 'bg-slate-700'
+                                        }`}
+                                />
+                            ))}
+                        </div>
 
-                {/* Randomized Keypad with Standard Layout */}
-                <div className="grid grid-cols-3 gap-6 w-full max-w-[280px]">
-                    {/* First 9 keys in the grid */}
-                    {keys.slice(0, 9).map(num => (
-                        <button key={num} onClick={() => handleDigit(num)} className="w-16 h-16 rounded-full bg-slate-800 hover:bg-slate-700 text-2xl font-semibold flex items-center justify-center active:scale-95 transition-all">
-                            {num}
-                        </button>
-                    ))}
+                        {/* Randomized Keypad with Standard Layout */}
+                        <div className="grid grid-cols-3 gap-6 w-full max-w-[280px]">
+                            {/* First 9 keys in the grid */}
+                            {keys.slice(0, 9).map(num => (
+                                <button key={num} onClick={() => handleDigit(num)} className="w-16 h-16 rounded-full bg-slate-800 hover:bg-slate-700 text-2xl font-semibold flex items-center justify-center active:scale-95 transition-all">
+                                    {num}
+                                </button>
+                            ))}
 
-                    {/* Empty slot */}
-                    <div className="w-16 h-16 flex items-center justify-center">
-                    </div>
+                            {/* Empty slot or Forgot PIN */}
+                            <div className="w-16 h-16 flex items-center justify-center">
+                                {mode === 'UNLOCK' && (
+                                    <button
+                                        onClick={() => { setMode('FORGOT_REQUEST'); setRequestMessage("") }}
+                                        className="text-xs text-slate-500 hover:text-slate-300 text-center"
+                                    >
+                                        Oublié ?
+                                    </button>
+                                )}
+                            </div>
 
-                    {/* 10th key at bottom center (where 0 usually is) */}
-                    <button onClick={() => handleDigit(keys[9])} className="w-16 h-16 rounded-full bg-slate-800 hover:bg-slate-700 text-2xl font-semibold flex items-center justify-center active:scale-95 transition-all">
-                        {keys[9]}
-                    </button>
+                            {/* 10th key at bottom center (where 0 usually is) */}
+                            <button onClick={() => handleDigit(keys[9])} className="w-16 h-16 rounded-full bg-slate-800 hover:bg-slate-700 text-2xl font-semibold flex items-center justify-center active:scale-95 transition-all">
+                                {keys[9]}
+                            </button>
 
-                    {/* Delete Button */}
-                    <button onClick={handleDelete} className="w-16 h-16 rounded-full hover:bg-slate-800/50 text-slate-400 flex items-center justify-center active:scale-95 transition-all">
-                        ⌫
-                    </button>
-                </div>
+                            {/* Delete Button */}
+                            <button onClick={handleDelete} className="w-16 h-16 rounded-full hover:bg-slate-800/50 text-slate-400 flex items-center justify-center active:scale-95 transition-all">
+                                ⌫
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
 
 

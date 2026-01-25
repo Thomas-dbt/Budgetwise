@@ -23,10 +23,16 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
 
     const format = (searchParams.get('format') || 'xlsx').toLowerCase()
+    const search = searchParams.get('search')
+    const type = searchParams.get('type')
+    const categoryId = searchParams.get('categoryId')
+    const minAmount = searchParams.get('minAmount')
+    const maxAmount = searchParams.get('maxAmount')
+
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'route.ts:19', message: 'Format determined', data: { format, userId }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
+    fetch('http://127.0.0.1:7242/ingest/ac321bcf-a383-476d-b03a-bfd3f887c5d5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'route.ts:19', message: 'Format determined', data: { format, userId, search, type, categoryId }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
     // #endregion
-    if (!['pdf', 'xlsx'].includes(format)) {
+    if (!['pdf', 'xlsx', 'csv'].includes(format)) {
       return NextResponse.json({ error: 'Format non supporté' }, { status: 400 })
     }
 
@@ -62,8 +68,63 @@ export async function GET(req: Request) {
       account: { ownerId: userId }
     }
 
-    if (accountId) {
+    if (accountId && accountId !== 'all') {
       where.accountId = accountId
+    }
+
+    // Apply filters
+    if (type && ['income', 'expense', 'transfer', 'investment'].includes(type) && type !== 'all') {
+      where.type = type
+    } else if (type === 'pending') {
+      where.pending = true
+    }
+
+    if (categoryId) {
+      where.OR = [
+        { categoryId: categoryId },
+        { category: { parentId: categoryId } } // Include subcategories if parent selected
+      ]
+    }
+
+    // Amount filter (magnitude)
+    if (minAmount || maxAmount) {
+      const min = minAmount ? Number(minAmount) : 0
+      const max = maxAmount ? Number(maxAmount) : Infinity
+
+      const magnitudeConditions = []
+      if (minAmount) {
+        magnitudeConditions.push({
+          OR: [
+            { amount: { gte: min } },
+            { amount: { lte: -min } }
+          ]
+        })
+      }
+      if (maxAmount) {
+        magnitudeConditions.push({
+          OR: [
+            { amount: { lte: max, gte: -max } }
+          ]
+        })
+      }
+
+      where.AND = [
+        ...(where.AND || []),
+        ...magnitudeConditions
+      ]
+    }
+
+    if (search) {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { description: { contains: search } },
+            { category: { name: { contains: search } } },
+            { account: { name: { contains: search } } }
+          ]
+        }
+      ]
     }
 
     if (startDate || endDate) {
@@ -80,7 +141,11 @@ export async function GET(req: Request) {
       where,
       include: {
         account: true,
-        category: true
+        category: {
+          include: {
+            parent: true
+          }
+        }
       },
       orderBy: { date: 'desc' }
     })
@@ -89,15 +154,21 @@ export async function GET(req: Request) {
     // #endregion
 
     if (format === 'csv') {
-      const header = ['Date', 'Compte', 'Description', 'Catégorie', 'Type', 'Montant (€)']
-      const rows = transactions.map(tx => [
-        formatDate(new Date(tx.date)),
-        tx.account.name,
-        tx.description || '',
-        tx.category?.name || 'Sans catégorie',
-        tx.type === 'income' ? 'Revenus' : tx.type === 'expense' ? 'Dépenses' : 'Transfert',
-        formatCurrency(Number(tx.amount))
-      ])
+      const header = ['Date', 'Compte', 'Description', 'Catégorie', 'Sous-catégorie', 'Type', 'Montant (€)']
+      const rows = transactions.map(tx => {
+        const categoryName = tx.category?.parent ? tx.category.parent.name : (tx.category?.name || 'Sans catégorie')
+        const subCategoryName = tx.category?.parent ? tx.category.name : ''
+
+        return [
+          formatDate(new Date(tx.date)),
+          tx.account.name,
+          tx.description || '',
+          categoryName,
+          subCategoryName,
+          tx.type === 'income' ? 'Revenus' : tx.type === 'expense' ? 'Dépenses' : 'Transfert',
+          formatCurrency(Number(tx.amount))
+        ]
+      })
 
       const csvLines = [header, ...rows].map(columns =>
         columns
@@ -148,6 +219,7 @@ export async function GET(req: Request) {
           { header: 'Compte', key: 'account', width: 20 },
           { header: 'Description', key: 'description', width: 40 },
           { header: 'Catégorie', key: 'category', width: 20 },
+          { header: 'Sous-catégorie', key: 'subCategory', width: 20 },
           { header: 'Type', key: 'type', width: 15 },
           { header: 'Montant (€)', key: 'amount', width: 16 },
         ]
@@ -162,11 +234,15 @@ export async function GET(req: Request) {
         }
 
         orderedRows.forEach((tx) => {
+          const categoryName = tx.category?.parent ? tx.category.parent.name : (tx.category?.name || 'Sans catégorie')
+          const subCategoryName = tx.category?.parent ? tx.category.name : ''
+
           const row = worksheet.addRow({
             date: formatDate(new Date(tx.date)),
             account: tx.account.name,
             description: tx.description || 'Sans libellé',
-            category: tx.category?.name || 'Sans catégorie',
+            category: categoryName,
+            subCategory: subCategoryName,
             type: tx.type === 'income' ? 'Revenus' : tx.type === 'expense' ? 'Dépenses' : 'Transfert',
             amount: Number(tx.amount),
           })
@@ -174,7 +250,7 @@ export async function GET(req: Request) {
         })
         const lastDataRow = worksheet.rowCount
         worksheet.addRow([])
-        const totalRow = worksheet.addRow({ description: 'Total', amount: { formula: `SUM(F2:F${lastDataRow})` } })
+        const totalRow = worksheet.addRow({ description: 'Total', amount: { formula: `SUM(G2:G${lastDataRow})` } })
         totalRow.font = { bold: true }
         totalRow.getCell('amount').numFmt = '#,##0.00 "€"'
       })
@@ -223,7 +299,7 @@ export async function GET(req: Request) {
     // Tableau
     doc.setFontSize(10)
     const startX = 20
-    const colWidths = [25, 30, 60, 30, 20, 25] // mm
+    const colWidths = [22, 25, 50, 25, 25, 18, 25] // mm
     const headerY = yPos + 5
 
     // Headers
@@ -232,8 +308,9 @@ export async function GET(req: Request) {
     doc.text('Compte', startX + colWidths[0], headerY)
     doc.text('Description', startX + colWidths[0] + colWidths[1], headerY)
     doc.text('Catégorie', startX + colWidths[0] + colWidths[1] + colWidths[2], headerY)
-    doc.text('Type', startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], headerY)
-    doc.text('Montant', startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4], headerY)
+    doc.text('Sous-cat.', startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], headerY)
+    doc.text('Type', startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4], headerY)
+    doc.text('Montant', startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + colWidths[5], headerY)
 
     // Ligne de séparation
     doc.setLineWidth(0.5)
@@ -292,13 +369,17 @@ export async function GET(req: Request) {
           yPos = 20
         }
 
+        const categoryName = tx.category?.parent ? tx.category.parent.name : (tx.category?.name || 'Sans catégorie')
+        const subCategoryName = tx.category?.parent ? tx.category.name : ''
+
         doc.setFontSize(9)
         doc.text(formatDate(new Date(tx.date)), startX, yPos)
         doc.text(tx.account.name.substring(0, 15), startX + colWidths[0], yPos)
-        doc.text((tx.description || 'Sans libellé').substring(0, 25), startX + colWidths[0] + colWidths[1], yPos)
-        doc.text((tx.category?.name || 'Sans catégorie').substring(0, 15), startX + colWidths[0] + colWidths[1] + colWidths[2], yPos)
-        doc.text(tx.type === 'income' ? 'Revenus' : tx.type === 'expense' ? 'Dépenses' : 'Transfert', startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], yPos)
-        doc.text(formatCurrency(Number(tx.amount)), startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4], yPos)
+        doc.text((tx.description || 'Sans libellé').substring(0, 20), startX + colWidths[0] + colWidths[1], yPos)
+        doc.text(categoryName.substring(0, 12), startX + colWidths[0] + colWidths[1] + colWidths[2], yPos)
+        doc.text(subCategoryName.substring(0, 12), startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], yPos)
+        doc.text(tx.type === 'income' ? 'Revenus' : tx.type === 'expense' ? 'Dépenses' : 'Transf.', startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4], yPos)
+        doc.text(formatCurrency(Number(tx.amount)), startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + colWidths[5], yPos)
 
         yPos += 7
       })

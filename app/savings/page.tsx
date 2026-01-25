@@ -52,6 +52,22 @@ const PERIODS = [
   { value: '1year', label: '1 an' }
 ]
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+        {label && <p className="font-medium text-gray-900 dark:text-white mb-2">{label}</p>}
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(entry.value)}
+          </p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
 export default function SavingsPage() {
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null)
   const [statistics, setStatistics] = useState<StatisticsData | null>(null)
@@ -412,15 +428,7 @@ export default function SavingsPage() {
                   className="dark:stroke-gray-400"
                   tickFormatter={(value) => `${value}€`}
                 />
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  labelFormatter={formatMonth}
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px'
-                  }}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <Line
                   type="monotone"
@@ -460,14 +468,7 @@ export default function SavingsPage() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px'
-                  }}
-                />
+                <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </div>

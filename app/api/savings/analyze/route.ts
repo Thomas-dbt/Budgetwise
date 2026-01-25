@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       where: {
         account: { ownerId: userId },
         date: { gte: startDate },
-        type: { in: ['expense', 'income'] }
+        type: { in: ['expense', 'income', 'investment'] }
       },
       include: {
         category: true,
@@ -64,17 +64,27 @@ export async function POST(req: Request) {
     })
 
     // Calculer les statistiques de base
-    const expenses = transactions.filter(t => t.type === 'expense')
+    const isInvestment = (t: any) =>
+      t.type === 'investment' ||
+      (t.type === 'expense' && (
+        t.category?.name?.toLowerCase().includes('investissement') ||
+        t.category?.name?.toLowerCase().includes('épargne')
+      ))
+
+    const investments = transactions.filter(isInvestment)
+    const trueExpenses = transactions.filter(t => t.type === 'expense' && !isInvestment(t))
     const incomes = transactions.filter(t => t.type === 'income')
 
-    const totalExpenses = expenses.reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
+    const totalExpenses = trueExpenses.reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
     const totalIncome = incomes.reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
+    const totalInvested = investments.reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
+
     const savings = totalIncome - totalExpenses
     const savingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0
 
     // Grouper par catégorie
     const expensesByCategory: Record<string, number> = {}
-    expenses.forEach(t => {
+    trueExpenses.forEach(t => {
       const categoryName = t.category?.name || 'Non catégorisé'
       expensesByCategory[categoryName] = (expensesByCategory[categoryName] || 0) + Math.abs(Number(t.amount))
     })

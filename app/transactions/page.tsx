@@ -4,6 +4,8 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState, useRef } from 're
 import { authFetch } from '@/lib/auth-fetch'
 import { useToast } from '@/components/toast'
 import SplitModal from './split-modal'
+import { Lightbulb, Calendar, Check, X } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
 
 interface Transaction {
   id: string
@@ -193,7 +195,7 @@ export default function TransactionsPage() {
     return start.toISOString().slice(0, 10)
   })
   const [exportEndDate, setExportEndDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [exportFormat, setExportFormat] = useState<'pdf' | 'xlsx'>('xlsx')
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'xlsx' | 'csv'>('xlsx')
   const [exportAccountId, setExportAccountId] = useState<string>('all')
   const [exportAccounts, setExportAccounts] = useState<Array<{ id: string; name: string }>>([])
   const [exportAccountsLoading, setExportAccountsLoading] = useState(false)
@@ -216,6 +218,91 @@ export default function TransactionsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isScanning, setIsScanning] = useState(false)
+
+  // Suggestions state
+  const [suggestions, setSuggestions] = useState<Array<{
+    description: string
+    amount: number
+    type: string
+    lastDate: string
+    categoryId: string | null
+    occurrences: number
+    confidence: string
+  }>>([])
+  const [suggestionsModalOpen, setSuggestionsModalOpen] = useState(false)
+  const [addingSuggestion, setAddingSuggestion] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Fetch suggestions on mount
+    const fetchSuggestions = async () => {
+      try {
+        const response = await authFetch('/api/transactions/suggestions')
+        if (response.ok) {
+          const data = await response.json()
+          let fetched = data.suggestions || []
+
+          // Filter out ignored suggestions from localStorage
+          const ignored = JSON.parse(localStorage.getItem('budgetwise_ignored_suggestions') || '[]')
+          if (Array.isArray(ignored)) {
+            fetched = fetched.filter((s: any) => !ignored.includes(s.description))
+          }
+
+          setSuggestions(fetched)
+        }
+      } catch (error) {
+        console.error('Failed to fetch suggestions', error)
+      }
+    }
+    fetchSuggestions()
+  }, [])
+
+  const handleAcceptSuggestion = async (suggestion: any) => {
+    setAddingSuggestion(suggestion.description)
+    try {
+      const dueDate = new Date(suggestion.lastDate)
+      // Set due date to next month from last occurrence
+      dueDate.setMonth(dueDate.getMonth() + 1)
+
+      const payload = {
+        title: suggestion.description,
+        type: 'expense', // Default to expense, logic in API could provide type
+        amount: suggestion.amount,
+        dueDate: dueDate.toISOString(),
+        recurring: suggestion.type || 'monthly',
+        confirmed: false,
+        categoryId: suggestion.categoryId,
+        accountId: null // Optional
+      }
+
+      const response = await authFetch('/api/calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) throw new Error('Failed to create event')
+
+      toast(`Récurrence ajoutée: ${suggestion.description}`, 'success')
+
+      // Remove from list
+      setSuggestions(prev => prev.filter(s => s.description !== suggestion.description))
+    } catch (error) {
+      console.error('Error adding suggestion:', error)
+      toast("Impossible d'ajouter la récurrence.", 'error')
+    } finally {
+      setAddingSuggestion(null)
+    }
+  }
+
+  const handleIgnoreSuggestion = (description: string) => {
+    // Persist ignore decision
+    const ignored = JSON.parse(localStorage.getItem('budgetwise_ignored_suggestions') || '[]')
+    if (!ignored.includes(description)) {
+      ignored.push(description)
+      localStorage.setItem('budgetwise_ignored_suggestions', JSON.stringify(ignored))
+    }
+    setSuggestions(prev => prev.filter(s => s.description !== description))
+  }
 
   const handleScanReceipt = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -308,7 +395,34 @@ export default function TransactionsPage() {
       params.set('format', exportFormat)
       if (exportStartDate) params.set('start', exportStartDate)
       if (exportEndDate) params.set('end', exportEndDate)
-      if (exportAccountId && exportAccountId !== 'all') params.set('accountId', exportAccountId)
+
+      // Account Logic
+      // If modal has a specific account, use it. Otherwise use the filter from the page?
+      // Actually usually export modal overrides.
+      if (exportAccountId && exportAccountId !== 'all') {
+        params.set('accountId', exportAccountId)
+      } else if (filterAccountId && filterAccountId !== 'all') {
+        // If modal is 'all', but page is filtered, strictly speaking the modal 'all' might mean 'all accounts' 
+        // but user might expect 'all currently visible'. 
+        // Given the specific 'Export' modal has its own selector initialized to 'all', 
+        // let's assume the Modal selector takes precedence. 
+        // If modal is 'all', it means ALL accounts.
+      }
+
+      // Apply active screen filters
+      if (searchQuery) params.set('search', searchQuery)
+
+      if (filterOption) {
+        if (filterOption === 'income' || filterOption === 'expense' || filterOption === 'transfer' || filterOption === 'investment' || filterOption === 'pending') {
+          params.set('type', filterOption)
+        } else if (filterOption.startsWith('category:')) {
+          params.set('categoryId', filterOption.split(':')[1])
+        }
+      }
+
+      if (filterMinAmount) params.set('minAmount', filterMinAmount)
+      if (filterMaxAmount) params.set('maxAmount', filterMaxAmount)
+
 
       const response = await authFetch(`/api/transactions/export?${params.toString()}`)
       if (!response.ok) {
@@ -326,8 +440,21 @@ export default function TransactionsPage() {
       }
 
       const blob = await response.blob()
-      const extension = exportFormat === 'pdf' ? 'pdf' : 'xlsx'
-      const filename = `budgetwise-export-${exportStartDate || 'all'}-${exportEndDate || 'all'}.${extension}`
+      const extension = exportFormat
+
+      // Determine filename context
+      let context = 'all'
+      if (exportAccountId && exportAccountId !== 'all') {
+        const acc = exportAccounts.find(a => a.id === exportAccountId)
+        if (acc) context = acc.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+      } else if (filterAccountId && filterAccountId !== 'all') {
+        // If we didn't filter by account in export (meaning 'all'), but we are viewing a specific account?
+        // As decided above, modal 'all' means all.
+        context = 'all-accounts'
+      }
+
+      const filename = `budgetwise-${context}-${exportStartDate || 'start'}-${exportEndDate || 'end'}.${extension}`
+
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -499,6 +626,24 @@ export default function TransactionsPage() {
   const [hasMore, setHasMore] = useState(true)
   const LIMIT = 100
 
+  // Helper to normalize API transaction to local state format
+  const mapApiToTransaction = (tx: any): Transaction => ({
+    id: tx.id,
+    amount: Number(tx.amount),
+    type: tx.type,
+    date: tx.date,
+    description: tx.description,
+    category: tx.category,
+    subCategory: tx.subCategory || null,
+    account: tx.account,
+    toAccount: tx.toAccount || null,
+    attachment: tx.attachment || null,
+    pending: !!tx.pending,
+    transferGroupId: tx.transferGroupId || null,
+    hasSplits: tx.hasSplits,
+    splits: tx.splits,
+  })
+
   // Main fetch function
   const fetchTransactions = async (startDate?: string | null, endDate?: string | null, append = false, search = '') => {
     try {
@@ -523,22 +668,7 @@ export default function TransactionsPage() {
       }
       const data = await response.json()
 
-      const newTransactions = data.map((tx: any) => ({
-        id: tx.id,
-        amount: Number(tx.amount),
-        type: tx.type,
-        date: tx.date,
-        description: tx.description,
-        category: tx.category,
-        subCategory: tx.subCategory || null,
-        account: tx.account,
-        toAccount: tx.toAccount || null,
-        attachment: tx.attachment || null,
-        pending: !!tx.pending,
-        transferGroupId: tx.transferGroupId || null,
-        hasSplits: tx.hasSplits,
-        splits: tx.splits,
-      }))
+      const newTransactions = data.map(mapApiToTransaction)
 
       if (newTransactions.length < LIMIT) {
         setHasMore(false)
@@ -879,8 +1009,6 @@ export default function TransactionsPage() {
     setShowSplitUI(false)
   }
 
-
-
   const handleManualSubmit = async (event: FormEvent<HTMLFormElement> | null, shouldClose = true): Promise<Transaction | null> => {
     if (event) event.preventDefault()
     if (!manualForm.accountId) {
@@ -977,6 +1105,8 @@ export default function TransactionsPage() {
       }
 
       const newTx = await response.json()
+      const normalizedTx = mapApiToTransaction(newTx) // Normalize
+
       if (shouldClose) {
         setManualModalOpen(false)
         setShowNewCategoryInput(false)
@@ -987,14 +1117,17 @@ export default function TransactionsPage() {
       } else {
         // If we keep it open (e.g. for splitting), switch to edit mode so we don't duplicate if saved again
         setEditingTransactionId(newTx.id)
-        setEditingTransaction(newTx)
+        setEditingTransaction(normalizedTx)
       }
-      fetchTransactions()
+
+      // OPTIMISTIC UPDATE: Add to local state instead of refetching
+      setTransactions(prev => [normalizedTx, ...prev])
+
       // Déclencher un événement pour actualiser les comptes
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('accounts-refresh'))
       }
-      return newTx
+      return normalizedTx
     } catch (error: any) {
       console.error('Manual transaction error', error)
       setFeedback({ type: 'error', message: error.message || "Impossible d'ajouter la transaction." })
@@ -1087,6 +1220,8 @@ export default function TransactionsPage() {
       }
 
       const newTx = await response.json()
+      const normalizedTx = mapApiToTransaction(newTx) // Normalize
+
       if (shouldClose) {
         setManualModalOpen(false)
         setShowNewCategoryInput(false)
@@ -1096,12 +1231,15 @@ export default function TransactionsPage() {
         setEditingTransactionId(null)
         setFeedback({ type: 'success', message: 'Transaction mise à jour.' })
       }
-      fetchTransactions()
+
+      // OPTIMISTIC UPDATE: Update in local state
+      setTransactions(prev => prev.map(t => t.id === newTx.id ? normalizedTx : t))
+
       // Déclencher un événement pour actualiser les comptes
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('accounts-refresh'))
       }
-      return newTx
+      return normalizedTx
     } catch (error: any) {
       console.error('Manual transaction update error', error)
       setFeedback({ type: 'error', message: error.message || 'Impossible de modifier la transaction.' })
@@ -1158,10 +1296,14 @@ export default function TransactionsPage() {
         }
         throw new Error(message || 'Impossible de supprimer la transaction')
       }
+
+      // OPTIMISTIC UPDATE: Remove from local state
+      setTransactions(prev => prev.filter(t => t.id !== transactionToDelete.id))
+
       setDeleteModalOpen(false)
       setTransactionToDelete(null)
       setFeedback({ type: 'success', message: 'Transaction supprimée.' })
-      fetchTransactions()
+
       // Déclencher un événement pour actualiser les comptes
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('accounts-refresh'))
@@ -1635,6 +1777,15 @@ export default function TransactionsPage() {
           </div>
 
           <div className="flex flex-row flex-wrap gap-2 md:gap-3 hidden md:flex">
+            {suggestions.length > 0 && (
+              <button
+                className="hidden md:flex px-5 py-2.5 border border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 dark:border-yellow-700 rounded-xl hover:bg-yellow-100 dark:hover:bg-yellow-900/40 items-center gap-2 transition-all shadow-sm hover:shadow-md font-medium"
+                onClick={() => setSuggestionsModalOpen(true)}
+              >
+                <Lightbulb className="w-5 h-5" />
+                <span>Suggestions ({suggestions.length})</span>
+              </button>
+            )}
             <button
               className="hidden md:flex px-5 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 items-center gap-2 transition-all shadow-sm hover:shadow-md font-medium"
               onClick={() => {
@@ -3224,6 +3375,69 @@ export default function TransactionsPage() {
         )
       }
 
+      {/* Suggestions Modal */}
+      {suggestionsModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 dark:border-gray-800">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Lightbulb className="text-yellow-500" />
+              Récurrences détectées
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              Nous avons analysé vos transactions passées et détecté ces dépenses récurrentes potentielles. Voulez-vous les ajouter à votre budget ?
+            </p>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              {suggestions.map((suggestion, index) => (
+                <div key={index} className="flex flex-col gap-3 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">{suggestion.description}</h3>
+                      <p className="text-sm text-gray-500 max-w-[250px]">
+                        {suggestion.occurrences} occurrences détectées.
+                        <br />
+                        Moyenne : {formatCurrency(suggestion.amount)} / mois
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-gray-900 dark:text-white block">{formatCurrency(suggestion.amount)}</span>
+                      <span className="text-xs text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded-full mt-1 inline-block">Mensuel</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => handleAcceptSuggestion(suggestion)}
+                      disabled={addingSuggestion === suggestion.description}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    >
+                      {addingSuggestion === suggestion.description ? 'Ajout...' : (
+                        <>
+                          <Check className="w-4 h-4" /> Ajouter
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleIgnoreSuggestion(suggestion.description)}
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-600 dark:text-gray-300 transition-colors"
+                      title="Ignorer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setSuggestionsModalOpen(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors font-medium"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Import modal */}
       {
         false && (
@@ -3581,6 +3795,16 @@ export default function TransactionsPage() {
                         onChange={() => setExportFormat('pdf')}
                       />
                       <span className="text-sm">PDF</span>
+                    </label>
+                    <label className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer ${exportFormat === 'csv' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-700'}`}>
+                      <input
+                        type="radio"
+                        name="export-format"
+                        value="csv"
+                        checked={exportFormat === 'csv'}
+                        onChange={() => setExportFormat('csv')}
+                      />
+                      <span className="text-sm">CSV</span>
                     </label>
                   </div>
                 </div>

@@ -32,6 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let mounted = true
+    const timeout = setTimeout(() => {
+      if (mounted) {
+        console.warn('Auth state change timeout - forcing loading false')
+        setLoading(false)
+      }
+    }, 5000)
+
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (currentUser: FirebaseUser | null) => {
       // Session Expiry Check (30 Days)
       if (currentUser) {
@@ -50,18 +58,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await firebaseAuth.signOut()
             localStorage.removeItem('budgetwise_auth_date')
             localStorage.removeItem(`budgetwise_pin_${currentUser.uid}`)
-            setUser(null)
-            setLoading(false)
+            if (mounted) {
+              setUser(null)
+              setLoading(false)
+            }
+            clearTimeout(timeout)
             return
           }
         }
       }
 
-      setUser(currentUser)
-      setLoading(false)
+      if (mounted) {
+        setUser(currentUser)
+        setLoading(false)
+      }
+      clearTimeout(timeout)
     })
 
-    return () => unsubscribe()
+    return () => {
+      mounted = false
+      unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   const value = useMemo<AuthContextValue>(
