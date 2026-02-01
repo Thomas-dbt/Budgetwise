@@ -5,7 +5,10 @@ import { authFetch } from '@/lib/auth-fetch'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { useToast } from '@/components/toast'
 import { useRef } from 'react'
-import { Send, User, Bot, Sparkles, ChevronDown } from 'lucide-react'
+import { Send, User, Bot, Sparkles, ChevronDown, Plus } from 'lucide-react'
+import { SavingsGoalCard } from '@/components/savings-goal-card'
+import { CreateGoalModal } from '@/components/create-goal-modal'
+import { GoalDetailsModal } from '@/components/goal-details-modal'
 
 interface AnalysisData {
   summary: string
@@ -114,6 +117,61 @@ export default function SavingsPage() {
       newExpanded.add(index)
     }
     setExpandedInsights(newExpanded)
+  }
+
+  // --- Savings Goals Logic ---
+  const [goals, setGoals] = useState<any[]>([])
+  const [goalsLoading, setGoalsLoading] = useState(true)
+  const [goalModalOpen, setGoalModalOpen] = useState(false)
+  const [editingGoal, setEditingGoal] = useState<any>(null)
+
+  // Goal Details State
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false)
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchGoals()
+  }, [])
+
+  const fetchGoals = async () => {
+    try {
+      setGoalsLoading(true)
+      const res = await authFetch('/api/goals')
+      if (res.ok) {
+        const data = await res.json()
+        setGoals(data)
+      }
+    } catch (e) {
+      console.error('Failed to fetch goals', e)
+    } finally {
+      setGoalsLoading(false)
+    }
+  }
+
+  const handleSaveGoal = (savedGoal: any) => {
+    if (editingGoal) {
+      setGoals(prev => prev.map(g => g.id === savedGoal.id ? savedGoal : g))
+    } else {
+      setGoals(prev => [savedGoal, ...prev])
+    }
+  }
+
+  const handleDeleteGoal = (id: string) => {
+    fetch(`/api/goals/${id}`, { method: 'DELETE' }).catch(console.error) // Optimistic or standard? Using authFetch inside component usually?
+    // Quick fix: standard fetch won't have auth headers if not proxied or if authFetch adds them.
+    // Let's use authFetch for consistency.
+    authFetch(`/api/goals/${id}`, { method: 'DELETE' }).then(res => {
+      if (res.ok) {
+        setGoals(prev => prev.filter(g => g.id !== id))
+      }
+    })
+  }
+
+  const handleAddMoney = (goal: any) => {
+    // For now, simpler flow: open edit modal pre-focused? 
+    // Or just open edit modal.
+    setEditingGoal(goal)
+    setGoalModalOpen(true)
   }
 
   useEffect(() => {
@@ -271,6 +329,76 @@ export default function SavingsPage() {
           Analyse intelligente de vos dépenses et conseils personnalisés par IA
         </p>
       </div>
+
+      {/* --- Objectifs d'épargne --- */}
+      {/* Section Goals */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <span className="text-2xl">🎯</span> Mes Objectifs
+          </h2>
+          <button
+            onClick={() => {
+              setEditingGoal(null)
+              setGoalModalOpen(true)
+            }}
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl shadow-md transition-all flex items-center gap-2 font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Nouveau
+          </button>
+        </div>
+
+        {goalsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-40 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse"></div>
+            ))}
+          </div>
+        ) : goals.length === 0 ? (
+          <div
+            onClick={() => setGoalModalOpen(true)}
+            className="bg-gray-50 dark:bg-gray-900 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-8 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+          >
+            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Plus className="w-6 h-6" />
+            </div>
+            <h3 className="font-semibold text-gray-700 dark:text-gray-300">Créer mon premier objectif</h3>
+            <p className="text-sm text-gray-500">Voyage, voiture, fonds de secours...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {goals.map(goal => (
+              <SavingsGoalCard
+                key={goal.id}
+                goal={goal}
+                onEdit={(g) => {
+                  setEditingGoal(g)
+                  setGoalModalOpen(true)
+                }}
+                onViewDetails={(g) => {
+                  setSelectedGoalId(g.id)
+                  setDetailsModalOpen(true)
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <CreateGoalModal
+        isOpen={goalModalOpen}
+        onClose={() => setGoalModalOpen(false)}
+        onSuccess={handleSaveGoal}
+        initialGoal={editingGoal}
+        onDelete={handleDeleteGoal}
+      />
+
+      <GoalDetailsModal
+        isOpen={detailsModalOpen}
+        onClose={() => setDetailsModalOpen(false)}
+        goalId={selectedGoalId}
+      />
 
       {/* Contrôles */}
       <div className="flex items-center justify-between gap-4 flex-wrap">

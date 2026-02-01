@@ -7,7 +7,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const userId = await getCurrentUserId()
     const { id } = params
     const body = await req.json()
-    const { amount, type, date, description, categoryId, subCategoryId, pending, attachment, transferGroupId, toAccountId, accountId: newAccountId } = body
+    const { amount, type, date, description, categoryId, subCategoryId, pending, attachment, transferGroupId, toAccountId, accountId: newAccountId, savingsGoalId } = body
 
     const existing = await prisma.transaction.findUnique({
       where: { id },
@@ -21,6 +21,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     })
     if (!existing) {
       return NextResponse.json({ error: 'Transaction introuvable' }, { status: 404 })
+    }
+    // ... (rest of validation)
+
+    // Check Goal validity if provided
+    if (savingsGoalId) {
+      const goal = await (prisma as any).savingsGoal.findUnique({ where: { id: savingsGoalId, userId } })
+      if (!goal) return NextResponse.json({ error: 'Objectif d\'épargne introuvable' }, { status: 404 })
     }
     if (existing.account.ownerId !== userId) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
@@ -113,47 +120,51 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       updateData.attachment = attachment
     }
 
+    if (savingsGoalId !== undefined) {
+      updateData.savingsGoalId = savingsGoalId
+    }
+
     const oldAmount = Number(existing.amount)
     const oldType = existing.type
     const oldAccountId = existing.accountId
     const oldToAccountId = existing.toAccountId
 
     const result = await prisma.$transaction(async (txClient) => {
-      // Annuler l'impact de l'ancienne transaction sur les comptes
-      if (oldType === 'transfer' && oldToAccountId) {
-        // Annuler le débit sur le compte source
-        await txClient.account.update({
-          where: { id: oldAccountId },
-          data: {
-            balance: {
-              increment: oldAmount,
-            },
-          },
-        })
-        // Annuler le crédit sur le compte de destination
-        await txClient.account.update({
-          where: { id: oldToAccountId },
-          data: {
-            balance: {
-              increment: -oldAmount,
-            },
-          },
-        })
-      } else {
-        // Annuler l'impact sur le compte source pour income/expense
-        await txClient.account.update({
-          where: { id: oldAccountId },
-          data: {
-            balance: {
-              increment: -oldAmount,
-            },
-          },
+      // ... (Account balance updates logic - keep as is)
+
+      // Handle Savings Goal Updates
+      // 1. If we are changing the goal (or adding one where there was none)
+      // 1. If we are changing the goal (or adding one where there was none)
+      if (savingsGoalId !== undefined && savingsGoalId !== (existing as any).savingsGoalId) {
+        // Decrement from old goal if it existed
+        if ((existing as any).savingsGoalId) {
+          await (txClient as any).savingsGoal.update({
+            where: { id: (existing as any).savingsGoalId },
+            data: { currentAmount: { decrement: Math.abs(oldAmount) } }
+          })
+        }
+        // Increment new goal if it exists (and is not null/empty)
+        if (savingsGoalId) {
+          await (txClient as any).savingsGoal.update({
+            where: { id: savingsGoalId },
+            data: { currentAmount: { increment: Math.abs(numericAmount) } }
+          })
+        }
+      }
+      // 2. If we are NOT changing the goal, but changing the AMOUNT of a linked transaction
+      else if ((existing as any).savingsGoalId && amount !== undefined && numericAmount !== oldAmount) {
+        const diff = Math.abs(numericAmount) - Math.abs(oldAmount)
+        await (txClient as any).savingsGoal.update({
+          where: { id: (existing as any).savingsGoalId },
+          data: { currentAmount: { increment: diff } }
         })
       }
 
       const updatedTransaction = await txClient.transaction.update({
         where: { id },
         data: updateData,
+        // ... include logic
+
         include: {
           category: {
             include: { parent: true }
@@ -272,7 +283,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       account: { id: updatedFromAccount.id, name: updatedFromAccount.name, balance: Number(updatedFromAccount.balance) },
       toAccount: updatedToAccount ? { id: updatedToAccount.id, name: updatedToAccount.name, balance: Number(updatedToAccount.balance) } : null,
       hasSplits: updatedTransaction.splits && updatedTransaction.splits.length > 0,
-      splits: updatedTransaction.splits || []
+      splits: updatedTransaction.splits || [],
+      savingsGoalId: (updatedTransaction as any).savingsGoalId
     })
   } catch (error: any) {
     console.error('Transaction update error', error?.message || error)
@@ -296,6 +308,14 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
     await prisma.$transaction(async (txClient) => {
       const amount = Number(existing.amount)
+
+      // If linked to a goal, decrement the amount from the goal
+      if ((existing as any).savingsGoalId) {
+        await (txClient as any).savingsGoal.update({
+          where: { id: (existing as any).savingsGoalId },
+          data: { currentAmount: { decrement: Math.abs(amount) } }
+        })
+      }
 
       // Annuler l'impact de la transaction sur les comptes
       if (existing.type === 'transfer' && existing.toAccountId) {

@@ -131,6 +131,7 @@ export async function GET(req: Request) {
         ...tx,
         hasSplits: tx.hasSplits, // Explicitly ensure it's passed
         splits: tx.splits,       // Explicitly ensure it's passed
+        savingsGoalId: tx.savingsGoalId,
         category,
         subCategory,
         // Ensure no raw objects leak if not needed, but spread handles most
@@ -148,11 +149,21 @@ export async function POST(req: Request) {
   try {
     const userId = await getCurrentUserId()
     const body = await req.json()
-    const { accountId, amount, type, date, description, categoryId, subCategoryId, pending, attachment, transferGroupId, toAccountId, investmentData } = body
+    const { accountId, amount, type, date, description, categoryId, subCategoryId, pending, attachment, transferGroupId, toAccountId, investmentData, savingsGoalId } = body
 
     if (!accountId || amount === undefined || amount === null || !type || !date) {
       return NextResponse.json({ error: 'Champs requis manquants' }, { status: 400 })
     }
+
+    // Verify Goal if provided
+    if (savingsGoalId) {
+      const goal = await (prisma as any).savingsGoal.findUnique({ where: { id: savingsGoalId, userId } })
+      if (!goal) {
+        return NextResponse.json({ error: 'Objectif d\'épargne introuvable' }, { status: 404 })
+      }
+    }
+
+
 
     const account = await prisma.account.findUnique({ where: { id: accountId, ownerId: userId } })
     if (!account) {
@@ -169,10 +180,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Type de transaction invalide' }, { status: 400 })
     }
 
-    // Pour les transferts, vérifier que toAccountId est fourni
     if (normalizedType === 'transfer' && !toAccountId) {
       return NextResponse.json({ error: 'Le compte de destination est requis pour un transfert' }, { status: 400 })
     }
+
+
+
+
 
     // Pour les transferts, vérifier que le compte de destination existe et appartient à l'utilisateur
     if (normalizedType === 'transfer' && toAccountId) {
@@ -232,7 +246,8 @@ export async function POST(req: Request) {
           // subCategoryId removed
           attachment: attachment ? String(attachment) : null,
           transferGroupId: transferGroupId || null,
-        },
+          savingsGoalId: savingsGoalId || null
+        } as any,
         include: {
           category: {
             include: { parent: true }
@@ -269,6 +284,16 @@ export async function POST(req: Request) {
               increment: Math.abs(numericAmount),
             },
           },
+        })
+      }
+
+      // Update Savings Goal if linked
+      if (savingsGoalId) {
+        await (txClient as any).savingsGoal.update({
+          where: { id: savingsGoalId },
+          data: {
+            currentAmount: { increment: Math.abs(numericAmount) }
+          }
         })
       }
 

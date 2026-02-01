@@ -97,9 +97,25 @@ export async function POST(req: Request) {
 
     // Évolution mensuelle
     const monthlyData: Record<string, { income: number; expenses: number }> = {}
+
+    // Initialiser tous les mois de la période pour éviter les trous
+    const endMonth = new Date()
+    // Pour inclure le mois courant entièrement ou s'arrêter au mois courant ?
+    // Généralement on veut voir jusqu'au mois courant inclus.
+    // On part de startDate jusqu'à now.
+    const loopDate = new Date(startDate)
+
+    while (loopDate <= endMonth) {
+      const monthKey = loopDate.toISOString().slice(0, 7) // YYYY-MM
+      monthlyData[monthKey] = { income: 0, expenses: 0 }
+      loopDate.setMonth(loopDate.getMonth() + 1)
+    }
+
     transactions.forEach(t => {
       const monthKey = new Date(t.date).toISOString().slice(0, 7) // YYYY-MM
       if (!monthlyData[monthKey]) {
+        // Cas où la transaction est hors range (ne devrait pas arriver avec la query mais par sécurité)
+        // Ou si timezone edge case
         monthlyData[monthKey] = { income: 0, expenses: 0 }
       }
       if (t.type === 'income') {

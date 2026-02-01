@@ -33,6 +33,7 @@ interface Transaction {
     fromDescription?: string | null
     toDescription?: string | null
   }
+  savingsGoalId?: string | null
 }
 
 interface AccountOption {
@@ -130,6 +131,26 @@ export default function TransactionsPage() {
   const [newCategoryName, setNewCategoryName] = useState('')
   const [showNewSubCategoryInput, setShowNewSubCategoryInput] = useState(false)
   const [newSubCategoryName, setNewSubCategoryName] = useState('')
+  // Savings Goals State
+  interface SavingsGoalOption {
+    id: string
+    name: string
+    currentAmount: number
+    targetAmount: number
+  }
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoalOption[]>([])
+
+  const fetchGoals = async () => {
+    try {
+      const response = await authFetch('/api/goals')
+      if (response.ok) {
+        const data = await response.json()
+        setSavingsGoals(data)
+      }
+    } catch (error) {
+      console.error("Failed to fetch goals", error)
+    }
+  }
 
   const [manualModalOpen, setManualModalOpen] = useState(false)
   const [manualLoading, setManualLoading] = useState(false)
@@ -170,6 +191,8 @@ export default function TransactionsPage() {
     investmentQuantity?: string
     investmentCategory?: string
     investmentPlatform?: string
+    // Savings Goal
+    savingsGoalId?: string
   }
 
   const [manualForm, setManualForm] = useState<ManualFormState>({
@@ -645,6 +668,7 @@ export default function TransactionsPage() {
     transferGroupId: tx.transferGroupId || null,
     hasSplits: tx.hasSplits,
     splits: tx.splits,
+    savingsGoalId: tx.savingsGoalId,
   })
 
   // Helper to resolve the correct icon for a transaction
@@ -711,6 +735,7 @@ export default function TransactionsPage() {
   // Initial load
   useEffect(() => {
     fetchAllData()
+    fetchGoals()
   }, [])
 
   const loadMore = () => {
@@ -976,7 +1001,8 @@ export default function TransactionsPage() {
       attachment: null,
       attachmentName: '',
       transferAccountId: accounts.find(acc => acc.id !== defaultAccountId)?.id || '',
-      transferGroupId: null
+      transferGroupId: null,
+      savingsGoalId: ''
     })
     setEditingTransactionId(null)
     setShowNewCategoryInput(false)
@@ -1013,6 +1039,7 @@ export default function TransactionsPage() {
       attachmentName: tx.attachment ? 'Justificatif' : '',
       transferAccountId: tx.type === 'transfer' ? defaultTransfer : '',
       transferGroupId: null,
+      savingsGoalId: tx.savingsGoalId || ''
     })
     setEditingTransactionId(tx.id)
     setEditingTransaction(tx)
@@ -1057,6 +1084,7 @@ export default function TransactionsPage() {
             subCategoryId: manualForm.subCategoryId || null,
             pending: manualForm.pending,
             attachment: manualForm.attachment || null,
+            savingsGoalId: manualForm.savingsGoalId || null
           })
         })
         if (!response.ok) {
@@ -1093,7 +1121,8 @@ export default function TransactionsPage() {
               category: manualForm.investmentCategory,
               quantity: manualForm.investmentQuantity ? Number(manualForm.investmentQuantity) : 0,
               platform: manualForm.investmentPlatform,
-            } : undefined
+            } : undefined,
+            savingsGoalId: manualForm.savingsGoalId || null
           })
         })
 
@@ -1184,6 +1213,7 @@ export default function TransactionsPage() {
             subCategoryId: manualForm.subCategoryId || null,
             pending: manualForm.pending,
             attachment: manualForm.attachment || null,
+            savingsGoalId: manualForm.savingsGoalId || null
           }),
         })
         if (!response.ok) {
@@ -1212,6 +1242,7 @@ export default function TransactionsPage() {
             subCategoryId: manualForm.subCategoryId || null,
             pending: manualForm.pending,
             attachment: manualForm.attachment || null,
+            savingsGoalId: manualForm.savingsGoalId || null
           }),
         })
 
@@ -1240,7 +1271,7 @@ export default function TransactionsPage() {
         setShowNewSubCategoryInput(false)
         setNewSubCategoryName('')
         setEditingTransactionId(null)
-        setFeedback({ type: 'success', message: 'Transaction mise à jour.' })
+        // setFeedback({ type: 'success', message: 'Transaction mise à jour.' })
       }
 
       // OPTIMISTIC UPDATE: Update in local state
@@ -2678,6 +2709,30 @@ export default function TransactionsPage() {
                     </div>
                   </div>
 
+
+
+                  {/* Savings Goal Selector - Optional */}
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium mb-2 flex items-center gap-2">
+                      <span>🎯 Lier à un objectif</span>
+                      <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(Optionnel)</span>
+                    </label>
+                    <select
+                      value={manualForm.savingsGoalId || ''}
+                      onChange={(e) => setManualForm(prev => ({ ...prev, savingsGoalId: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Aucun objectif lié</option>
+                      {savingsGoals.map(goal => (
+                        <option key={goal.id} value={goal.id}>
+                          {goal.name} ({formatCurrency(Number(goal.currentAmount))} / {formatCurrency(Number(goal.targetAmount))})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Le montant de cette transaction sera impacté sur l'objectif sélectionné.
+                    </p>
+                  </div>
 
                   {/* Investment Toggle */}
                   {(manualForm.type === 'investment' || (manualForm.categoryId && categories.find(c => c.id === manualForm.categoryId)?.name === 'Investissement')) && (

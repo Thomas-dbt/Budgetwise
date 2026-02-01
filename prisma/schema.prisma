@@ -27,6 +27,7 @@ model User {
   categories                Category[]
   categoryKeywords          CategoryKeyword[]
   budgets                   Budget[]
+  savingsGoals              SavingsGoal[]
 }
 
 model Account {
@@ -118,6 +119,8 @@ model Transaction {
   parentId        String?
   parent          Transaction? @relation("TransactionSplits", fields: [parentId], references: [id], onDelete: Cascade) // If parent is deleted, splits are deleted
   splits          Transaction[] @relation("TransactionSplits")
+  savingsGoalId   String?
+  savingsGoal     SavingsGoal?  @relation(fields: [savingsGoalId], references: [id])
 }
 
 model CategoryKeyword {
@@ -322,5 +325,22 @@ model Budget {
   updatedAt  DateTime @updatedAt
 
   @@unique([categoryId, month])
+  @@index([userId])
+}
+
+model SavingsGoal {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Decimal
+  currentAmount Decimal   @default(0)
+  deadline      DateTime?
+  icon          String?
+  color         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  transactions  Transaction[]
+
   @@index([userId])
 }
