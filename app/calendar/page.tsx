@@ -2,11 +2,13 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { authFetch } from '@/lib/auth-fetch'
+import { CategoryIcon } from '@/components/category-icon'
 
 interface CategoryOption {
   id: string
   name: string
   emoji: string | null
+  icon: string | null
 }
 
 interface SubCategoryOption {
@@ -988,8 +990,9 @@ export default function CalendarPage() {
                   </span>
                 )}
                 {selectedEvent.category && (
-                  <span className={`text-xs px-2 py-1 rounded-full ${getCategoryMeta(selectedEvent).className}`}>
-                    {getCategoryMeta(selectedEvent).label}
+                  <span className={`text-xs px-2 py-1 rounded-full ${getCategoryMeta(selectedEvent).className} flex items-center gap-1`}>
+                    <CategoryIcon iconName={selectedEvent.category.icon} emoji={selectedEvent.category.emoji} className="w-3 h-3" />
+                    <span>{selectedEvent.category.name}</span>
                   </span>
                 )}
                 {selectedEvent.confirmed && (
@@ -1839,8 +1842,9 @@ export default function CalendarPage() {
                                           {event.type === 'credit' ? 'Crédit' : 'Débit'}
                                         </span>
                                         {event.category && (
-                                          <span className={`text-xs px-1.5 py-0.5 rounded ${className}`}>
-                                            {label}
+                                          <span className={`text-xs px-1.5 py-0.5 rounded ${className} flex items-center gap-1`}>
+                                            <CategoryIcon iconName={event.category.icon} emoji={event.category.emoji} className="w-3 h-3" />
+                                            <span className="truncate">{event.category.name}</span>
                                           </span>
                                         )}
                                       </div>
@@ -1913,7 +1917,8 @@ export default function CalendarPage() {
                                 )}
                                 {event.category && (
                                   <span className={`text-xs px-2 py-1 rounded-full ${className}`}>
-                                    {label}
+                                    <CategoryIcon iconName={event.category.icon} emoji={event.category.emoji} className="w-3 h-3" />
+                                    <span>{event.category.name}</span>
                                   </span>
                                 )}
                                 {event.recurring && (
@@ -2009,8 +2014,9 @@ export default function CalendarPage() {
                         )}
                       </div>
                       {event.category && (
-                        <span className={`text-xs px-2 py-1 rounded-full ${className}`}>
-                          {label}
+                        <span className={`text-xs px-2 py-1 rounded-full ${className} flex items-center gap-1 inline-flex`}>
+                          <CategoryIcon iconName={event.category.icon} emoji={event.category.emoji} className="w-3 h-3" />
+                          <span>{event.category.name}</span>
                         </span>
                       )}
                       {!event.confirmed && (
@@ -2379,348 +2385,7 @@ export default function CalendarPage() {
       )
       }
 
-      {
-        editModalOpen && editingEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={closeEditModal}
-            ></div>
-            <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-                <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Modifier l'échéance
-                </h2>
-                <button
-                  onClick={closeEditModal}
-                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
-                >
-                  ×
-                </button>
-              </div>
 
-              <form onSubmit={handleEditEventSubmit} className="px-6 py-4 space-y-6">
-                {editEventError && (
-                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
-                    {editEventError}
-                  </div>
-                )}
-
-                {/* Section principale - Champs essentiels */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 pb-2 border-b border-gray-200 dark:border-gray-700">
-                    Informations principales
-                  </h3>
-
-                  {/* Row 1: Compte & Type */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Compte
-                      </label>
-                      <select
-                        value={editEventForm.accountId}
-                        onChange={(e) => setEditEventForm(prev => ({ ...prev, accountId: e.target.value }))}
-                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      >
-                        <option value="">Sélectionnez un compte</option>
-                        {accounts.map(account => (
-                          <option key={account.id} value={account.id}>
-                            {account.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Type d'échéance *
-                      </label>
-                      <select
-                        value={editEventForm.type}
-                        onChange={(e) => setEditEventForm(prev => ({ ...prev, type: e.target.value as 'debit' | 'credit' | 'transfer' }))}
-                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      >
-                        <option value="debit">Débit (prélèvement)</option>
-                        <option value="credit">Crédit (revenu)</option>
-                        <option value="transfer">Virement</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Destination Account (if transfer) */}
-                  {editEventForm.type === 'transfer' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Compte de destination *
-                      </label>
-                      <select
-                        value={editEventForm.toAccountId}
-                        onChange={(e) => setEditEventForm(prev => ({ ...prev, toAccountId: e.target.value }))}
-                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                        required={editEventForm.type === 'transfer'}
-                      >
-                        <option value="">Sélectionnez un compte</option>
-                        {accounts
-                          .filter(acc => acc.id !== editEventForm.accountId)
-                          .map(account => (
-                            <option key={account.id} value={account.id}>
-                              {account.name}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Row 3: Amount & Date */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Montant *
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={editEventForm.amount}
-                        onChange={(e) => setEditEventForm(prev => ({ ...prev, amount: e.target.value }))}
-                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                        placeholder="1200.00"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Date d'échéance *
-                      </label>
-                      <input
-                        type="date"
-                        value={editEventForm.dueDate}
-                        onChange={(e) => setEditEventForm(prev => ({ ...prev, dueDate: e.target.value }))}
-                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 4: Description (Title) */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Libellé de l'échéance *
-                    </label>
-                    <input
-                      type="text"
-                      value={editEventForm.title}
-                      onChange={(e) => setEditEventForm(prev => ({ ...prev, title: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      placeholder="Ex: Loyer, Abonnement Netflix, Salaire..."
-                      required
-                    />
-                  </div>
-
-                  {/* Row 5: Category & SubCategory */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Catégorie
-                      </label>
-                      <select
-                        value={editEventForm.categoryId}
-                        onChange={(e) => {
-                          setEditEventForm(prev => ({ ...prev, categoryId: e.target.value, subCategoryId: '' }))
-                          setShowNewSubCategoryInput(false)
-                          setNewSubCategoryName('')
-                        }}
-                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      >
-                        <option value="">Sans catégorie</option>
-                        {categories.map(cat => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Sous-catégorie
-                      </label>
-                      {editEventForm.categoryId ? (
-                        <div className="space-y-2">
-                          <select
-                            value={editEventForm.subCategoryId}
-                            onChange={(e) => {
-                              if (e.target.value === '__new__') {
-                                setShowNewSubCategoryInput(true)
-                                setNewSubCategoryName('')
-                              } else {
-                                setEditEventForm(prev => ({ ...prev, subCategoryId: e.target.value }))
-                                setShowNewSubCategoryInput(false)
-                              }
-                            }}
-                            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                          >
-                            <option value="">Sans sous-catégorie</option>
-                            {subCategories.map(subCat => (
-                              <option key={subCat.id} value={subCat.id}>
-                                {subCat.name}
-                              </option>
-                            ))}
-                            <option value="__new__">+ Créer une nouvelle sous-catégorie</option>
-                          </select>
-                          {showNewSubCategoryInput && (
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                value={newSubCategoryName}
-                                onChange={(e) => setNewSubCategoryName(e.target.value)}
-                                onKeyDown={async (e) => {
-                                  if (e.key === 'Enter' && newSubCategoryName.trim()) {
-                                    e.preventDefault()
-                                    try {
-                                      const newSubCat = await createSubCategory(newSubCategoryName.trim(), editEventForm.categoryId)
-                                      setEditEventForm(prev => ({ ...prev, subCategoryId: newSubCat.id }))
-                                      setShowNewSubCategoryInput(false)
-                                      setNewSubCategoryName('')
-                                    } catch (error) {
-                                      console.error('Error creating subcategory:', error)
-                                    }
-                                  }
-                                }}
-                                placeholder="Nom de la sous-catégorie"
-                                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                autoFocus
-                              />
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (newSubCategoryName.trim()) {
-                                    try {
-                                      const newSubCat = await createSubCategory(newSubCategoryName.trim(), editEventForm.categoryId)
-                                      setEditEventForm(prev => ({ ...prev, subCategoryId: newSubCat.id }))
-                                      setShowNewSubCategoryInput(false)
-                                      setNewSubCategoryName('')
-                                    } catch (error) {
-                                      console.error('Error creating subcategory:', error)
-                                    }
-                                  }
-                                }}
-                                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                              >
-                                ✓
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setShowNewSubCategoryInput(false)
-                                  setNewSubCategoryName('')
-                                  setEditEventForm(prev => ({ ...prev, subCategoryId: '' }))
-                                }}
-                                className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <select disabled className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed">
-                          <option value="">Sélectionnez d'abord une catégorie</option>
-                        </select>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Row 6: Recurrence */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      Récurrence
-                    </label>
-                    <select
-                      value={editEventForm.recurring}
-                      onChange={(e) => setEditEventForm(prev => ({ ...prev, recurring: e.target.value as RecurringOption }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    >
-                      <option value="none">Aucune (ponctuelle)</option>
-                      <option value="weekly">Hebdomadaire</option>
-                      <option value="monthly">Mensuelle</option>
-                      <option value="quarterly">Trimestrielle</option>
-                      <option value="yearly">Annuelle</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Section options avancées */}
-                <details className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                  <summary className="px-4 py-3 bg-gray-50 dark:bg-gray-800/40 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-all font-medium text-gray-700 dark:text-gray-200">
-                    Options avancées
-                  </summary>
-                  <div className="px-4 py-4 space-y-4">
-                    <div className="space-y-3 border border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-900/10 rounded-lg px-4 py-3">
-                      <label className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={editEventForm.confirmed}
-                          onChange={(e) => setEditEventForm(prev => ({ ...prev, confirmed: e.target.checked }))}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          Marquer comme déjà payé
-                        </span>
-                      </label>
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={editEventForm.notifyByEmail}
-                          onChange={(e) => setEditEventForm(prev => ({ ...prev, notifyByEmail: e.target.checked }))}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Activer les notifications par email
-                        </span>
-                      </label>
-                      {editEventForm.notifyByEmail && (
-                        <div className="ml-7">
-                          <select
-                            value={editEventForm.emailReminderDaysBefore}
-                            onChange={(e) => setEditEventForm(prev => ({ ...prev, emailReminderDaysBefore: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          >
-                            <option value="0">Le jour même</option>
-                            <option value="1">1 jour avant</option>
-                            <option value="2">2 jours avant</option>
-                            <option value="3">3 jours avant</option>
-                            <option value="7">1 semaine avant</option>
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </details>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={closeEditModal}
-                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={editEventLoading}
-                    className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-60 transition-all shadow-md hover:shadow-lg font-medium"
-                  >
-                    {editEventLoading ? 'Modification...' : 'Enregistrer les modifications'}
-                  </button>
-                </div>
-              </form>
-            </div >
-          </div >
-        )
-      }
 
 
     </div >

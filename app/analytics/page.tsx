@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { authFetch } from '@/lib/auth-fetch'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { CategoryIcon } from '@/components/category-icon'
 
 interface StatisticsData {
   monthlyIncome: number
@@ -18,7 +19,7 @@ interface StatisticsData {
     id: string
     description: string
     amount: number
-    category: string
+    category: { name: string; emoji: string | null; icon?: string | null }
     date: string
   }>
   accountData: Array<{ name: string; amount: number }>
@@ -30,7 +31,7 @@ interface Transaction {
   type: 'income' | 'expense' | 'transfer' | 'investment'
   date: string
   description: string | null
-  category: { id: string; name: string } | null
+  category: { id: string; name: string; emoji: string | null; icon: string | null } | null
   subCategory: { id: string; name: string } | null
   account: { name: string }
   pending: boolean
@@ -76,7 +77,7 @@ export default function StatisticsPage() {
     id: string
     description: string
     amount: number
-    category: string
+    category: { name: string; emoji: string | null; icon?: string | null }
     date: string
   }>>([])
   const [loadingTopExpenses, setLoadingTopExpenses] = useState(false)
@@ -416,7 +417,9 @@ export default function StatisticsPage() {
           id: tx.id,
           description: tx.description || 'Sans description',
           amount: Math.abs(Number(tx.amount)),
-          category: tx.category?.name || 'Sans catégorie',
+          category: tx.category
+            ? { name: tx.category.name, emoji: tx.category.emoji, icon: tx.category.icon }
+            : { name: 'Sans catégorie', emoji: null, icon: null },
           date: tx.date
         }))
         .sort((a, b) => b.amount - a.amount)
@@ -1244,9 +1247,14 @@ export default function StatisticsPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold">{expense.description}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {expense.category} • {formatDate(expense.date)}
-                    </p>
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-1">
+                        <CategoryIcon iconName={expense.category.icon} emoji={expense.category.emoji} className="w-3 h-3" />
+                        <span>{expense.category.name}</span>
+                      </div>
+                      <span>•</span>
+                      <span>{formatDate(expense.date)}</span>
+                    </div>
                   </div>
                 </div>
                 <p className="text-xl font-bold text-red-600 dark:text-red-400">

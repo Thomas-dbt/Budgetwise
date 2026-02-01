@@ -12,7 +12,9 @@ export async function GET(req: Request) {
         hasSplits: false // Exclude parents (split transactions) to avoid double counting and use accurate child categories
       } as any,
       include: {
-        category: true,
+        category: {
+          include: { parent: true }
+        },
         account: true
       },
       orderBy: { date: 'desc' }
@@ -94,7 +96,11 @@ export async function GET(req: Request) {
         id: t.id,
         description: t.description || 'Transaction',
         amount: Math.abs(Number(t.amount)),
-        category: t.category?.name || 'Autres',
+        category: t.category ? {
+          name: t.category.name,
+          emoji: t.category.emoji,
+          icon: t.category.icon || t.category.parent?.icon || null
+        } : { name: 'Autres', emoji: null, icon: null },
         date: t.date.toISOString()
       }))
       .sort((a, b) => b.amount - a.amount)

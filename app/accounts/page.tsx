@@ -16,6 +16,7 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-react'
+import { CategoryIcon } from '@/components/category-icon'
 import { AreaChart, Area, ResponsiveContainer } from 'recharts'
 import { authFetch } from '@/lib/auth-fetch'
 
@@ -37,7 +38,7 @@ interface Transaction {
   description: string | null
   amount: number
   type: 'income' | 'expense' | 'transfer'
-  category: { name: string; emoji: string | null } | null
+  category: { name: string; emoji: string | null; icon: string | null } | null
 }
 
 const BANK_OPTIONS = [
@@ -922,8 +923,12 @@ export default function AccountsPage() {
                     {accountTransactions.map((t) => (
                       <div key={t.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors flex items-center justify-between gap-4">
                         {/* Icon */}
-                        <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center flex-shrink-0 text-xl">
-                          {t.category?.emoji || '📄'}
+                        <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center flex-shrink-0">
+                          {t.category ? (
+                            <CategoryIcon iconName={t.category.icon} emoji={t.category.emoji} className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                          ) : (
+                            <span className="text-xl">📄</span>
+                          )}
                         </div>
 
                         {/* Details */}

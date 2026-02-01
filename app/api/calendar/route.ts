@@ -312,7 +312,8 @@ function serializeCalendarEvent(e: any) {
         category = {
           id: e.category.parent.id,
           name: e.category.parent.name,
-          emoji: e.category.parent.emoji
+          emoji: e.category.parent.emoji,
+          icon: e.category.icon || e.category.parent.icon
         }
         subCategory = {
           id: e.category.id,
@@ -322,7 +323,8 @@ function serializeCalendarEvent(e: any) {
         category = {
           id: e.category.id,
           name: e.category.name,
-          emoji: e.category.emoji
+          emoji: e.category.emoji,
+          icon: e.category.icon
         }
       }
     }
