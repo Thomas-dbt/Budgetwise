@@ -1,9 +1,11 @@
 'use client'
 
 import { useTheme } from '@/components/theme-provider'
-import { Moon, Sun, ChevronDown, Trash2, Move, Loader2, Edit, GripVertical } from 'lucide-react'
+import { Moon, Sun, ChevronDown, Trash2, Move, Loader2, Edit, GripVertical, Plus } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { authFetch } from '@/lib/auth-fetch'
+import { CategoryIcon } from '@/components/category-icon'
+import { IconPicker } from '@/components/icon-picker'
 import {
   DndContext,
   closestCenter,
@@ -57,12 +59,14 @@ interface Category {
   id: string
   name: string
   emoji: string | null
+  icon: string | null
 }
 
 interface SubCategory {
   id: string
   name: string
   categoryId: string
+  icon: string | null
   category: Category
 }
 
@@ -104,6 +108,7 @@ export default function SettingsPage() {
   const [editCategoryModal, setEditCategoryModal] = useState<Category | null>(null)
   const [editCategoryName, setEditCategoryName] = useState<string>('')
   const [editCategoryEmoji, setEditCategoryEmoji] = useState<string>('')
+  const [editCategoryIcon, setEditCategoryIcon] = useState<string | null>(null)
   const [editCategoryLoading, setEditCategoryLoading] = useState(false)
   const [editCategoryKeywords, setEditCategoryKeywords] = useState<{ id: string; keyword: string }[]>([])
   const [newKeyword, setNewKeyword] = useState('')
@@ -111,17 +116,20 @@ export default function SettingsPage() {
 
   const [editSubCategoryModal, setEditSubCategoryModal] = useState<SubCategory | null>(null)
   const [editSubCategoryName, setEditSubCategoryName] = useState<string>('')
+  const [editSubCategoryIcon, setEditSubCategoryIcon] = useState<string | null>(null)
   const [editSubCategoryLoading, setEditSubCategoryLoading] = useState(false)
 
   // Add Category Modal
   const [addCategoryModal, setAddCategoryModal] = useState(false)
   const [addCategoryName, setAddCategoryName] = useState('')
   const [addCategoryEmoji, setAddCategoryEmoji] = useState('')
+  const [addCategoryIcon, setAddCategoryIcon] = useState<string | null>(null)
   const [addCategoryLoading, setAddCategoryLoading] = useState(false)
 
   // Add SubCategory Modal
   const [addSubCategoryModal, setAddSubCategoryModal] = useState<Category | null>(null)
   const [addSubCategoryName, setAddSubCategoryName] = useState('')
+  const [addSubCategoryIcon, setAddSubCategoryIcon] = useState<string | null>(null)
   const [addSubCategoryLoading, setAddSubCategoryLoading] = useState(false)
 
   const [error, setError] = useState<string | null>(null)
@@ -434,6 +442,7 @@ export default function SettingsPage() {
     setEditCategoryModal(category)
     setEditCategoryName(category.name)
     setEditCategoryEmoji(category.emoji || '')
+    setEditCategoryIcon(category.icon)
     setError(null)
 
     // Fetch keywords
@@ -478,6 +487,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           name: editCategoryName.trim(),
           emoji: editCategoryEmoji.trim() || null,
+          icon: editCategoryIcon
         }),
       })
 
@@ -500,6 +510,7 @@ export default function SettingsPage() {
   const openEditSubCategoryModal = async (subCategory: SubCategory) => {
     setEditSubCategoryModal(subCategory)
     setEditSubCategoryName(subCategory.name)
+    setEditSubCategoryIcon(subCategory.icon)
     setError(null)
 
     // Fetch keywords
@@ -541,6 +552,7 @@ export default function SettingsPage() {
         method: 'PATCH',
         body: JSON.stringify({
           name: editSubCategoryName.trim(),
+          icon: editSubCategoryIcon
         }),
       })
 
@@ -563,6 +575,7 @@ export default function SettingsPage() {
   const openAddCategoryModal = () => {
     setAddCategoryName('')
     setAddCategoryEmoji('')
+    setAddCategoryIcon(null)
     setAddCategoryModal(true)
     setError(null)
   }
@@ -583,6 +596,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           name: addCategoryName.trim(),
           emoji: addCategoryEmoji.trim() || null,
+          icon: addCategoryIcon
         }),
       })
 
@@ -604,6 +618,7 @@ export default function SettingsPage() {
 
   const openAddSubCategoryModal = (category: Category) => {
     setAddSubCategoryName('')
+    setAddSubCategoryIcon(null)
     setAddSubCategoryModal(category)
     setError(null)
   }
@@ -626,6 +641,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           categoryId: addSubCategoryModal.id,
           name: addSubCategoryName.trim(),
+          icon: addSubCategoryIcon
         }),
       })
 
@@ -819,7 +835,13 @@ export default function SettingsPage() {
                           className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''
                             }`}
                         />
-                        {category.emoji && <span className="text-xl">{category.emoji}</span>}
+                        {category.icon ? (
+                          <div className="p-1 bg-gray-100 dark:bg-gray-800 rounded-md">
+                            <CategoryIcon iconName={category.icon} emoji={category.emoji} className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                          </div>
+                        ) : (
+                          category.emoji && <span className="text-xl">{category.emoji}</span>
+                        )}
                         <span className="font-medium text-gray-900 dark:text-gray-100">{category.name}</span>
                         <span className="text-sm text-gray-500 dark:text-gray-400">
                           ({stats.transactionsCount} transaction{stats.transactionsCount !== 1 ? 's' : ''}, {stats.eventsCount} événement{stats.eventsCount !== 1 ? 's' : ''}, {stats.subCategoriesCount} sous-catégorie{stats.subCategoriesCount !== 1 ? 's' : ''})
@@ -864,6 +886,9 @@ export default function SettingsPage() {
                               className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800/40 rounded-lg"
                             >
                               <div className="flex items-center gap-3">
+                                {subCategory.icon && (
+                                  <CategoryIcon iconName={subCategory.icon} className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                )}
                                 <span className="text-gray-700 dark:text-gray-300">{subCategory.name}</span>
                                 <span className="text-xs text-gray-500 dark:text-gray-400">
                                   ({subStats.transactionsCount} transaction{subStats.transactionsCount !== 1 ? 's' : ''}, {subStats.eventsCount} événement{subStats.eventsCount !== 1 ? 's' : ''})
@@ -1194,6 +1219,31 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Icône
+                </label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                      <CategoryIcon iconName={editCategoryIcon} emoji={editCategoryEmoji} className="w-6 h-6" />
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {editCategoryIcon ? 'Icône sélectionnée' : 'Aucune icône (emoji utilisé)'}
+                    </div>
+                    {editCategoryIcon && (
+                      <button onClick={() => setEditCategoryIcon(null)} className="text-xs text-red-500 hover:underline">
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
+                  <IconPicker
+                    value={editCategoryIcon}
+                    onChange={(icon) => setEditCategoryIcon(icon)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   Emoji (optionnel)
                 </label>
                 <input
@@ -1317,6 +1367,31 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Icône
+                </label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                      <CategoryIcon iconName={editSubCategoryIcon} className="w-6 h-6" />
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {editSubCategoryIcon ? 'Icône sélectionnée' : 'Aucune icône'}
+                    </div>
+                    {editSubCategoryIcon && (
+                      <button onClick={() => setEditSubCategoryIcon(null)} className="text-xs text-red-500 hover:underline">
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
+                  <IconPicker
+                    value={editSubCategoryIcon}
+                    onChange={(icon) => setEditSubCategoryIcon(icon)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   Mots-clés pour auto-catégorisation
                 </label>
                 <div className="flex gap-2 mb-3">
@@ -1426,7 +1501,27 @@ export default function SettingsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                    Emoji (optionnel)
+                    Icône
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                        <CategoryIcon iconName={addCategoryIcon} emoji={addCategoryEmoji} className="w-6 h-6" />
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {addCategoryIcon ? 'Icône sélectionnée' : 'Aucune icône (emoji utilisé)'}
+                      </div>
+                    </div>
+                    <IconPicker
+                      value={addCategoryIcon}
+                      onChange={(icon) => setAddCategoryIcon(icon)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Emoji (optionnel, si aucune icône)
                   </label>
                   <input
                     type="text"
@@ -1503,6 +1598,26 @@ export default function SettingsPage() {
                     placeholder="Ex: Courses"
                     autoFocus
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Icône
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                        <CategoryIcon iconName={addSubCategoryIcon} className="w-6 h-6" />
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {addSubCategoryIcon ? 'Icône sélectionnée' : 'Aucune icône'}
+                      </div>
+                    </div>
+                    <IconPicker
+                      value={addSubCategoryIcon}
+                      onChange={(icon) => setAddSubCategoryIcon(icon)}
+                    />
+                  </div>
                 </div>
 
                 {error && (

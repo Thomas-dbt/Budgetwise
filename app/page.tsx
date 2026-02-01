@@ -6,6 +6,7 @@ import { ComposedChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, Cart
 import { useToast } from '@/components/toast'
 import { Plus, Camera, Wallet, TrendingUp, TrendingDown, PiggyBank, ArrowRight, User } from 'lucide-react'
 import Link from 'next/link'
+import { CategoryIcon } from '@/components/category-icon'
 
 interface DashboardData {
   totalBalance: number
@@ -18,7 +19,7 @@ interface DashboardData {
     amount: number
     type: string
     date: string
-    category: { name: string; emoji: string } | null
+    category: { name: string; emoji: string; icon?: string | null } | null
     account: { name: string }
   }>
   monthlyEvolution: Array<{
@@ -259,8 +260,8 @@ export default function DashboardPage() {
                 <div key={tx.id} className="flex items-center gap-3 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 p-1.5 -mx-2 rounded-lg transition-colors">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${tx.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20' : 'bg-gray-100 text-gray-600 dark:bg-gray-800'
                     }`}>
-                    {tx.category?.emoji ? (
-                      <span className="text-sm">{tx.category.emoji}</span>
+                    {tx.category ? (
+                      <CategoryIcon iconName={tx.category.icon} emoji={tx.category.emoji} className="w-4 h-4" />
                     ) : (
                       tx.type === 'income' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />
                     )}

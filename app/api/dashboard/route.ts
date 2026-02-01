@@ -251,7 +251,7 @@ export async function GET() {
         amount: Number(t.amount),
         type: t.type,
         date: formatDateForResponse(t.date),
-        category: t.category ? { name: t.category.name, emoji: t.category.emoji } : null,
+        category: t.category ? { name: t.category.name, emoji: t.category.emoji, icon: t.category.icon } : null,
         account: { name: t.account.name }
       })),
       monthlyEvolution: monthlyData

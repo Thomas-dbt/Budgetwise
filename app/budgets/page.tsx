@@ -3,11 +3,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { authFetch } from '@/lib/auth-fetch'
 import { useToast } from '@/components/toast'
+import { CategoryIcon } from '@/components/category-icon'
 
 interface Category {
     id: string
     name: string
     emoji: string | null
+    icon: string | null
     parentId: string | null
 }
 
@@ -346,7 +348,9 @@ export default function BudgetsPage() {
                         >
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
-                                    <span className="text-2xl md:text-3xl bg-gray-50 dark:bg-gray-800 p-2 md:p-3 rounded-xl">{category.emoji || '📁'}</span>
+                                    <div className="bg-gray-50 dark:bg-gray-800 p-2 md:p-3 rounded-xl">
+                                        <CategoryIcon iconName={category.icon} emoji={category.emoji} className="w-6 h-6 md:w-8 md:h-8" />
+                                    </div>
                                     <div
                                         onClick={() => setSelectedCategory(category.id)}
                                         className="cursor-pointer hover:opacity-70 transition-opacity"
@@ -431,7 +435,11 @@ export default function BudgetsPage() {
                         <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                    {categories.find(c => c.id === selectedCategory)?.emoji}
+                                    <CategoryIcon
+                                        iconName={categories.find(c => c.id === selectedCategory)?.icon}
+                                        emoji={categories.find(c => c.id === selectedCategory)?.emoji}
+                                        className="w-6 h-6"
+                                    />
                                     {categories.find(c => c.id === selectedCategory)?.name}
                                 </h3>
                                 <p className="text-sm text-gray-500">Détail du mois</p>
