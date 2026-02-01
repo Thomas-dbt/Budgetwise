@@ -6,6 +6,7 @@ import { useToast } from '@/components/toast'
 import SplitModal from './split-modal'
 import { Lightbulb, Calendar, Check, X } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { CategoryIcon } from '@/components/category-icon'
 
 interface Transaction {
   id: string
@@ -13,8 +14,8 @@ interface Transaction {
   type: 'income' | 'expense' | 'transfer' | 'investment'
   date: string
   description: string | null
-  category: { id: string; name: string; emoji: string | null } | null
-  subCategory: { id: string; name: string } | null
+  category: { id: string; name: string; emoji: string | null; icon?: string | null } | null
+  subCategory: { id: string; name: string; icon?: string | null } | null
   account: { id: string; name: string }
   toAccount?: { id: string; name: string } | null
   attachment: string | null
@@ -43,6 +44,7 @@ interface CategoryOption {
   id: string
   name: string
   emoji: string | null
+  icon?: string | null
 }
 
 interface SubCategoryOption {
@@ -50,6 +52,7 @@ interface SubCategoryOption {
   name: string
   categoryId: string
   category: CategoryOption
+  icon?: string | null
 }
 
 interface ParsedImportRow {
@@ -643,6 +646,14 @@ export default function TransactionsPage() {
     hasSplits: tx.hasSplits,
     splits: tx.splits,
   })
+
+  // Helper to resolve the correct icon for a transaction
+  const getTransactionIcon = (tx: Transaction) => {
+    if (tx.subCategory?.icon) return { icon: tx.subCategory.icon, emoji: null }
+    if (tx.category?.icon) return { icon: tx.category.icon, emoji: tx.category.emoji }
+    if (tx.category?.emoji) return { icon: null, emoji: tx.category.emoji }
+    return { icon: null, emoji: null }
+  }
 
   // Main fetch function
   const fetchTransactions = async (startDate?: string | null, endDate?: string | null, append = false, search = '') => {
@@ -1932,7 +1943,7 @@ export default function TransactionsPage() {
                   <option value="">Filtrer par catégorie</option>
                   {categories.map(cat => (
                     <option key={cat.id} value={`category:${cat.id}`}>
-                      {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
+                      {cat.name}
                     </option>
                   ))}
                 </select>
@@ -2174,9 +2185,10 @@ export default function TransactionsPage() {
                                   </span>
                                 )}
                                 {(tx.category && !tx.hasSplits && (!tx.splits || tx.splits.length === 0)) && (
-                                  <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium border ${categoryColors[tx.category.name] || categoryColors['Autres']
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium border flex items-center gap-1 ${categoryColors[tx.category.name] || categoryColors['Autres']
                                     }`}>
-                                    {tx.category.emoji ? `${tx.category.emoji} ` : ''}<span className="inline-block max-w-[80px] truncate align-bottom">{tx.category.name}</span>
+                                    <CategoryIcon iconName={getTransactionIcon(tx).icon} emoji={getTransactionIcon(tx).emoji} className="w-3 h-3" />
+                                    <span className="inline-block max-w-[80px] truncate align-bottom">{tx.category.name}</span>
                                   </span>
                                 )}
                               </div>
@@ -2187,7 +2199,11 @@ export default function TransactionsPage() {
                                   className="p-1.5 text-xs border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-300 rounded-lg"
                                 >✏️</button>
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); setTransactionToDelete(tx) }}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setTransactionToDelete(tx)
+                                    setDeleteModalOpen(true)
+                                  }}
                                   className="p-1.5 text-xs border border-red-200 text-red-600 dark:border-red-800 dark:text-red-300 rounded-lg"
                                 >🗑️</button>
                               </div>
@@ -2252,11 +2268,14 @@ export default function TransactionsPage() {
                                 </span>
                               )}
                               {(tx.category && !tx.hasSplits && (!tx.splits || tx.splits.length === 0)) && (
-                                <span className={`text-xs px-3 py-1 rounded-md font-medium border ${categoryColors[tx.category.name] || categoryColors['Autres']
+                                <span className={`text-xs px-3 py-1 rounded-md font-medium border flex items-center gap-1.5 ${categoryColors[tx.category.name] || categoryColors['Autres']
                                   }`}>
-                                  {tx.category.emoji ? `${tx.category.emoji} ` : ''}{tx.category.name}
+                                  <CategoryIcon iconName={getTransactionIcon(tx).icon} emoji={getTransactionIcon(tx).emoji} className="w-3.5 h-3.5" />
+                                  {tx.category.name}
                                   {tx.subCategory && (
-                                    <span className="ml-1.5 opacity-75">• {tx.subCategory.name}</span>
+                                    <span className="ml-1 opacity-75 flex items-center gap-1">
+                                      • {tx.subCategory.name}
+                                    </span>
                                   )}
                                 </span>
                               )}
@@ -2297,7 +2316,11 @@ export default function TransactionsPage() {
                                 ✏️ Modifier
                               </button>
                               <button
-                                onClick={(e) => { e.stopPropagation(); setTransactionToDelete(tx) }}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setTransactionToDelete(tx)
+                                  setDeleteModalOpen(true)
+                                }}
                                 className="px-4 py-2 text-sm border border-red-200 text-red-600 dark:border-red-800 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors font-medium shadow-sm hover:shadow"
                               >
                                 🗑️ Supprimer

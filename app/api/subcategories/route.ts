@@ -24,6 +24,7 @@ export async function GET(req: Request) {
               id: true,
               name: true,
               emoji: true,
+              icon: true,
             },
           },
         },
@@ -33,6 +34,7 @@ export async function GET(req: Request) {
         subCategories.map((sub) => ({
           id: sub.id,
           name: sub.name,
+          icon: sub.icon,
           categoryId: sub.parentId,
           category: sub.parent,
         }))
@@ -52,6 +54,7 @@ export async function GET(req: Request) {
             id: true,
             name: true,
             emoji: true,
+            icon: true,
           },
         },
       },
@@ -61,6 +64,7 @@ export async function GET(req: Request) {
       subCategories.map((sub) => ({
         id: sub.id,
         name: sub.name,
+        icon: sub.icon,
         categoryId: sub.parentId,
         category: sub.parent,
       }))
@@ -120,6 +124,7 @@ export async function POST(req: Request) {
             id: true,
             name: true,
             emoji: true,
+            icon: true,
           },
         },
       },
@@ -128,6 +133,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       id: subCategory.id,
       name: subCategory.name,
+      icon: subCategory.icon,
       categoryId: subCategory.parentId,
       category: subCategory.parent,
     })

@@ -70,6 +70,7 @@ model Category {
   id             String          @id @default(cuid())
   name           String
   emoji          String?
+  icon           String?
   transactions   Transaction[]
   calendarEvents CalendarEvent[]
   

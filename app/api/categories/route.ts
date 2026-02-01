@@ -24,11 +24,13 @@ export async function GET() {
         id: cat.id,
         name: cat.name,
         emoji: cat.emoji,
+        icon: cat.icon,
         isSystem: cat.isSystem,
         subCategories: cat.children ? cat.children.map((sub: any) => ({
           id: sub.id,
           name: sub.name,
-          categoryId: sub.parentId // Map parentId to categoryId for frontend compatibility
+          categoryId: sub.parentId, // Map parentId to categoryId for frontend compatibility
+          icon: sub.icon
         })) : []
       }))
     )
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
     const userId = await getCurrentUserId()
 
     const body = await req.json()
-    const { name, emoji } = body
+    const { name, emoji, icon } = body
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json(
@@ -73,6 +75,7 @@ export async function POST(req: Request) {
         id: existing.id,
         name: existing.name,
         emoji: existing.emoji,
+        icon: existing.icon,
       })
     }
 
@@ -81,6 +84,7 @@ export async function POST(req: Request) {
         userId,
         name: trimmedName,
         emoji: emoji || null,
+        icon: icon || null,
         isSystem: false
       } as any,
     })
@@ -89,6 +93,7 @@ export async function POST(req: Request) {
       id: category.id,
       name: category.name,
       emoji: category.emoji,
+      icon: category.icon,
     }, { status: 201 })
   } catch (error: any) {
     console.error('Categories POST error:', error)

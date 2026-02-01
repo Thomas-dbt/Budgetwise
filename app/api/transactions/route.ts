@@ -108,18 +108,21 @@ export async function GET(req: Request) {
           category = {
             id: tx.category.parent.id,
             name: tx.category.parent.name,
-            emoji: tx.category.parent.emoji
+            emoji: tx.category.parent.emoji,
+            icon: tx.category.parent.icon
           }
           subCategory = {
             id: tx.category.id,
-            name: tx.category.name
+            name: tx.category.name,
+            icon: tx.category.icon
           }
         } else {
           // It's a top category
           category = {
             id: tx.category.id,
             name: tx.category.name,
-            emoji: tx.category.emoji
+            emoji: tx.category.emoji,
+            icon: tx.category.icon
           }
         }
       }
@@ -400,17 +403,20 @@ export async function POST(req: Request) {
         resCategory = {
           id: created.category.parent.id,
           name: created.category.parent.name,
-          emoji: created.category.parent.emoji
+          emoji: created.category.parent.emoji,
+          icon: created.category.parent.icon
         }
         resSubCategory = {
           id: created.category.id,
-          name: created.category.name
+          name: created.category.name,
+          icon: created.category.icon
         }
       } else {
         resCategory = {
           id: created.category.id,
           name: created.category.name,
-          emoji: created.category.emoji
+          emoji: created.category.emoji,
+          icon: created.category.icon
         }
       }
     }
