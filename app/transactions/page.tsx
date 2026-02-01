@@ -2095,17 +2095,6 @@ export default function TransactionsPage() {
                   // Determine effective direction for transfers
                   let isIncomingTransfer = false
 
-                  // DEBUG: Check values
-                  if (isTransfer) {
-                    console.log('Transfer Debug:', {
-                      txId: tx.id,
-                      filterAccountId,
-                      toAccountId: tx.toAccount?.id,
-                      fromAccountId: tx.account.id,
-                      isMatch: tx.toAccount?.id === filterAccountId
-                    })
-                  }
-
                   if (isTransfer && filterAccountId !== 'all' && tx.toAccount?.id === filterAccountId) {
                     isIncomingTransfer = true
                   }
@@ -2126,7 +2115,7 @@ export default function TransactionsPage() {
 
                   // Simplified subtitle for transfers to avoid redundancy
                   const subtitle = isTransfer
-                    ? `${tx.account.name} → ${tx.toAccount?.name ?? 'Compte inconnu'} [Debug: ${isIncomingTransfer ? 'IN' : 'OUT'} | Filter: ${filterAccountId.slice(0, 4)}... | To: ${tx.toAccount?.id?.slice(0, 4)}...]`
+                    ? `${tx.account.name} → ${tx.toAccount?.name ?? 'Compte inconnu'}`
                     : tx.account.name
 
                   const iconSymbol = isTransfer ? (isIncomingTransfer ? '↓' : '↔') : isExpense ? '↑' : isIncome ? '↓' : '📈'

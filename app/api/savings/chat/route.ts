@@ -38,19 +38,24 @@ export async function POST(req: Request) {
 
         // Group by month
         const monthlyData: Record<string, { income: number; expenses: number }> = {}
-        // Group by category (expenses)
-        const categoryData: Record<string, number> = {}
+        // Group by category (expenses and income)
+        const categoryExpenses: Record<string, number> = {}
+        const categoryIncome: Record<string, number> = {}
 
         let totalIncome = 0
         let totalExpenses = 0
 
         transactions.forEach(t => {
             const amount = Math.abs(Number(t.amount))
-            if (t.type === 'income') totalIncome += amount
+            const cat = t.category?.name || 'Non catégorisé'
+
+            if (t.type === 'income') {
+                totalIncome += amount
+                categoryIncome[cat] = (categoryIncome[cat] || 0) + amount
+            }
             if (t.type === 'expense') {
                 totalExpenses += amount
-                const cat = t.category?.name || 'Non catégorisé'
-                categoryData[cat] = (categoryData[cat] || 0) + amount
+                categoryExpenses[cat] = (categoryExpenses[cat] || 0) + amount
             }
 
             const monthKey = new Date(t.date).toISOString().slice(0, 7)
@@ -74,10 +79,15 @@ export async function POST(req: Request) {
     - Dépense mensuelle moyenne: ${avgMonthlyExpenses.toFixed(2)}€
     - Revenu mensuel moyen: ${avgMonthlyIncome.toFixed(2)}€
     
-    Top Dépenses par Catégorie:
-    ${Object.entries(categoryData)
+    Détail des Dépenses par Catégorie:
+    ${Object.entries(categoryExpenses)
                 .sort(([, a], [, b]) => b - a)
-                .slice(0, 10)
+                .map(([k, v]) => `- ${k}: ${v.toFixed(2)}€`)
+                .join('\n')}
+
+    Détail des Revenus par Catégorie:
+    ${Object.entries(categoryIncome)
+                .sort(([, a], [, b]) => b - a)
                 .map(([k, v]) => `- ${k}: ${v.toFixed(2)}€`)
                 .join('\n')}
 
